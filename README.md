@@ -50,8 +50,9 @@ more qubits and faster quantum operations with smaller memory than before.
  - measure(z basis)   : mesure qubit
 
 # QPlayer Source Tree
-  - qplayer                : qplayer sources
-  - circuit - basic.cpp    : 'hello world' for qplayer
-            - qft.cpp      : quantum fourier transform
-            - grover.cpp   : quantum search algorithm
-
+<pre>
+  + qplayer                : qplayer sources  
+  + circuit + basic.cpp    : 'hello world' for qplayer
+            + qft.cpp      : quantum fourier transform
+            + grover.cpp   : quantum search algorithm
+</pre>
