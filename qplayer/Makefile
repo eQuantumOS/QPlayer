@@ -50,8 +50,10 @@ qplayer: $(QPLAYER_OBJS)
 
 install:
 	$(Q) "$(@)"
-	cp -f include/* $(BUILD_DIR)/include
-	mv -f $(QPLAYER_LIB) $(BUILD_DIR)/lib
+	@mkdir -p $(BUILD_DIR)/include
+	@mkdir -p $(BUILD_DIR)/lib
+	@cp -f include/* $(BUILD_DIR)/include
+	@mv -f $(QPLAYER_LIB) $(BUILD_DIR)/lib
 
 clean:
 	@echo "Clean Objects, Deps, Executions"
