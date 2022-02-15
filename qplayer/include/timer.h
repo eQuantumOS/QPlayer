@@ -52,6 +52,20 @@ public:
 		calculateTime();
 	}
 
+	void lapStart() {
+		clock_gettime(CLOCK_MONOTONIC, &startT);
+	}
+
+	void lapStop() {
+		clock_gettime(CLOCK_MONOTONIC, &endT);
+		elapsedNSec += ((endT.tv_sec - startT.tv_sec) * 1000000000LL) + (endT.tv_nsec - startT.tv_nsec);
+	}
+
+	void lapFinish() {
+		lapStop();
+		calculateTime();
+	}
+
 	void calculateTime() {
 		elapsedUSec = elapsedNSec / 1000LL;
 		elapsedMSec = elapsedNSec / 1000000LL;
