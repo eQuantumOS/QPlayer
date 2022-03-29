@@ -392,7 +392,7 @@ public:
 
 	void logicalZ(struct logical_qubit *LQ) {
 		for(int i=0; i<3; i++) {
-			Z(QReg, LQ->logical_x[i]);
+			Z(QReg, LQ->logical_z[i]);
 		}
 	}
 
@@ -520,7 +520,7 @@ public:
 			} else {
 				MQ->measure_value[i] = -1;
 			}
-			printf("M  : %d\n", SQ->sq);
+			printf("M[%d]  : Q%d --> %d\n", i, SQ->sq, MQ->measure_value[i]);
 		}
 
 		ESM(AQ);
@@ -652,8 +652,8 @@ public:
 	void run(void) {
 		int cq_mode = KET_PLUS;
 		int tq_mode = KET_MINUS;
-		int cq_measure_type = Z_BASIS;
-		int tq_measure_type = Z_BASIS;
+		int cq_measure_type;
+		int tq_measure_type;
 
 		/***********************************/
 		/* STEP1: initialize logical qubit */
