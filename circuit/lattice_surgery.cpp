@@ -547,7 +547,8 @@ public:
 		printf("mxx1=%d, mxx2=%d, mzz1=%d, mzz2=%d, mAQ=%d\n", mxx1, mxx2, mzz1, mzz2, mAQ);
 		printf("a=%d, b=%d, c=%d\n", a, b, c);
 
-	#if 0
+#if 1
+	#if 1
 		if(a == 1) {
 			printf("Logical Z(a) : CQ\n");
 			logicalZ(CQ);
@@ -558,16 +559,39 @@ public:
 			logicalZ(CQ);
 		}
 	#else
+		#if 0
 		/*
 		 * Only this combination transfers the phase of the target (|->) to 
 		 * control (|+> or |->). I don't understand the principle of why. 
 		 * So far, it has only been confirmed experimentally.
+		 * ---> it is wrong..... T.T
 		 */
 		if((a + c) != 1) {
 			printf("Logical Z(a+c) : CQ\n");
 			logicalZ(CQ);
 		}
+		#else
+		if(a == 1 || c == 1) {
+			printf("Logical Z(a+c) : CQ\n");
+			logicalZ(CQ);
+		}
+		#endif
 	#endif
+#else
+		if(a == 0 && c == 0) {
+			printf("Logical Z(ac=00) : CQ\n");
+			logicalZ(CQ);
+		} else if(a == 0 && c == 1) {
+			printf("Logical Z(ac=01) : CQ\n");
+			// logicalZ(CQ);
+		} else if(a == 1 && c == 0) {
+			printf("Logical Z(ac=10) : CQ\n");
+			// logicalZ(CQ);
+		} else if(a == 1 && c == 1) {
+			printf("Logical Z(ac=01) : CQ\n");
+			logicalZ(CQ);
+		}
+#endif
 
 	#if 0
 		if(c == 1) {
@@ -612,9 +636,9 @@ public:
 	}
 
 	char *modeString(int mode) {
-		if(mode == KET_ONE) {
+		if(mode == KET_ZERO) {
 			return "|0>";
-		} else if(mode == KET_ZERO) {
+		} else if(mode == KET_ONE) {
 			return "|1>";
 		} else if(mode == KET_PLUS) {
 			return "|+>";
@@ -627,7 +651,7 @@ public:
 
 	void run(void) {
 		int cq_mode = KET_PLUS;
-		int tq_mode = KET_ONE;
+		int tq_mode = KET_MINUS;
 		int cq_measure_type = Z_BASIS;
 		int tq_measure_type = Z_BASIS;
 
@@ -664,16 +688,18 @@ public:
 			}
 		}
 
-		if(cq_measure_type == Z_BASIS) {
-			logicalMZ(CQ);
-		} else {
-			logicalMX(CQ);
-		}
-
 		if(tq_measure_type == Z_BASIS) {
 			logicalMZ(TQ);
 		} else {
 			logicalMX(TQ);
+		}
+
+		QReg->dump();
+
+		if(cq_measure_type == Z_BASIS) {
+			logicalMZ(CQ);
+		} else {
+			logicalMX(CQ);
 		}
 
 		/*********************************/
