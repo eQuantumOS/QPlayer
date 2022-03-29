@@ -393,7 +393,6 @@ public:
 			totalStates += qstore[i].size();
 		}
 	
-		printf("======== dump quantum states(%lu) ========\n", (uint64_t)totalStates);
 		setOrderedQState();
 		while((Q = getOrderedQState()) != NULL) {
 			double real = Q->getAmplitude().real();
@@ -421,7 +420,7 @@ public:
 			}
 			printf(">\n");
 		} 
-		printf("\n");
+		printf("======== dump quantum states(%lu) ========\n\n", (uint64_t)totalStates);
 	}
 
 	void dump(void) {

@@ -6,6 +6,7 @@ using namespace std;
 
 typedef enum { D1=0, D2, D3, D4, D5, D6, D7, D8, D9 } DQ_SEQUENCE;
 typedef enum { AX=0, AZ } MERGE_TYPE;
+typedef enum { Z_BASIS=0, X_BASIS } MEASURE_TYPE;
 
 static int x_decoder[2][16] = {
 	{ 
@@ -585,12 +586,19 @@ public:
 	}
 
 public:
-	void run(void) {
-		/* initialize logical qubit */
-		initLQPlus(CQ);
-		initLQMinus(TQ);
-		initLQZero(AQ);
+	void prepare_lq(struct logical_qubit *LQ, int mode) {
+		if(mode == KET_ZERO) {
+			initLQZero(LQ);
+		} else if(mode == KET_ONE) {
+			initLQOne(LQ);
+		} else if(mode == KET_PLUS) {
+			initLQPlus(LQ);
+		} else if(mode == KET_MINUS) {
+			initLQMinus(LQ);
+		}
+	}
 
+	void lattice_surgery(void) {
 		/* merge & split */
 		printf("\n========== MERGE AQ & TQ ==========\n");
 		MergeSplit(MAT, AQ, TQ);
@@ -601,26 +609,106 @@ public:
 		printf("\n========== POST PROCESS ==========\n");
 		/* post process */
 		postProcess();
+	}
 
-		/* measure logical qubit */
-		printf("---> number of States of C & T = %d\n", (int)QReg->numStates());
-		logicalMX(TQ);
-
-	#if 0
-		QReg->dump();
-		int t = QType(QReg, CQ->dq_list[0]);
-		printf("T=%d\n", t);
-		if(t == KET_PLUS || t == KET_SPLUS) {
-			printf("logical Z...\n");
-			logicalZ(CQ);
+	char *modeString(int mode) {
+		if(mode == KET_ONE) {
+			return "|0>";
+		} else if(mode == KET_ZERO) {
+			return "|1>";
+		} else if(mode == KET_PLUS) {
+			return "|+>";
+		} else if(mode == KET_MINUS) {
+			return "|->";
 		}
-	#endif
 
-		QReg->dump();
-		logicalMX(CQ);
+		return "UNKNOWN";
+	}
 
-		printf("CQ:%d, TQ:%d\n", CQ->measure_value, TQ->measure_value);
-		QReg->dump();
+	void run(void) {
+		int cq_mode = KET_PLUS;
+		int tq_mode = KET_ONE;
+		int cq_measure_type = Z_BASIS;
+		int tq_measure_type = Z_BASIS;
+
+		/***********************************/
+		/* STEP1: initialize logical qubit */
+		/***********************************/
+		prepare_lq(CQ, cq_mode);
+		prepare_lq(TQ, tq_mode);
+		prepare_lq(AQ, KET_ZERO);
+
+		/****************************************/
+		/* STEP2: lattice surgery of AQ, CQ, TQ */
+		/****************************************/
+		lattice_surgery();
+
+		/************************************/
+		/* STEP3: measure & validate CQ, TQ */
+		/************************************/
+		if(cq_mode == KET_PLUS || cq_mode == KET_MINUS) {
+			if(tq_mode == KET_ONE || tq_mode == KET_ZERO) {
+				cq_measure_type = Z_BASIS;
+				tq_measure_type = Z_BASIS;
+			} else {
+				cq_measure_type = X_BASIS;
+				tq_measure_type = X_BASIS;
+			}
+		} else {
+			if(tq_mode == KET_ONE || tq_mode == KET_ZERO) {
+				cq_measure_type = Z_BASIS;
+				tq_measure_type = Z_BASIS;
+			} else {
+				cq_measure_type = Z_BASIS;
+				tq_measure_type = X_BASIS;
+			}
+		}
+
+		if(cq_measure_type == Z_BASIS) {
+			logicalMZ(CQ);
+		} else {
+			logicalMX(CQ);
+		}
+
+		if(tq_measure_type == Z_BASIS) {
+			logicalMZ(TQ);
+		} else {
+			logicalMX(TQ);
+		}
+
+		/*********************************/
+		/* STEP4: show validation result */
+		/*********************************/
+		printf("\n******************** RESULT ********************\n");
+		printf("[CNOT %s to %s]\t", modeString(cq_mode), modeString(tq_mode));
+		if(cq_measure_type == Z_BASIS) {
+			if(CQ->measure_value == 1) {
+				printf("CQ:|0> - ");
+			} else {
+				printf("CQ:|1> - ");
+			}
+		} else {
+			if(CQ->measure_value == 1) {
+				printf("CQ:|+> - ");
+			} else {
+				printf("CQ:|-> - ");
+			}
+		}
+
+		if(tq_measure_type == Z_BASIS) {
+			if(TQ->measure_value == 1) {
+				printf("TQ:|0>");
+			} else {
+				printf("TQ:|1>");
+			}
+		} else {
+			if(TQ->measure_value == 1) {
+				printf("TQ:|+>");
+			} else {
+				printf("TQ:|->");
+			}
+		}
+		printf("\n");
 	}
 };
 
