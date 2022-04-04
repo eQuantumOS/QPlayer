@@ -23,7 +23,7 @@
 #include "qplayer.h"
 
 void run(QRegister *QReg) {
-	X(QReg, 0);
+//	X(QReg, 0);
 	H(QReg, 0);
 
 	X(QReg, 1);
@@ -32,6 +32,7 @@ void run(QRegister *QReg) {
 	CX(QReg, 0, 1);
 	QReg->dump();
 
+	printf("\n\n");
 	M(QReg, 1);
 	QReg->dump();
 };

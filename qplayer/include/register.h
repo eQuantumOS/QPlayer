@@ -385,7 +385,7 @@ public:
 	 * dump() prints out all 2^N states in the quantum register.
 	 * However, the zero * amplitude state is not included.
 	 */
-	void dump(int begin, int end) 
+	void dump(int begin, int end, struct qubit_delimiter *qd) 
 	{
 		QState *Q;
 		qsize_t totalStates = 0;
@@ -400,6 +400,7 @@ public:
 			double p = norm(Q->getAmplitude());
 			char qstring[1024] = "";
 
+		#if 0
 			printf("[%15ld] ", (uint64_t)Q->getIndex());
 			printf("[P=%f] ", p);
 
@@ -412,19 +413,48 @@ public:
 			} else {
 				printf("[%.6f, %.6f] ", real, imag);
 			}
+		#else
+			if(real >= 0 && imag >= 0) {
+				printf("+");
+			} else if(real >= 0 && imag < 0) {
+				printf("+");
+			} else if(real < 0 && imag >= 0) {
+				printf("-");
+			} else {
+				printf("-");
+			}
+		#endif
 
 			to_binary(Q->getIndex(), numQubit, qstring);
 			printf("|");
-			for(int i=end; i>=begin; i--) {
+			for(int i=end; i>=begin; i--) { 
+				if(qd != NULL) {
+					for(int j=0; j<qd->size; j++) {
+						if(i == qd->qubits[j]) {
+							printf(" ");
+							break;
+						}
+					}
+				}
 				printf("%c", qstring[numQubit-i-1]);
 			}
 			printf(">\n");
 		} 
+	#if 0
 		printf("======== dump quantum states(%lu) ========\n\n", (uint64_t)totalStates);
+	#endif
+	}
+
+	void dump(int begin, int end) {
+		dump(0, numQubit-1, NULL);
 	}
 
 	void dump(void) {
-		dump(0, numQubit-1);
+		dump(0, numQubit-1, NULL);
+	}
+
+	void dump(struct qubit_delimiter qd) {
+		dump(0, numQubit-1, &qd);
 	}
 
 	/* 

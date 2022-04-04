@@ -60,6 +60,11 @@ typedef uint64_t qsize_t;
 #define MAX_LQUBITS 20
 #define QSTORE_PARTITION    1024
 
+struct qubit_delimiter {
+    int size;
+    int qubits[128];
+};
+
 typedef complex<double> complex_t;
 
 typedef enum {

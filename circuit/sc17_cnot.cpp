@@ -4,23 +4,247 @@
 
 using namespace std;
 
+typedef enum { D1=0, D2, D3, D4, D5, D6, D7, D8, D9 } DQ_SEQUENCE;
+typedef enum { AX=0, AZ } MERGE_TYPE;
+typedef enum { Z_BASIS=0, X_BASIS } MEASURE_TYPE;
+
+static int x_decoder[2][16] = {
+	{ 
+		{ -1 },		/* 0000 */
+		{ D9 },		/* 0001 */
+		{ D7 },		/* 0010 */
+		{ D8 },		/* 0011 */
+		{ D3 },		/* 0100 */
+		{ D3 },		/* 0101 */
+		{ D5 },		/* 0110 */
+		{ D5 },		/* 0111 */
+		{ D1 },		/* 1000 */
+		{ D1 },		/* 1001 */
+		{ D1 },		/* 1010 */
+		{ D8 },		/* 1011 */
+		{ D2 },		/* 1100 */
+		{ D2 },		/* 1101 */
+		{ D2 },		/* 1110 */
+		{ D2 }		/* 1111 */
+	},
+	{
+		{ -1 },		/* 0000 */
+		{ D7 },		/* 0001 */
+		{ D9 },		/* 0010 */
+		{ D8 },		/* 0011 */
+		{ D1 },		/* 0100 */
+		{ D1 },		/* 0101 */
+		{ D5 },		/* 0110 */
+		{ D5 },		/* 0111 */
+		{ D3 },		/* 1000 */
+		{ D3 },		/* 1001 */
+		{ D3 },		/* 1010 */
+		{ D8 },		/* 1011 */
+		{ D2 },		/* 1100 */
+		{ D2 },		/* 1101 */
+		{ D2 },		/* 1110 */
+		{ D2 }		/* 1111 */
+	}
+};
+	
+static int z_decoder[2][16] = {
+	{ 
+		{ -1 },		/* 0000 */
+		{ D3 },		/* 0001 */
+		{ D9 },		/* 0010 */
+		{ D6 },		/* 0011 */
+		{ D1 },		/* 0100 */
+		{ D1 },		/* 0101 */
+		{ D5 },		/* 0110 */
+		{ D5 },		/* 0111 */
+		{ D7 },		/* 1000 */
+		{ D7 },		/* 1001 */
+		{ D7 },		/* 1010 */
+		{ D6 },		/* 1011 */
+		{ D4 },		/* 1100 */
+		{ D4 },		/* 1101 */
+		{ D4 },		/* 1110 */
+		{ D4 }		/* 1111 */
+	},
+	{
+		{ -1 },		/* 0000 */
+		{ D9 },		/* 0001 */
+		{ D3 },		/* 0010 */
+		{ D6 },		/* 0011 */
+		{ D7 },		/* 0100 */
+		{ D7 },		/* 0101 */
+		{ D5 },		/* 0110 */
+		{ D5 },		/* 0111 */
+		{ D1 },		/* 1000 */
+		{ D1 },		/* 1001 */
+		{ D1 },		/* 1010 */
+		{ D6 },		/* 1011 */
+		{ D4 },		/* 1100 */
+		{ D4 },		/* 1101 */
+		{ D4 },		/* 1110 */
+		{ D4 }		/* 1111 */
+	}
+};
+
+struct stabilizer_qubit {
+	int type;
+	int sq;
+	int dq_num;
+	int dq_list[4];
+};
+
+struct logical_qubit {
+	char name[16];
+	int flavor;
+
+	/* data qubits */
+	int dq_num;
+	int dq_list[9];
+
+	/* logical operator */
+	int logical_x[3];
+	int logical_z[3];
+
+	/* stabilizer qubits */
+	int ax_num;
+	struct stabilizer_qubit ax_list[4];
+
+	int az_num;
+	struct stabilizer_qubit az_list[4];
+
+	/* x, z stabilazer value : 0000 - 1111 */
+	int ax;
+	int az;
+
+	/* measure value : +1 or -1 */
+	int measure_value;
+};
+
+struct logical_merge_qubit {
+	int num_stabilizer_qubit;
+	struct stabilizer_qubit merged_qubit[3];
+	int measure_value[3];	/* +1 or -1 */
+};
+
+struct logical_qubit _AQ = {
+	"AQ",											/* name */
+	0,												/* flavor */
+	9,												/* number of data qubit */
+	{ 0, 1, 2, 3, 4, 5, 6, 7, 8 },					/* data qubit list */
+	{ 1, 4, 7 },									/* logical X operator */
+	{ 3, 4, 5 },									/* logical Z operator */
+	4,												/* number of x-stabilizer */
+	{ 
+		{ AX, 27, 2, { D1, D2 } },					/* AX1 */
+		{ AX, 28, 4, { D2, D3, D5, D6 } },			/* AX2 */
+		{ AX, 29, 4, { D4, D5, D7, D8 } },			/* AX3 */
+		{ AX, 30, 2, { D8, D9 } }					/* AX4 */
+	},
+	4,												/* number of z-stabilizer */
+	{ 
+		{ AZ, 31, 2, { D4, D7 } },					/* AZ1 */
+		{ AZ, 32, 4, { D1, D2, D4, D5 } },			/* AZ2 */
+		{ AZ, 33, 4, { D5, D6, D8, D9 } },			/* AZ3 */
+		{ AZ, 34, 2, { D3, D6 } }					/* AZ4 */
+	}, 
+	0,
+	0,
+	0
+};
+
+struct logical_qubit _TQ = {
+	"TQ",											/* name */
+	1,												/* flavor */
+	9,												/* number of data qubit */
+	{ 9, 10, 11, 12, 13, 14, 15, 16, 17 },			/* data qubit list */
+	{ 10, 13, 16 },									/* logical X operator */
+	{ 12, 13, 14 },									/* logical Z operator */
+	4,												/* number of x-stabilizer */
+	{ 
+		{ AX, 38, 2, { D2, D3 } },					/* AX1 */
+		{ AX, 39, 4, { D1, D2, D4, D5 } },			/* AX2 */
+		{ AX, 40, 4, { D5, D6, D8, D9 } },			/* AX3 */
+		{ AX, 41, 2, { D7, D8 } }					/* AX4 */
+	},
+	4,												/* number of z-stabilizer */
+	{ 
+		{ AZ, 34, 2, { D1, D4 } },					/* AZ1 */
+		{ AZ, 35, 4, { D4, D5, D7, D8 } },			/* AZ2 */
+		{ AZ, 36, 4, { D2, D3, D5, D6 } },			/* AZ3 */
+		{ AZ, 37, 2, { D6, D9 } }					/* AZ4 */
+	}, 
+	0,
+	0,
+	0
+};
+
+struct logical_qubit _CQ = {
+	"CQ",											/* name */
+	1,												/* flavor */
+	9,												/* number of data qubit */
+	{ 18, 19, 20, 21, 22, 23, 24, 25, 26 },			/* data qubit list */
+	{ 19, 22, 25 },									/* logical X operator */
+	{ 21, 22, 23 },									/* logical Z operator */
+	4,												/* number of x-stabilizer */
+	{ 
+		{ AX, 30, 2, { D2, D3 } },					/* AX1 */
+		{ AX, 46, 4, { D1, D2, D4, D5 } },			/* AX2 */
+		{ AX, 47, 4, { D5, D6, D8, D9 } },			/* AX3 */
+		{ AX, 48, 2, { D7, D8 } }					/* AX4 */
+	},
+	4,												/* number of z-stabilizer */
+	{ 
+		{ AZ, 42, 2, { D1, D4 } },					/* AZ1 */
+		{ AZ, 43, 4, { D4, D5, D7, D8 } },			/* AZ2 */
+		{ AZ, 44, 4, { D2, D3, D5, D6 } },			/* AZ3 */
+		{ AZ, 45, 2, { D6, D9 } }					/* AZ4 */
+	}, 
+	0,
+	0,
+	0
+};
+
+struct logical_merge_qubit _MAT = {
+	2, 
+	{
+		{ AX, 50, 2, { 2, 9 } },					/* mxx1 */
+		{ AX, 51, 4, { 5, 8, 12, 15 } },			/* mxx2 */
+		{ AZ, 34, 4, { 2, 9, 5, 12 } }
+	},
+	{ 0, 0, 0 }
+};
+
+struct logical_merge_qubit _MAC = {
+	2, 
+	{
+		{ AZ, 52, 4, { 6, 7, 18, 19 } },			/* mzz1 */
+		{ AZ, 53, 2, { 8, 20 } },					/* mzz2 */
+		{ AX, 30, 4, { 7, 8, 19, 20 } },
+	},
+	{ 0, 0, 0 }
+};
+
 class SC17_3LQ_CNOT {
 private:
 	QRegister *QReg;
+	char bitString[512] = "";
 
-	int mx1, mx2, mx3, mx4;
-	int mz1, mz2, mz3, mz4;
-
-	int mxx1, mxx2;
-	int mzz1, mzz2;
-
-	int mAQ, mTQ, mCQ;
-
-	int a, b, c;
+private:
+	struct logical_qubit *AQ;
+	struct logical_qubit *CQ;
+	struct logical_qubit *TQ;
+	struct logical_merge_qubit *MAT;
+	struct logical_merge_qubit *MAC;
 
 public:
 	SC17_3LQ_CNOT(void) {
 		QReg = new QRegister(54);
+
+		AQ = (struct logical_qubit *)(&_AQ);
+		CQ = (struct logical_qubit *)(&_CQ);
+		TQ = (struct logical_qubit *)(&_TQ);
+		MAT = (struct logical_merge_qubit *)(&_MAT);
+		MAC = (struct logical_merge_qubit *)(&_MAC);
 	} 
 
 	~SC17_3LQ_CNOT(void) {
@@ -28,643 +252,597 @@ public:
 	}
 
 public:
-	void buildAX(int AQ, int PQ1, int PQ2) {
-        initZ(QReg, AQ);
-        H(QReg, AQ);
-        CX(QReg, AQ, PQ1);
-        CX(QReg, AQ, PQ2);
-        H(QReg, AQ);
-    }
-
-    void buildAX(int AQ, int PQ1, int PQ2, int PQ3, int PQ4) {
-        initZ(QReg, AQ);
-        H(QReg, AQ);
-        CX(QReg, AQ, PQ1);
-        CX(QReg, AQ, PQ2);
-        CX(QReg, AQ, PQ3);
-        CX(QReg, AQ, PQ4);
-        H(QReg, AQ);
-    }
-
-    void buildAZ(int AQ, int PQ1, int PQ2) {
-        initZ(QReg, AQ);
-        CX(QReg, PQ1, AQ);
-        CX(QReg, PQ2, AQ);
-    }
-
-    void buildAZ(int AQ, int PQ1, int PQ2, int PQ3, int PQ4) {
-        initZ(QReg, AQ);
-        CX(QReg, PQ1, AQ);
-        CX(QReg, PQ2, AQ);
-        CX(QReg, PQ3, AQ);
-        CX(QReg, PQ4, AQ);
-    }
-
-    int buildAXM(int AQ, int PQ1, int PQ2) {
-        buildAX(AQ, PQ1, PQ2);
-        return M(QReg, AQ);
-    }
-
-    int buildAXM(int AQ, int PQ1, int PQ2, int PQ3, int PQ4) {
-        buildAX(AQ, PQ1, PQ2, PQ3, PQ4);
-        return M(QReg, AQ);
-    }
-
-    int buildAZM(int AQ, int PQ1, int PQ2) {
-        buildAZ(AQ, PQ1, PQ2);
-        return M(QReg, AQ);
-    }
-
-    int buildAZM(int AQ, int PQ1, int PQ2, int PQ3, int PQ4) {
-        buildAZ(AQ, PQ1, PQ2, PQ3, PQ4);
-        return M(QReg, AQ);
-    }
-
-public:
-	void ESM_AQ(void) {
-		/* AX */
-		buildAX(27, 0, 1);
-		buildAX(28, 1, 2, 4, 5);
-		buildAX(29, 3, 4, 6, 7);
-		buildAX(30, 7, 8);
-
-		mx1 = M(QReg, 27);
-		mx2 = M(QReg, 28);
-		mx3 = M(QReg, 29);
-		mx4 = M(QReg, 30);
-
-		/* AZ */
-		buildAZ(31, 3, 6);
-		buildAZ(32, 0, 1, 3, 4);
-		buildAZ(33, 4, 5, 7, 8);
-		buildAZ(34, 2, 5);
-
-		mz1 = M(QReg, 31);
-		mz2 = M(QReg, 32);
-		mz3 = M(QReg, 33);
-		mz4 = M(QReg, 34);
-
-		// printf("[AQ] AZ=%d%d%d%d, AX=%d%d%d%d\n", mz4, mz3, mz2, mz1, mx4, mx3, mx2, mx1);
-	}
-
-	void ESM_TQ(void) {
-		/* AX */
-		buildAX(38, 10, 11);
-		buildAX(39, 9, 10, 12, 13);
-		buildAX(40, 13, 14, 16, 17);
-		buildAX(41, 15, 16);
-
-		mx1 = M(QReg, 38);
-		mx2 = M(QReg, 39);
-		mx3 = M(QReg, 40);
-		mx4 = M(QReg, 41);
-
-		/* AZ */
-		buildAZ(34, 9, 12);
-		buildAZ(35, 12, 13, 15, 16);
-		buildAZ(36, 10, 11, 13, 14);
-		buildAZ(37, 14, 17);
-	
-		mz1 = M(QReg, 34);
-		mz2 = M(QReg, 35);
-		mz3 = M(QReg, 36);
-		mz4 = M(QReg, 37);
-
-		// printf("[TQ] AZ=%d%d%d%d, AX=%d%d%d%d\n", mz4, mz3, mz2, mz1, mx4, mx3, mx2, mx1);
-	}
-
-	void ESM_CQ(void) {
-		/* AX */
-		buildAX(30, 19, 20);
-		buildAX(46, 18, 19, 21, 22);
-		buildAX(47, 22, 23, 25, 26);
-		buildAX(48, 24, 25);
-
-		mx1 = M(QReg, 30);
-		mx2 = M(QReg, 46);
-		mx3 = M(QReg, 47);
-		mx4 = M(QReg, 48);
-
-		/* AZ */
-		buildAZ(42, 18, 21);
-		buildAZ(43, 21, 22, 24, 25);
-		buildAZ(44, 19, 20, 22, 23);
-		buildAZ(45, 23, 26);
-	
-		mz1 = M(QReg, 42);
-		mz2 = M(QReg, 43);
-		mz3 = M(QReg, 44);
-		mz4 = M(QReg, 45);
-
-		// printf("[CQ] AZ=%d%d%d%d, AX=%d%d%d%d\n", mz4, mz3, mz2, mz1, mx4, mx3, mx2, mx1);
-	}
-
-	void EC_AQ(int x1, int x2, int x3, int x4) {
-		int z1, z2, z3, z4;
-		
-		z1 = z2 = z3 = z4 = 0;
-
-		for(int i=0; i<3; i++) {
-			ESM_AQ();
-
-			if(mx1 != x1) {
-				if(mx2 != x2) {
-					Z(QReg, 1);
-				} else {
-					Z(QReg, 0);
-				}
-			} else if(mx2 != x2) {
-				if(mx1 != x1) {
-					Z(QReg, 1);
-				} else if(mx3 != x3) {
-					Z(QReg, 4);
-				} else {
-					Z(QReg, 2);
-				}
-			} else if(mx3 != x3) {
-				if(mx2 != x2) {
-					Z(QReg, 4);
-				} else if(mx4 != x4) {
-					Z(QReg, 7);
-				} else {
-					Z(QReg, 6);
-				}
-			} else if(mx4 != x4) {
-				if(mx3 != x3) {
-					Z(QReg, 7);
-				} else {
-					Z(QReg, 8);
-				}
+	/*********************************************/
+	/*             stabilizer handling           */
+	/*********************************************/
+	void buildAX(struct logical_qubit *LQ) {
+		for(int i=0; i<LQ->ax_num; i++) {
+			struct stabilizer_qubit *SQ = (struct stabilizer_qubit *)&LQ->ax_list[i];
+			initZ(QReg, SQ->sq);
+			H(QReg, SQ->sq);
+			for(int i=0; i<SQ->dq_num; i++) {
+				int dqidx = SQ->dq_list[i];
+				CX(QReg, SQ->sq, LQ->dq_list[dqidx]);
 			}
+			H(QReg, SQ->sq);
+		}
+    }
 
-			if(mz1 != z1) {
-				if(mz2 != z2) {
-					X(QReg, 3);
-				} else {
-					X(QReg, 6);
-				}
-			} else if(mz2 != z2) {
-				if(mz1 != z1) {
-					X(QReg, 3);
-				} else if(mz3 != z3) {
-					X(QReg, 4);
-				} else {
-					X(QReg, 0);
-				}
-			} else if(mz3 != z3) {
-				if(mz2 != z2) {
-					X(QReg, 4);
-				} else if(mz4 != z4) {
-					X(QReg, 5);
-				} else {
-					X(QReg, 8);
-				}
-			} else if(mz4 != z4) {
-				if(mz3 != z3) {
-					X(QReg, 5);
-				} else {
-					X(QReg, 2);
-				}
+	void buildAZ(struct logical_qubit *LQ) {
+		for(int i=0; i<LQ->az_num; i++) {
+			struct stabilizer_qubit *SQ = (struct stabilizer_qubit *)&LQ->az_list[i];
+			initZ(QReg, SQ->sq);
+			for(int i=0; i<SQ->dq_num; i++) {
+				int dqidx = SQ->dq_list[i];
+				CX(QReg, LQ->dq_list[dqidx], SQ->sq);
 			}
 		}
 	}
 
-	void EC_TQ(int x1, int x2, int x3, int x4) {
-		int z1, z2, z3, z4;
-		
-		z1 = z2 = z3 = z4 = 0;
+	void buildXStabilizerState(struct logical_qubit *LQ) {
+		int ax = 0;
 
-		for(int i=0; i<3; i++) {
-			ESM_TQ();
+		int m1 = M(QReg, LQ->ax_list[0].sq);
+		int m2 = M(QReg, LQ->ax_list[1].sq);
+		int m3 = M(QReg, LQ->ax_list[2].sq);
+		int m4 = M(QReg, LQ->ax_list[3].sq);
 
-			if(mx1 != x1) {
-				if(mx2 != x2) {
-					Z(QReg, 10);
-				} else {
-					Z(QReg, 11);
-				}
-			} else if(mx2 != x2) {
-				if(mx1 != x1) {
-					Z(QReg, 10);
-				} else if(mx3 != x3) {
-					Z(QReg, 13);
-				} else {
-					Z(QReg, 9);
-				}
-			} else if(mx3 != x3) {
-				if(mx2 != x2) {
-					Z(QReg, 13);
-				} else if(mx4 != x4) {
-					Z(QReg, 16);
-				} else {
-					Z(QReg, 17);
-				}
-			} else if(mx4 != x4) {
-				if(mx3 != x3) {
-					Z(QReg, 16);
-				} else {
-					Z(QReg, 15);
-				}
-			}
+		if(m4 != 0) ax |= (1 << 0);
+		if(m3 != 0) ax |= (1 << 1);
+		if(m2 != 0) ax |= (1 << 2);
+		if(m1 != 0) ax |= (1 << 3);
 
-			if(mz1 != z1) {
-				if(mz2 != z2) {
-					X(QReg, 12);
-				} else {
-					X(QReg, 9);
-				}
-			} else if(mz2 != z2) {
-				if(mz1 != z1) {
-					X(QReg, 12);
-				} else if(mz3 != z3) {
-					X(QReg, 13);
-				} else {
-					X(QReg, 15);
-				}
-			} else if(mz3 != z3) {
-				if(mz2 != z2) {
-					X(QReg, 13);
-				} else if(mz4 != z4) {
-					X(QReg, 14);
-				} else {
-					X(QReg, 11);
-				}
-			} else if(mz4 != z4) {
-				if(mz3 != z3) {
-					X(QReg, 14);
-				} else {
-					X(QReg, 17);
-				}
-			}
-		}
+		LQ->ax = ax;
 	}
 
-	void EC_CQ(int x1, int x2, int x3, int x4) {
-		int z1, z2, z3, z4;
-		
-		z1 = z2 = z3 = z4 = 0;
+	void buildZStabilizerState(struct logical_qubit *LQ) {
+		int az = 0;
 
-		for(int i=0; i<3; i++) {
-			ESM_CQ();
+		int m1 = M(QReg, LQ->az_list[0].sq);
+		int m2 = M(QReg, LQ->az_list[1].sq);
+		int m3 = M(QReg, LQ->az_list[2].sq);
+		int m4 = M(QReg, LQ->az_list[3].sq);
 
-			if(mx1 != x1) {
-				if(mx2 != x2) {
-					Z(QReg, 19);
-				} else {
-					Z(QReg, 20);
-				}
-			} else if(mx2 != x2) {
-				if(mx1 != x1) {
-					Z(QReg, 19);
-				} else if(mx3 != x3) {
-					Z(QReg, 22);
-				} else {
-					Z(QReg, 18);
-				}
-			} else if(mx3 != x3) {
-				if(mx2 != x2) {
-					Z(QReg, 22);
-				} else if(mx4 != x4) {
-					Z(QReg, 25);
-				} else {
-					Z(QReg, 26);
-				}
-			} else if(mx4 != x4) {
-				if(mx3 != x3) {
-					Z(QReg, 25);
-				} else {
-					Z(QReg, 24);
-				}
-			}
+		if(m4 != 0) az |= (1 << 0);
+		if(m3 != 0) az |= (1 << 1);
+		if(m2 != 0) az |= (1 << 2);
+		if(m1 != 0) az |= (1 << 3);
 
-			if(mz1 != z1) {
-				if(mz2 != z2) {
-					X(QReg, 21);
-				} else {
-					X(QReg, 18);
-				}
-			} else if(mz2 != z2) {
-				if(mz1 != z1) {
-					X(QReg, 21);
-				} else if(mz3 != z3) {
-					X(QReg, 22);
-				} else {
-					X(QReg, 24);
-				}
-			} else if(mz3 != z3) {
-				if(mz2 != z2) {
-					X(QReg, 22);
-				} else if(mz4 != z4) {
-					X(QReg, 23);
-				} else {
-					X(QReg, 20);
-				}
-			} else if(mz4 != z4) {
-				if(mz3 != z3) {
-					X(QReg, 23);
-				} else {
-					X(QReg, 26);
-				}
-			}
-		}
+		LQ->az = az;
 	}
 
-	void LX_AQ(void) {
-		X(QReg, 0);
-		X(QReg, 3);
-		X(QReg, 6);
-	}
+	void showStabilizer(struct logical_qubit *LQ) {
+		int ax = LQ->ax;
+		int az = LQ->az;
+		int flag;
 
-	void LX_TQ(void) {
-		X(QReg, 11);
-		X(QReg, 14);
-		X(QReg, 17);
-	}
+		printf("[%s] : AX=|", LQ->name);
 
-	void LX_CQ(void) {
-		X(QReg, 20);
-		X(QReg, 23);
-		X(QReg, 26);
-	}
+		flag = 8;
+		do {
+			if(ax&flag) printf("1");
+			else printf("0");
+        	flag/=2;        
+		} while(flag >= 1);
+		printf(">  ");
 
-	void LZ_AQ(void) {
-		Z(QReg, 0);
-		Z(QReg, 1);
-		Z(QReg, 2);
-	}
-
-	void LZ_TQ(void) {
-		Z(QReg, 9);
-		Z(QReg, 10);
-		Z(QReg, 11);
-	}
-
-	void LZ_CQ(void) {
-		Z(QReg, 18);
-		Z(QReg, 19);
-		Z(QReg, 20);
-	}
-
-	void LH_TQ(void) {
-		H(QReg, 9);
-		H(QReg, 10);
-		H(QReg, 11);
-		H(QReg, 12);
-		H(QReg, 13);
-		H(QReg, 14);
-		H(QReg, 15);
-		H(QReg, 16);
-		H(QReg, 17);
-	}
-
-	void Mz_AQ(void) {
-		int d0, d1, d2, d3, d4, d5, d6, d7, d8;
-
-		d0 = M(QReg, 0);
-		d1 = M(QReg, 1);
-		d2 = M(QReg, 2);
-		d3 = M(QReg, 3);
-		d4 = M(QReg, 4);
-		d5 = M(QReg, 5);
-		d6 = M(QReg, 6);
-		d7 = M(QReg, 7);
-		d8 = M(QReg, 8);
-
-		mAQ = 1;
-		if(d0 == 1) { mAQ *= -1; }
-		if(d1 == 1) { mAQ *= -1; }
-		if(d2 == 1) { mAQ *= -1; }
-		if(d3 == 1) { mAQ *= -1; }
-		if(d4 == 1) { mAQ *= -1; }
-		if(d5 == 1) { mAQ *= -1; }
-		if(d6 == 1) { mAQ *= -1; }
-		if(d7 == 1) { mAQ *= -1; }
-		if(d8 == 1) { mAQ *= -1; }
-
-		if(mAQ == 1) {
-			printf("\tMeasure AQ : |%d%d%d%d%d%d%d%d%d> --> |0>\n",
-					d0, d1, d2, d3, d4, d5, d6, d7, d8);
-		} else {
-			printf("\tMeasure AQ : |%d%d%d%d%d%d%d%d%d> --> |1>\n",
-					d0, d1, d2, d3, d4, d5, d6, d7, d8);
-		}
-	}
-
-	void Mx_AQ(void) {
-		for(int i=0; i<9; i++) {
-			H(QReg, i);
-		}
-		Mz_AQ();
-	}
-
-	void Mz_TQ(void) {
-		int d0, d1, d2, d3, d4, d5, d6, d7, d8;
-
-		d0 = M(QReg, 9);
-		d1 = M(QReg, 10);
-		d2 = M(QReg, 11);
-		d3 = M(QReg, 12);
-		d4 = M(QReg, 13);
-		d5 = M(QReg, 14);
-		d6 = M(QReg, 15);
-		d7 = M(QReg, 16);
-		d8 = M(QReg, 17);
-
-		mTQ = 1;
-		if(d0 == 1) { mTQ *= -1; }
-		if(d1 == 1) { mTQ *= -1; }
-		if(d2 == 1) { mTQ *= -1; }
-		if(d3 == 1) { mTQ *= -1; }
-		if(d4 == 1) { mTQ *= -1; }
-		if(d5 == 1) { mTQ *= -1; }
-		if(d6 == 1) { mTQ *= -1; }
-		if(d7 == 1) { mTQ *= -1; }
-		if(d8 == 1) { mTQ *= -1; }
-
-		if(mTQ == 1) {
-			printf("\tMeasure TQ : |%d%d%d%d%d%d%d%d%d> --> |0>\n",
-					d0, d1, d2, d3, d4, d5, d6, d7, d8);
-		} else {
-			printf("\tMeasure TQ : |%d%d%d%d%d%d%d%d%d> --> |1>\n",
-					d0, d1, d2, d3, d4, d5, d6, d7, d8);
-		}
-	}
-
-	void Mz_CQ(void) {
-		int d0, d1, d2, d3, d4, d5, d6, d7, d8;
-
-		d0 = M(QReg, 18);
-		d1 = M(QReg, 19);
-		d2 = M(QReg, 20);
-		d3 = M(QReg, 21);
-		d4 = M(QReg, 22);
-		d5 = M(QReg, 23);
-		d6 = M(QReg, 24);
-		d7 = M(QReg, 25);
-		d8 = M(QReg, 26);
-
-		mCQ = 1;
-		if(d0 == 1) { mCQ *= -1; }
-		if(d1 == 1) { mCQ *= -1; }
-		if(d2 == 1) { mCQ *= -1; }
-		if(d3 == 1) { mCQ *= -1; }
-		if(d4 == 1) { mCQ *= -1; }
-		if(d5 == 1) { mCQ *= -1; }
-		if(d6 == 1) { mCQ *= -1; }
-		if(d7 == 1) { mCQ *= -1; }
-		if(d8 == 1) { mCQ *= -1; }
-
-		if(mCQ == 1) {
-			printf("\tMeasure CQ : |%d%d%d%d%d%d%d%d%d> --> |0>\n",
-					d0, d1, d2, d3, d4, d5, d6, d7, d8);
-		} else {
-			printf("\tMeasure CQ : |%d%d%d%d%d%d%d%d%d> --> |1>\n",
-					d0, d1, d2, d3, d4, d5, d6, d7, d8);
-		}
-	}
-
-	void SurgeryXX(void) {
-		buildAX(50, 2, 9);
-		buildAX(51, 5, 12, 8, 15);
-		buildAZ(34, 2, 9, 5, 12);
-
-		mxx1 = M(QReg, 50);
-		mxx2 = M(QReg, 51);
-		M(QReg, 34);
-
-		if(mxx1 == 0) {
-			printf("\tmxx1=+1, ");
-			mxx1 = 1;
-		} else {
-			printf("\tmxx1=-1, ");
-			mxx1 = -1;
-		}
-
-		if(mxx2 == 0) {
-			printf("mxx2=+1\n");
-			mxx2 = 1;
-		} else {
-			printf("mxx2=-1\n");
-			mxx2 = -1;
-		}
-	}
-
-	void SurgeryZZ(void) {
-		buildAZ(52, 6, 7, 18, 19);
-		buildAZ(53, 8, 20);
-		buildAX(30, 7, 8, 19, 20);
-
-		mzz1 = M(QReg, 52);
-		mzz2 = M(QReg, 53);
-		M(QReg, 30);
-
-		if(mzz1 == 0) {
-			printf("\tmzz1=+1, ");
-			mzz1 = 1;
-		} else {
-			printf("\tmzz1=-1, ");
-			mzz1 = -1;
-		}
-
-		if(mzz2 == 0) {
-			printf("mzz2=+1\n");
-			mzz2 = 1;
-		} else {
-			printf("mzz2=-1\n");
-			mzz2 = -1;
-		}
+		printf("AZ=|");
+		flag = 8;
+		do {
+			if(az&flag) printf("1");
+			else printf("0");
+        	flag/=2;        
+		} while(flag >= 1);
+		printf(">\n");
 	}
 
 public:
-	void run(void) {
-		int L1_X1 = 0;
-		int L1_X2 = 0;
-		int L1_X3 = 0;
-		int L1_X4 = 0;
+	/*********************************************/
+	/*          ESM & Error Correction           */
+	/*********************************************/
+	void buildCircuit(struct logical_qubit *LQ) {
+		/* run stabilizer circuit */
+		buildAX(LQ);
+		buildAZ(LQ);
 
-		int L2_X1 = 0;
-		int L2_X2 = 0;
-		int L2_X3 = 0;
-		int L2_X4 = 0;
+		buildXStabilizerState(LQ);
+		buildZStabilizerState(LQ);
+		// showStabilizer(LQ);
+	} 
+	
+	void errorCorrection(struct logical_qubit *LQ) {
+		int round = 3;
 
-		int L3_X1 = 0;
-		int L3_X2 = 0;
-		int L3_X3 = 0;
-		int L3_X4 = 0;
+		for(int i=0; i<round * 2; i++) {
+			int flavor = LQ->flavor;
+			int ax = LQ->ax;
+			int az = LQ->az;
 
-		printf("\n(STEP1) initialize 3 Logical Qubuts\n");
-		EC_AQ(L1_X1, L1_X2, L1_X3, L1_X4);
-		EC_TQ(L2_X1, L2_X2, L2_X3, L2_X4);
-		EC_CQ(L3_X1, L3_X2, L3_X3, L3_X4);
+			if(LQ->ax == 0 && LQ->az == 0) 
+				break;
 
-		printf("\n(STEP2) set LX to control qubit\n");
-		LX_CQ();
+			/* X error correction */
+			if(LQ->ax != 0) {
+				Z(QReg, LQ->dq_list[x_decoder[flavor][ax]]);
+			}
+	
+			/* Z error correction */
+			if(LQ->az != 0) {
+				X(QReg, LQ->dq_list[z_decoder[flavor][az]]);
+			}
 
-		printf("\n(STEP3) merge&split XX + ESM\n");
-		SurgeryXX();
-		EC_AQ(L1_X1, L1_X2, L1_X3, L1_X4);
-		EC_TQ(L2_X1, L2_X2, L2_X3, L2_X4);
+			buildCircuit(LQ);
+		}
+	}
 
-		printf("\n(STEP4) merge&split ZZ + ESM\n");
-		SurgeryZZ();
-		EC_AQ(L2_X1, L2_X2, L2_X3, L2_X4);
-		EC_CQ(L3_X1, L3_X2, L3_X3, L3_X4);
+	void ESM(struct logical_qubit *LQ) {
+		buildCircuit(LQ);
+		errorCorrection(LQ);
+	}
 
-		printf("\n(STEP5) measure AQ\n");
-	#if 0
-		Mz_AQ();
-	#else
-		Mx_AQ();
-	#endif
+public:
+	/*********************************************/
+	/*             Logical Operation             */
+	/*********************************************/
+	void logicalX(struct logical_qubit *LQ) {
+		for(int i=0; i<3; i++) {
+			X(QReg, LQ->logical_x[i]);
+		}
+	}
 
-		if(mxx1 != mxx2) {
-			a = 1;
-		} else {
-			a = 0;
+	void logicalZ(struct logical_qubit *LQ) {
+		for(int i=0; i<3; i++) {
+			Z(QReg, LQ->logical_z[i]);
+		}
+	}
+
+	void logicalH(struct logical_qubit *LQ) {
+		for(int i=0; i<LQ->dq_num; i++) {
+			H(QReg, LQ->dq_list[i]);
+		}
+	}
+
+	int logicalMZ(struct logical_qubit *LQ) {
+		int mv = 1;
+		for(int i=0; i<LQ->dq_num; i++) {
+			int m = M(QReg, LQ->dq_list[i]);
+			if(m == 1) {
+				mv *= -1;
+			}
 		}
 
-		if(mzz1 != mzz2) {
-			b = 1;
+		if(mv == 1) {
+			LQ->measure_value = 1;
 		} else {
-			b = 0;
+			LQ->measure_value = -1;
 		}
 
-		if(mAQ == 1) {
-			c = 0;
-		} else {
-			c = 1;
+		return LQ->measure_value;
+	}
+
+	int logicalMX(struct logical_qubit *LQ) {
+		logicalH(LQ);
+
+		int mv = 1;
+		for(int i=0; i<LQ->dq_num; i++) {
+			int m = M(QReg, LQ->dq_list[i]);
+			if(m == 1) {
+				mv *= -1;
+			}
 		}
 
-		printf("\t(STEP6) apply X or Z to the Target\n");
+		if(mv == 1) {
+			LQ->measure_value = 1;
+		} else {
+			LQ->measure_value = -1;
+		}
 
+		return LQ->measure_value;
+	}
+
+public:
+	/*********************************************/
+	/*         Initialize Logical Qubit          */
+	/*********************************************/
+	void clearLQ(struct logical_qubit *LQ) {
+		for(int i=0; i<LQ->dq_num; i++) {
+			initZ(QReg, LQ->dq_list[i]);
+		}
+		for(int i=0; i<LQ->ax_num; i++) {
+			initZ(QReg, LQ->ax_list[i].sq);
+		}
+		for(int i=0; i<LQ->az_num; i++) {
+			initZ(QReg, LQ->az_list[i].sq);
+		}
+	}
+
+	void initLQZero(struct logical_qubit *LQ) {
+		buildCircuit(LQ);
+		errorCorrection(LQ);
+	}
+
+	void initLQOne(struct logical_qubit *LQ) {
+		buildCircuit(LQ);
+		errorCorrection(LQ);
+		logicalX(LQ);
+	}
+
+	void initLQPlus(struct logical_qubit *LQ) {
+		logicalH(LQ);
+		buildCircuit(LQ);
+		errorCorrection(LQ);
+	}
+
+	void initLQMinus(struct logical_qubit *LQ) {
+		logicalH(LQ);
+		buildCircuit(LQ);
+		errorCorrection(LQ);
+		logicalZ(LQ);
+	}
+
+public:
+	/*********************************************/
+	/*                Merge & Split              */
+	/*********************************************/
+	void MergeSplit(struct logical_merge_qubit *MQ, struct logical_qubit *AQ, struct logical_qubit *DQ) {
+		for(int i=0; i<MQ->num_stabilizer_qubit; i++) {
+			struct stabilizer_qubit *SQ = (struct stabilizer_qubit *)&MQ->merged_qubit[i];
+
+			initZ(QReg, SQ->sq);
+			if(SQ->type == AX) {
+				H(QReg, SQ->sq);
+				printf("H  : %d\n", SQ->sq);
+			}
+
+			for(int j=0; j<SQ->dq_num; j++) {
+				if(SQ->type == AX) {
+					CX(QReg, SQ->sq, SQ->dq_list[j]);
+					printf("CX  : %d -> %d\n", SQ->sq, SQ->dq_list[j]);
+				} else {
+					CX(QReg, SQ->dq_list[j], SQ->sq);
+					printf("CX  : %d -> %d\n", SQ->dq_list[j], SQ->sq);
+				}
+			}
+
+			if(SQ->type == AX) {
+				H(QReg, SQ->sq);
+				printf("H  : %d\n", SQ->sq);
+			}
+
+			printf("\n");
+		}
+
+		for(int i=0; i<MQ->num_stabilizer_qubit; i++) {
+			struct stabilizer_qubit *SQ = (struct stabilizer_qubit *)&MQ->merged_qubit[i];
+			int mv = M(QReg, SQ->sq);
+			if(mv == 0) {
+				MQ->measure_value[i] = +1;
+			} else {
+				MQ->measure_value[i] = -1;
+			}
+			printf("M[%d]  : Q%d --> %d\n", i, SQ->sq, MQ->measure_value[i]);
+		}
+
+		ESM(AQ);
+		ESM(DQ);
+	}
+
+	void postProcess(void) {
+		int mxx1 = MAT->measure_value[0];
+		int mxx2 = MAT->measure_value[1];
+		int mzz1 = MAC->measure_value[0];
+		int mzz2 = MAC->measure_value[1];
+		int mAQ;
+		int a;
+		int b;
+		int c;
+
+		/* measure logical ancila qubit */
+		mAQ = logicalMX(AQ);
+
+		a = ((mxx1 * mxx2) == 1 ? 0 : 1);
+		b = ((mzz1 * mzz2) == 1 ? 0 : 1);
+		c = (mAQ == 1 ? 0 : 1);
+
+		printf("mxx1=%d, mxx2=%d, mzz1=%d, mzz2=%d, mAQ=%d\n", mxx1, mxx2, mzz1, mzz2, mAQ);
+		printf("a=%d, b=%d, c=%d\n", a, b, c);
+
+#if 1
+	#if 1
 		if(a == 1) {
-			printf("\tset LZ to Control\n");
-			LZ_CQ();		
+			printf("Logical Z(a) : CQ\n");
+			logicalZ(CQ);
 		}
 
 		if(c == 1) {
-			printf("\tset LZ to Control\n");
-			LZ_CQ();		
+			printf("Logical Z(c) : CQ\n");
+			logicalZ(CQ);
 		}
+	#else
+		#if 0
+		/*
+		 * Only this combination transfers the phase of the target (|->) to 
+		 * control (|+> or |->). I don't understand the principle of why. 
+		 * So far, it has only been confirmed experimentally.
+		 * ---> it is wrong..... T.T
+		 */
+		if((a + c) != 1) {
+			printf("Logical Z(a+c) : CQ\n");
+			logicalZ(CQ);
+		}
+		#else
+		if(a == 1 || c == 1) {
+			printf("Logical Z(a+c) : CQ\n");
+			logicalZ(CQ);
+		}
+		#endif
+	#endif
+#else
+		if(a == 0 && c == 0) {
+			printf("Logical Z(ac=00) : CQ\n");
+			logicalZ(CQ);
+		} else if(a == 0 && c == 1) {
+			printf("Logical Z(ac=01) : CQ\n");
+			// logicalZ(CQ);
+		} else if(a == 1 && c == 0) {
+			printf("Logical Z(ac=10) : CQ\n");
+			// logicalZ(CQ);
+		} else if(a == 1 && c == 1) {
+			printf("Logical Z(ac=01) : CQ\n");
+			logicalZ(CQ);
+		}
+#endif
+
+	#if 0
+		if(c == 1) {
+			printf("Logical Z(c) : AQ\n");
+			logicalZ(AQ);
+		}
+	#endif
 
 		if(b == 1) {
-			printf("\tset LX to Target\n");
-			LX_TQ();		
+			printf("Logical X : TQ\n");
+			logicalX(TQ);
 		}
 
-		Mz_CQ();
+		ESM(CQ);
+		ESM(TQ);
+	}
 
-		QReg->dump();
-		for(int i=0; i<QReg->getNumQubits(); i++) {
-            printf("[%2d] %s\n", i, QTypeStr(QReg, i));
-        }
+public:
+	void prepare_lq(struct logical_qubit *LQ, int mode) {
+		if(mode == KET_ZERO) {
+			initLQZero(LQ);
+		} else if(mode == KET_ONE) {
+			initLQOne(LQ);
+		} else if(mode == KET_PLUS) {
+			initLQPlus(LQ);
+		} else if(mode == KET_MINUS) {
+			initLQMinus(LQ);
+		}
+	}
 
-		Mz_TQ();
+	void lattice_surgery(void) {
+		/* merge & split */
+		printf("\n========== MERGE AQ & TQ ==========\n");
+		MergeSplit(MAT, AQ, TQ);
+
+		printf("\n========== MERGE AQ & CQ ==========\n");
+		MergeSplit(MAC, AQ, CQ);
+
+		printf("\n========== POST PROCESS ==========\n");
+		/* post process */
+		postProcess();
+	}
+
+	char *modeString(int mode) {
+		if(mode == KET_ZERO) {
+			return "|0>";
+		} else if(mode == KET_ONE) {
+			return "|1>";
+		} else if(mode == KET_PLUS) {
+			return "|+>";
+		} else if(mode == KET_MINUS) {
+			return "|->";
+		}
+
+		return "UNKNOWN";
+	}
+
+	void run(void) {
+		int cq_mode = KET_PLUS;
+		int tq_mode = KET_ZERO;
+		int cq_measure_type;
+		int tq_measure_type;
+		struct qubit_delimiter qd;
+
+		qd.size = 3;
+		qd.qubits[0] = AQ->dq_list[8];
+		qd.qubits[1] = CQ->dq_list[8];
+		qd.qubits[2] = TQ->dq_list[8];
+
+		/***********************************/
+		/* STEP1: initialize logical qubit */
+		/***********************************/
+		prepare_lq(CQ, cq_mode);
+		prepare_lq(TQ, tq_mode);
+		prepare_lq(AQ, KET_ZERO);
+
+		/****************************************/
+		/* STEP2: lattice surgery of AQ, CQ, TQ */
+		/****************************************/
+		lattice_surgery();
+
+	#if 1
+		QReg->dump(qd);
+	#endif
+
+		/************************************/
+		/* STEP3: measure & validate CQ, TQ */
+		/************************************/
+		if(cq_mode == KET_PLUS || cq_mode == KET_MINUS) {
+			if(tq_mode == KET_ONE || tq_mode == KET_ZERO) {
+				cq_measure_type = Z_BASIS;
+				tq_measure_type = Z_BASIS;
+			} else {
+				cq_measure_type = X_BASIS;
+				tq_measure_type = X_BASIS;
+			}
+		} else {
+			if(tq_mode == KET_ONE || tq_mode == KET_ZERO) {
+				cq_measure_type = Z_BASIS;
+				tq_measure_type = Z_BASIS;
+			} else {
+				cq_measure_type = Z_BASIS;
+				tq_measure_type = X_BASIS;
+			}
+		}
+
+		if(tq_measure_type == Z_BASIS) {
+			logicalMZ(TQ);
+		} else {
+			logicalMX(TQ);
+		}
+
+	#if 0
+		QReg->dump(qd);
+	#endif
+
+		if(cq_measure_type == Z_BASIS) {
+			logicalMZ(CQ);
+		} else {
+			logicalMX(CQ);
+		}
+
+		/*********************************/
+		/* STEP4: show validation result */
+		/*********************************/
+		printf("\n******************** RESULT ********************\n");
+		printf("[CNOT %s to %s]\t", modeString(cq_mode), modeString(tq_mode));
+		if(cq_measure_type == Z_BASIS) {
+			if(CQ->measure_value == 1) {
+				printf("CQ:|0> - ");
+			} else {
+				printf("CQ:|1> - ");
+			}
+		} else {
+			if(CQ->measure_value == 1) {
+				printf("CQ:|+> - ");
+			} else {
+				printf("CQ:|-> - ");
+			}
+		}
+
+		if(tq_measure_type == Z_BASIS) {
+			if(TQ->measure_value == 1) {
+				printf("TQ:|0>");
+			} else {
+				printf("TQ:|1>");
+			}
+		} else {
+			if(TQ->measure_value == 1) {
+				printf("TQ:|+>");
+			} else {
+				printf("TQ:|->");
+			}
+		}
+		printf("\n");
+	}
+
+	char *printMode(int mode) {
+		if(mode == KET_ZERO) {
+			return "|0>";
+		} else if(mode == KET_ONE) {
+			return "|1>";
+		} else if(mode == KET_PLUS) {
+			return "|+>";
+		} else if(mode == KET_MINUS) {
+			return "|->";
+		}
+
+		return "***";
+	}
+
+	void buildScenario(int mode1, int mode2) {
+		struct logical_qubit *LQ0 = AQ;
+		struct logical_qubit *LQ1 = TQ;
+		struct qubit_delimiter qd;
+		int caseNumber;
+
+		qd.size = 3;
+		qd.qubits[0] = AQ->dq_list[8];
+		qd.qubits[1] = CQ->dq_list[8];
+		qd.qubits[2] = TQ->dq_list[8];
+
+ 		caseNumber = (mode1 * 4) + mode2 + 1;
+		printf("======= [CASE#%02d] %s%s =======\n", caseNumber, printMode(mode1), printMode(mode2));
+
+		{
+			printf("----> |LQ1>|MQ0>\n");
+			QReg->reset();
+			prepare_lq(LQ1, mode1);
+			if(mode2 == KET_ONE) {
+				X(QReg, LQ0->dq_list[4]);
+			} else if(mode2 == KET_PLUS) {
+				H(QReg, LQ0->dq_list[4]);
+			} else if(mode2 == KET_MINUS) {
+				X(QReg, LQ0->dq_list[4]);
+				H(QReg, LQ0->dq_list[4]);
+			} 
+			QReg->dump(qd);
+		}
+
+		{
+			printf("----> |MQ1>|LQ0>\n");
+			QReg->reset();
+			if(mode1 == KET_ONE) {
+				X(QReg, LQ1->dq_list[4]);
+			} else if(mode1 == KET_PLUS) {
+				H(QReg, LQ1->dq_list[4]);
+			} else if(mode1 == KET_MINUS) {
+				X(QReg, LQ1->dq_list[4]);
+				H(QReg, LQ1->dq_list[4]);
+			} 
+			prepare_lq(LQ0, mode2);
+			QReg->dump(qd);
+		}
+
+		{
+			printf("----> |LQ1>|LQ0>\n");
+			QReg->reset();
+			prepare_lq(LQ1, mode1);
+			prepare_lq(LQ0, mode2);
+			QReg->dump(qd);
+		}
+	}
+
+	void test(void) { 
+		buildScenario(KET_ZERO, KET_ZERO);
+		buildScenario(KET_ZERO, KET_ONE);
+		buildScenario(KET_ZERO, KET_PLUS);
+		buildScenario(KET_ZERO, KET_MINUS);
+		buildScenario(KET_ONE, KET_ZERO);
+		buildScenario(KET_ONE, KET_ONE);
+		buildScenario(KET_ONE, KET_PLUS);
+		buildScenario(KET_ONE, KET_MINUS);
+		buildScenario(KET_PLUS, KET_ZERO);
+		buildScenario(KET_PLUS, KET_ONE);
+		buildScenario(KET_PLUS, KET_PLUS);
+		buildScenario(KET_PLUS, KET_MINUS);
+		buildScenario(KET_MINUS, KET_ZERO);
+		buildScenario(KET_MINUS, KET_ONE);
+		buildScenario(KET_MINUS, KET_PLUS);
+		buildScenario(KET_MINUS, KET_MINUS);
 	}
 };
 
 int main(int argc, char **argv)
 {
     SC17_3LQ_CNOT *CNOT = new SC17_3LQ_CNOT();
+#if 0
     CNOT->run();
+#else
+	CNOT->test();
+#endif
 }
+
