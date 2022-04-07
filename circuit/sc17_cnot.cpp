@@ -10,79 +10,79 @@ typedef enum { Z_BASIS=0, X_BASIS } MEASURE_TYPE;
 
 static int x_decoder[2][16] = {
 	{ 
-		{ -1 },		/* 0000 */
-		{ D9 },		/* 0001 */
-		{ D7 },		/* 0010 */
-		{ D8 },		/* 0011 */
-		{ D3 },		/* 0100 */
-		{ D3 },		/* 0101 */
-		{ D5 },		/* 0110 */
-		{ D5 },		/* 0111 */
-		{ D1 },		/* 1000 */
-		{ D1 },		/* 1001 */
-		{ D1 },		/* 1010 */
-		{ D8 },		/* 1011 */
-		{ D2 },		/* 1100 */
-		{ D2 },		/* 1101 */
-		{ D2 },		/* 1110 */
-		{ D2 }		/* 1111 */
+		-1,		/* 0000 */
+		D9,		/* 0001 */
+		D7,		/* 0010 */
+		D8,		/* 0011 */
+		D3,		/* 0100 */
+		D3,		/* 0101 */
+		D5,		/* 0110 */
+		D5,		/* 0111 */
+		D1,		/* 1000 */
+		D1,		/* 1001 */
+		D1,		/* 1010 */
+		D8,		/* 1011 */
+		D2,		/* 1100 */
+		D2,		/* 1101 */
+		D2,		/* 1110 */
+		D2		/* 1111 */
 	},
 	{
-		{ -1 },		/* 0000 */
-		{ D7 },		/* 0001 */
-		{ D9 },		/* 0010 */
-		{ D8 },		/* 0011 */
-		{ D1 },		/* 0100 */
-		{ D1 },		/* 0101 */
-		{ D5 },		/* 0110 */
-		{ D5 },		/* 0111 */
-		{ D3 },		/* 1000 */
-		{ D3 },		/* 1001 */
-		{ D3 },		/* 1010 */
-		{ D8 },		/* 1011 */
-		{ D2 },		/* 1100 */
-		{ D2 },		/* 1101 */
-		{ D2 },		/* 1110 */
-		{ D2 }		/* 1111 */
+		-1,		/* 0000 */
+		D7,		/* 0001 */
+		D9,		/* 0010 */
+		D8,		/* 0011 */
+		D1,		/* 0100 */
+		D1,		/* 0101 */
+		D5,		/* 0110 */
+		D5,		/* 0111 */
+		D3,		/* 1000 */
+		D3,		/* 1001 */
+		D3,		/* 1010 */
+		D8,		/* 1011 */
+		D2,		/* 1100 */
+		D2,		/* 1101 */
+		D2,		/* 1110 */
+		D2		/* 1111 */
 	}
 };
 	
 static int z_decoder[2][16] = {
 	{ 
-		{ -1 },		/* 0000 */
-		{ D3 },		/* 0001 */
-		{ D9 },		/* 0010 */
-		{ D6 },		/* 0011 */
-		{ D1 },		/* 0100 */
-		{ D1 },		/* 0101 */
-		{ D5 },		/* 0110 */
-		{ D5 },		/* 0111 */
-		{ D7 },		/* 1000 */
-		{ D7 },		/* 1001 */
-		{ D7 },		/* 1010 */
-		{ D6 },		/* 1011 */
-		{ D4 },		/* 1100 */
-		{ D4 },		/* 1101 */
-		{ D4 },		/* 1110 */
-		{ D4 }		/* 1111 */
+		-1,		/* 0000 */
+		D3,		/* 0001 */
+		D9,		/* 0010 */
+		D6,		/* 0011 */
+		D1,		/* 0100 */
+		D1,		/* 0101 */
+		D5,		/* 0110 */
+		D5,		/* 0111 */
+		D7,		/* 1000 */
+		D7,		/* 1001 */
+		D7,		/* 1010 */
+		D6,		/* 1011 */
+		D4,		/* 1100 */
+		D4,		/* 1101 */
+		D4,		/* 1110 */
+		D4		/* 1111 */
 	},
 	{
-		{ -1 },		/* 0000 */
-		{ D9 },		/* 0001 */
-		{ D3 },		/* 0010 */
-		{ D6 },		/* 0011 */
-		{ D7 },		/* 0100 */
-		{ D7 },		/* 0101 */
-		{ D5 },		/* 0110 */
-		{ D5 },		/* 0111 */
-		{ D1 },		/* 1000 */
-		{ D1 },		/* 1001 */
-		{ D1 },		/* 1010 */
-		{ D6 },		/* 1011 */
-		{ D4 },		/* 1100 */
-		{ D4 },		/* 1101 */
-		{ D4 },		/* 1110 */
-		{ D4 }		/* 1111 */
+		-1,		/* 0000 */
+		D9,		/* 0001 */
+		D3,		/* 0010 */
+		D6,		/* 0011 */
+		D7,		/* 0100 */
+		D7,		/* 0101 */
+		D5,		/* 0110 */
+		D5,		/* 0111 */
+		D1,		/* 1000 */
+		D1,		/* 1001 */
+		D1,		/* 1010 */
+		D6,		/* 1011 */
+		D4,		/* 1100 */
+		D4,		/* 1101 */
+		D4,		/* 1110 */
+		D4		/* 1111 */
 	}
 };
 
@@ -649,12 +649,14 @@ public:
 		return "UNKNOWN";
 	}
 
-	void run(void) {
-		int cq_mode = KET_PLUS;
-		int tq_mode = KET_ZERO;
+	void buildCNOT(int cqMode, int tqMode) {
+		int cq_mode = cqMode;
+		int tq_mode = tqMode;
 		int cq_measure_type;
 		int tq_measure_type;
 		struct qubit_delimiter qd;
+
+		QReg->reset();
 
 		qd.size = 3;
 		qd.qubits[0] = AQ->dq_list[8];
@@ -704,10 +706,6 @@ public:
 			logicalMX(TQ);
 		}
 
-	#if 0
-		QReg->dump(qd);
-	#endif
-
 		if(cq_measure_type == Z_BASIS) {
 			logicalMZ(CQ);
 		} else {
@@ -718,18 +716,18 @@ public:
 		/* STEP4: show validation result */
 		/*********************************/
 		printf("\n******************** RESULT ********************\n");
-		printf("[CNOT %s to %s]\t", modeString(cq_mode), modeString(tq_mode));
+		printf("CNOT %s,%s\tStatus ", modeString(cq_mode), modeString(tq_mode));
 		if(cq_measure_type == Z_BASIS) {
 			if(CQ->measure_value == 1) {
-				printf("CQ:|0> - ");
+				printf("CQ=|0>, ");
 			} else {
-				printf("CQ:|1> - ");
+				printf("CQ=|1>, ");
 			}
 		} else {
 			if(CQ->measure_value == 1) {
-				printf("CQ:|+> - ");
+				printf("CQ=|+>, ");
 			} else {
-				printf("CQ:|-> - ");
+				printf("CQ=|->, ");
 			}
 		}
 
@@ -749,100 +747,33 @@ public:
 		printf("\n");
 	}
 
-	char *printMode(int mode) {
-		if(mode == KET_ZERO) {
-			return "|0>";
-		} else if(mode == KET_ONE) {
-			return "|1>";
-		} else if(mode == KET_PLUS) {
-			return "|+>";
-		} else if(mode == KET_MINUS) {
-			return "|->";
-		}
-
-		return "***";
-	}
-
-	void buildScenario(int mode1, int mode2) {
-		struct logical_qubit *LQ0 = AQ;
-		struct logical_qubit *LQ1 = TQ;
-		struct qubit_delimiter qd;
-		int caseNumber;
-
-		qd.size = 3;
-		qd.qubits[0] = AQ->dq_list[8];
-		qd.qubits[1] = CQ->dq_list[8];
-		qd.qubits[2] = TQ->dq_list[8];
-
- 		caseNumber = (mode1 * 4) + mode2 + 1;
-		printf("======= [CASE#%02d] %s%s =======\n", caseNumber, printMode(mode1), printMode(mode2));
-
-		{
-			printf("----> |LQ1>|MQ0>\n");
-			QReg->reset();
-			prepare_lq(LQ1, mode1);
-			if(mode2 == KET_ONE) {
-				X(QReg, LQ0->dq_list[4]);
-			} else if(mode2 == KET_PLUS) {
-				H(QReg, LQ0->dq_list[4]);
-			} else if(mode2 == KET_MINUS) {
-				X(QReg, LQ0->dq_list[4]);
-				H(QReg, LQ0->dq_list[4]);
-			} 
-			QReg->dump(qd);
-		}
-
-		{
-			printf("----> |MQ1>|LQ0>\n");
-			QReg->reset();
-			if(mode1 == KET_ONE) {
-				X(QReg, LQ1->dq_list[4]);
-			} else if(mode1 == KET_PLUS) {
-				H(QReg, LQ1->dq_list[4]);
-			} else if(mode1 == KET_MINUS) {
-				X(QReg, LQ1->dq_list[4]);
-				H(QReg, LQ1->dq_list[4]);
-			} 
-			prepare_lq(LQ0, mode2);
-			QReg->dump(qd);
-		}
-
-		{
-			printf("----> |LQ1>|LQ0>\n");
-			QReg->reset();
-			prepare_lq(LQ1, mode1);
-			prepare_lq(LQ0, mode2);
-			QReg->dump(qd);
-		}
-	}
-
-	void test(void) { 
-		buildScenario(KET_ZERO, KET_ZERO);
-		buildScenario(KET_ZERO, KET_ONE);
-		buildScenario(KET_ZERO, KET_PLUS);
-		buildScenario(KET_ZERO, KET_MINUS);
-		buildScenario(KET_ONE, KET_ZERO);
-		buildScenario(KET_ONE, KET_ONE);
-		buildScenario(KET_ONE, KET_PLUS);
-		buildScenario(KET_ONE, KET_MINUS);
-		buildScenario(KET_PLUS, KET_ZERO);
-		buildScenario(KET_PLUS, KET_ONE);
-		buildScenario(KET_PLUS, KET_PLUS);
-		buildScenario(KET_PLUS, KET_MINUS);
-		buildScenario(KET_MINUS, KET_ZERO);
-		buildScenario(KET_MINUS, KET_ONE);
-		buildScenario(KET_MINUS, KET_PLUS);
-		buildScenario(KET_MINUS, KET_MINUS);
+	void run(void) { 
+	#if 1
+		buildCNOT(KET_MINUS, KET_MINUS);
+	#else
+		buildCNOT(KET_ZERO, KET_ZERO);
+		buildCNOT(KET_ZERO, KET_ONE);
+		buildCNOT(KET_ZERO, KET_PLUS);
+		buildCNOT(KET_ZERO, KET_MINUS);
+		buildCNOT(KET_ONE, KET_ZERO);
+		buildCNOT(KET_ONE, KET_ONE);
+		buildCNOT(KET_ONE, KET_PLUS);
+		buildCNOT(KET_ONE, KET_MINUS);
+		buildCNOT(KET_PLUS, KET_ZERO);
+		buildCNOT(KET_PLUS, KET_ONE);
+		buildCNOT(KET_PLUS, KET_PLUS);
+		buildCNOT(KET_PLUS, KET_MINUS);
+		buildCNOT(KET_MINUS, KET_ZERO);
+		buildCNOT(KET_MINUS, KET_ONE);
+		buildCNOT(KET_MINUS, KET_PLUS);
+		buildCNOT(KET_MINUS, KET_MINUS);
+	#endif
 	}
 };
 
 int main(int argc, char **argv)
 {
     SC17_3LQ_CNOT *CNOT = new SC17_3LQ_CNOT();
-#if 0
     CNOT->run();
-#else
-	CNOT->test();
-#endif
 }
 
