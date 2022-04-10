@@ -770,6 +770,7 @@ public:
 	void buildScenario(int mode1, int mode2) {
 		struct logical_qubit *LQ0 = AQ;
 		struct logical_qubit *LQ1 = TQ;
+		struct logical_qubit *LQ2 = CQ;
 		struct qubit_delimiter qd;
 		int caseNumber;
 
@@ -782,9 +783,12 @@ public:
 		printf("======= [CASE#%02d] %s%s =======\n", caseNumber, printMode(mode1), printMode(mode2));
 
 		{
-			printf("----> |LQ1>|MQ0>\n");
+			printf("----> |LQ2>|MQ1>|MQ0>\n");
 			QReg->reset();
-			prepare_lq(LQ1, mode1);
+			/* prepare LQ2 */
+			prepare_lq(LQ2, mode1);
+
+			/* prepare MQ0 */
 			if(mode2 == KET_ONE) {
 				X(QReg, LQ0->dq_list[4]);
 			} else if(mode2 == KET_PLUS) {
@@ -793,34 +797,55 @@ public:
 				X(QReg, LQ0->dq_list[4]);
 				H(QReg, LQ0->dq_list[4]);
 			} 
+
+		#if 1
+			H(QReg, LQ1->dq_list[4]);
+		#endif
 			QReg->dump(qd);
 		}
 
 		{
-			printf("----> |MQ1>|LQ0>\n");
+			printf("----> |MQ2>|MQ1>|LQ0>\n");
 			QReg->reset();
+			/* prepare MQ2 */
 			if(mode1 == KET_ONE) {
-				X(QReg, LQ1->dq_list[4]);
+				X(QReg, LQ2->dq_list[4]);
 			} else if(mode1 == KET_PLUS) {
-				H(QReg, LQ1->dq_list[4]);
+				H(QReg, LQ2->dq_list[4]);
 			} else if(mode1 == KET_MINUS) {
-				X(QReg, LQ1->dq_list[4]);
-				H(QReg, LQ1->dq_list[4]);
+				X(QReg, LQ2->dq_list[4]);
+				H(QReg, LQ2->dq_list[4]);
 			} 
+
+			/* prepare LQ0 */
 			prepare_lq(LQ0, mode2);
+
+		#if 1
+			H(QReg, LQ1->dq_list[4]);
+		#endif
 			QReg->dump(qd);
 		}
 
 		{
-			printf("----> |LQ1>|LQ0>\n");
+			printf("----> |LQ2>|MQ1>|LQ0>\n");
 			QReg->reset();
-			prepare_lq(LQ1, mode1);
+			/* prepare LQ2 */
+			prepare_lq(LQ2, mode1);
+
+			/* prepare LQ0 */
 			prepare_lq(LQ0, mode2);
+
+		#if 1
+			H(QReg, LQ1->dq_list[4]);
+		#endif
 			QReg->dump(qd);
 		}
 	}
 
-	void LQTest(void) { 
+	void MergeSplitTest(void) { 
+	#if 1
+		buildScenario(KET_MINUS, KET_MINUS);
+	#else
 		buildScenario(KET_ZERO, KET_ZERO);
 		buildScenario(KET_ZERO, KET_ONE);
 		buildScenario(KET_ZERO, KET_PLUS);
@@ -837,6 +862,7 @@ public:
 		buildScenario(KET_MINUS, KET_ONE);
 		buildScenario(KET_MINUS, KET_PLUS);
 		buildScenario(KET_MINUS, KET_MINUS);
+	#endif
 	}
 
 public:
@@ -885,12 +911,11 @@ public:
 
 int main(int argc, char **argv)
 {
-#if 0
     SC17_3LQ_CNOT *CNOT = new SC17_3LQ_CNOT();
+#if 0
     CNOT->run();
 #else
-    SC17_3LQ_CNOT *LQSurgery = new SC17_3LQ_CNOT();
-	LQSurgery->doSurgery();
+    CNOT->MergeSplitTest();
 #endif
 }
 

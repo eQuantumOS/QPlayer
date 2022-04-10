@@ -400,7 +400,6 @@ public:
 			double p = norm(Q->getAmplitude());
 			char qstring[1024] = "";
 
-		#if 0
 			printf("[%15ld] ", (uint64_t)Q->getIndex());
 			printf("[P=%f] ", p);
 
@@ -413,17 +412,6 @@ public:
 			} else {
 				printf("[%.6f, %.6f] ", real, imag);
 			}
-		#else
-			if(real >= 0 && imag >= 0) {
-				printf("+");
-			} else if(real >= 0 && imag < 0) {
-				printf("+");
-			} else if(real < 0 && imag >= 0) {
-				printf("-");
-			} else {
-				printf("-");
-			}
-		#endif
 
 			to_binary(Q->getIndex(), numQubit, qstring);
 			printf("|");
@@ -440,9 +428,7 @@ public:
 			}
 			printf(">\n");
 		} 
-	#if 0
 		printf("======== dump quantum states(%lu) ========\n\n", (uint64_t)totalStates);
-	#endif
 	}
 
 	void dump(int begin, int end) {
