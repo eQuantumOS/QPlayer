@@ -160,10 +160,10 @@ void U1(QRegister *QReg, int qubit, double angle)
 void U2(QRegister *QReg, int qubit, double pi, double ramda)
 {
 	complex_t M[] = {
-		complex_t(1, 0) / sqrt(2), 
-		-complex_t(cos(ramda), sin(ramda)) / sqrt(2),
-		complex_t(cos(pi), sin(pi)) / sqrt(2), 
-		complex_t(cos(pi+ramda), sin(pi+ramda)) / sqrt(2)
+		complex_t(1, 0) / std::sqrt(2), 
+		-complex_t(cos(ramda), sin(ramda)) / std::sqrt(2),
+		complex_t(cos(pi), sin(pi)) / std::sqrt(2), 
+		complex_t(cos(pi+ramda), sin(pi+ramda)) / std::sqrt(2)
 	};
 
 	applyMatrix(QReg, qubit, M);
@@ -1008,7 +1008,7 @@ void EstimateQState(QRegister *QReg, int qubit)
 
 	/* normalize */
 	length = (norm(lo) + norm(up));
-	length = sqrt(length);
+	length = std::sqrt(length);
 
 	printf("norm(lo)=%f, norm(up)=%f\n", norm(lo), norm(up));
 
