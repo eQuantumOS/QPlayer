@@ -290,7 +290,7 @@ public:
 		for(int i=0; i<QSTORE_PARTITION; i++) {
 			length += lengthm[i];
 		}
-		length = sqrt(length);
+		length = std::sqrt(length);
 
 		#pragma omp parallel for
 		for(int i=0; i<QSTORE_PARTITION; i++) {
