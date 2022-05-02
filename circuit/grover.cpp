@@ -25,8 +25,6 @@
 
 using namespace std;
 
-#define MAX_ROUND 15
-
 void grover(QRegister *QReg, int qubits) {
 	int mid = qubits / 2;
 
@@ -42,7 +40,7 @@ void grover(QRegister *QReg, int qubits) {
 	/* 
 	 * Repeat 
 	 */
-	for(int repeat=0; repeat<qubits*MAX_ROUND; repeat++) {
+	for(int repeat=0; repeat<(qubits*2); repeat++) {
 		/*
 		 * Oracle
 		 */
@@ -121,13 +119,16 @@ void grover(QRegister *QReg, int qubits) {
 
 int main(int argc, char **argv)
 {
-	int qubits = 7;
+	int qubits = 9;
 	int c;
 
 	while ((c = getopt_long(argc, argv, "q:", NULL, NULL)) != -1) {
 		switch(c) {
 		case 'q':
 			qubits = atoi(optarg);
+			if(qubits < 9) {
+				qubits = 9;
+			}
 		default:
 			break;
 		}
