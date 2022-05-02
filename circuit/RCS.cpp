@@ -35,10 +35,10 @@ static vector < vector < struct Gate >>circuits;
 
 enum quantum_op {
 	QOP_I=0,
-    QOP_X,
-    QOP_Z,
-    QOP_CNOT,
-    QOP_H
+	QOP_X,
+	QOP_Z,
+	QOP_CNOT,
+	QOP_H
 };
 
 static void buildRandomCircuit(void)
@@ -217,7 +217,7 @@ void test(void)
 		}
 		timer.end();
 		printf("%d/%d completes.. ", i+1, depth);
-		QReg->checkMemory();
+		checkMemory();
 		printf("Elapsed Time : %s\n", timer.getTime());
 	}
 }
@@ -248,7 +248,6 @@ int main(int argc, char **argv)
 #endif
 	timer.end();
 
-	// QReg->dump();
 	printf("\nElapsed Time : %s\n", timer.getTime());
-	QReg->checkMemory();
+	checkMemory();
 }

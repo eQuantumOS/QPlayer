@@ -14,7 +14,6 @@
 /**
  * @file    state.h
  * @author  Kisung Jin - ksjin@etri.re.kr
- * @date    10-09-21
  * @brief       
  */
 
@@ -49,6 +48,7 @@ private:
 
 public:
 	QState(qsize_t i, complex_t a);
+	QState(QState *Q);
 	~QState(void);
 
 	complex_t getAmplitude() { return amplitude; }

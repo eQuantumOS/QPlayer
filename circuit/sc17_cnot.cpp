@@ -4,247 +4,501 @@
 
 using namespace std;
 
-typedef enum { D1=0, D2, D3, D4, D5, D6, D7, D8, D9 } DQ_SEQUENCE;
+typedef enum { 
+	 Q0,  Q1,  Q2,  Q3,  Q4,  Q5,  Q6,  Q7,  Q8,  Q9,
+	Q10, Q11, Q12, Q13, Q14, Q15, Q16, Q17, Q18, Q19,
+	Q20, Q21, Q22, Q23, Q24, Q25
+} QUBIT_INDEX;
+
 typedef enum { AX=0, AZ } MERGE_TYPE;
 typedef enum { Z_BASIS=0, X_BASIS } MEASURE_TYPE;
+typedef enum { X_LEFT=0, X_RIGHT } FLAVOUR;
+
+struct qubit_list {
+	int size;
+	int qubit_number[128];
+};
+
+struct stabilizer_circuit {
+	int sq_index;
+	int sq_mval;
+	int dq_size;
+	int dq_index[4];
+};
+
+struct merge_circuit {
+	int sq;
+	int sq_mval;
+	int dq_size;
+	int dq_list[4];
+};
 
 static int x_decoder[2][16] = {
 	{ 
+		/* flavor x-left */
 		-1,		/* 0000 */
-		D9,		/* 0001 */
-		D7,		/* 0010 */
-		D8,		/* 0011 */
-		D3,		/* 0100 */
-		D3,		/* 0101 */
-		D5,		/* 0110 */
-		D5,		/* 0111 */
-		D1,		/* 1000 */
-		D1,		/* 1001 */
-		D1,		/* 1010 */
-		D8,		/* 1011 */
-		D2,		/* 1100 */
-		D2,		/* 1101 */
-		D2,		/* 1110 */
-		D2		/* 1111 */
+		Q20,	/* 0001 */
+		Q18,	/* 0010 */
+		Q19,	/* 0011 */
+		Q6,		/* 0100 */
+		Q6,		/* 0101 */
+		Q12,	/* 0110 */
+		Q12,	/* 0111 */
+		Q4,		/* 1000 */
+		Q4,		/* 1001 */
+		Q4,		/* 1010 */
+		Q19,	/* 1011 */
+		Q5,		/* 1100 */
+		Q5,		/* 1101 */
+		Q5,		/* 1110 */
+		Q5		/* 1111 */
 	},
 	{
+		/* flavor x-right */
 		-1,		/* 0000 */
-		D7,		/* 0001 */
-		D9,		/* 0010 */
-		D8,		/* 0011 */
-		D1,		/* 0100 */
-		D1,		/* 0101 */
-		D5,		/* 0110 */
-		D5,		/* 0111 */
-		D3,		/* 1000 */
-		D3,		/* 1001 */
-		D3,		/* 1010 */
-		D8,		/* 1011 */
-		D2,		/* 1100 */
-		D2,		/* 1101 */
-		D2,		/* 1110 */
-		D2		/* 1111 */
+		Q18,	/* 0001 */
+		Q20,	/* 0010 */
+		Q19,	/* 0011 */
+		Q4,		/* 0100 */
+		Q4,		/* 0101 */
+		Q12,	/* 0110 */
+		Q12,	/* 0111 */
+		Q6,		/* 1000 */
+		Q6,		/* 1001 */
+		Q6,		/* 1010 */
+		Q8,		/* 1011 */
+		Q5,		/* 1100 */
+		Q5,		/* 1101 */
+		Q5,		/* 1110 */
+		Q5		/* 1111 */
 	}
 };
 	
 static int z_decoder[2][16] = {
 	{ 
+		/* flavor x-left */
 		-1,		/* 0000 */
-		D3,		/* 0001 */
-		D9,		/* 0010 */
-		D6,		/* 0011 */
-		D1,		/* 0100 */
-		D1,		/* 0101 */
-		D5,		/* 0110 */
-		D5,		/* 0111 */
-		D7,		/* 1000 */
-		D7,		/* 1001 */
-		D7,		/* 1010 */
-		D6,		/* 1011 */
-		D4,		/* 1100 */
-		D4,		/* 1101 */
-		D4,		/* 1110 */
-		D4		/* 1111 */
+		Q6,		/* 0001 */
+		Q20,	/* 0010 */
+		Q13,	/* 0011 */
+		Q4,		/* 0100 */
+		Q4,		/* 0101 */
+		Q12,	/* 0110 */
+		Q12,	/* 0111 */
+		Q18,	/* 1000 */
+		Q18,	/* 1001 */
+		Q18,	/* 1010 */
+		Q13,	/* 1011 */
+		Q11,	/* 1100 */
+		Q11,	/* 1101 */
+		Q11,	/* 1110 */
+		Q11		/* 1111 */
 	},
 	{
+		/* flavor x-right */
 		-1,		/* 0000 */
-		D9,		/* 0001 */
-		D3,		/* 0010 */
-		D6,		/* 0011 */
-		D7,		/* 0100 */
-		D7,		/* 0101 */
-		D5,		/* 0110 */
-		D5,		/* 0111 */
-		D1,		/* 1000 */
-		D1,		/* 1001 */
-		D1,		/* 1010 */
-		D6,		/* 1011 */
-		D4,		/* 1100 */
-		D4,		/* 1101 */
-		D4,		/* 1110 */
-		D4		/* 1111 */
+		Q20,	/* 0001 */
+		Q6,		/* 0010 */
+		Q13,	/* 0011 */
+		Q18,	/* 0100 */
+		Q18,	/* 0101 */
+		Q12,	/* 0110 */
+		Q12,	/* 0111 */
+		Q4,		/* 1000 */
+		Q4,		/* 1001 */
+		Q4,		/* 1010 */
+		Q13,	/* 1011 */
+		Q11,	/* 1100 */
+		Q11,	/* 1101 */
+		Q11,	/* 1110 */
+		Q4		/* 1111 */
 	}
 };
 
-struct stabilizer_qubit {
-	int type;
-	int sq;
-	int dq_num;
-	int dq_list[4];
+struct qubit_list LQ0_qubits = {
+	25,
+	{
+		36,      37,      38,      39,
+		     0,       1,       2,
+		43,      44,      45,      46,
+		     3,       4,       5,
+		50,      51,      52,      53,
+		     6,       7,       8,
+		57,      58,      59,      60
+	}
 };
 
-struct logical_qubit {
+struct qubit_list LQ1_qubits = {
+	25,
+	{
+		39,       40,       41,       42,
+		      9,       10,       11,
+		46,       47,       48,       49,
+		     12,       13,       14,
+		53,       54,       55,       56,
+		     15,       16,       17,
+		60,       61,       62,       63
+	}
+};
+
+struct qubit_list LQ2_qubits = {
+	25,
+	{
+		57,       58,       59,       60,
+		     18,       19,       20,
+		64,       65,       66,       67,
+		     21,       22,       23,
+		71,       72,       73,       74,
+		     24,       25,       26,
+		78,       79,       80,       81
+	}
+};
+
+struct qubit_list LQ3_qubits = {
+	25,
+	{
+		60,       62,       63,       64,
+		     27,       28,       29,
+		67,       68,       69,       70,
+		     30,       31,       32,
+		74,       75,       76,       77,
+		     33,       34,       35,
+		81,       82,       83,       84
+	}
+};
+
+class logicalQubit {
+public:
+	QRegister *QReg;
 	char name[16];
 	int flavor;
 
-	/* data qubits */
-	int dq_num;
+public:
+	int qubit_size;
+	int dq_size;
+	int sq_size;
+	int qubit_list[25];
 	int dq_list[9];
-
-	/* logical operator */
 	int logical_x[3];
 	int logical_z[3];
+	struct stabilizer_circuit xs_circuit[4];
+	struct stabilizer_circuit zs_circuit[4];
 
-	/* stabilizer qubits */
-	int ax_num;
-	struct stabilizer_qubit ax_list[4];
+public:
+	logicalQubit(QRegister *_QReg, char *_name, int _flavor, struct qubit_list *qubits) { 
+		/* set logical qubit catalog */
+		QReg = _QReg;
+		strcpy(name, _name);
+		flavor = _flavor;
+		qubit_size = qubits->size;
+		dq_size = 9;
+		sq_size = 4;
 
-	int az_num;
-	struct stabilizer_qubit az_list[4];
+		/* set all qubits */
+		for(int i=0; i<qubits->size; i++) {
+			qubit_list[i] = qubits->qubit_number[i];
+		}
 
-	/* x, z stabilazer value : 0000 - 1111 */
-	int ax;
-	int az;
+		/* set data qubit index */
+		dq_list[0] = Q4;
+		dq_list[1] = Q5;
+		dq_list[2] = Q6;
+		dq_list[3] = Q11;
+		dq_list[4] = Q12;
+		dq_list[5] = Q13;
+		dq_list[6] = Q18;
+		dq_list[7] = Q19;
+		dq_list[8] = Q20;
 
-	/* measure value : +1 or -1 */
-	int measure_value;
-};
+		/* set logical-x/z operator index */
+		logical_x[0] = Q5;
+		logical_x[1] = Q12;
+		logical_x[2] = Q19;
 
-struct logical_merge_qubit {
-	int num_stabilizer_qubit;
-	struct stabilizer_qubit merged_qubit[3];
-	int measure_value[3];	/* +1 or -1 */
-};
+		logical_z[0] = Q11;
+		logical_z[1] = Q12;
+		logical_z[2] = Q13;
 
-struct logical_qubit _AQ = {
-	"AQ",											/* name */
-	0,												/* flavor */
-	9,												/* number of data qubit */
-	{ 0, 1, 2, 3, 4, 5, 6, 7, 8 },					/* data qubit list */
-	{ 1, 4, 7 },									/* logical X operator */
-	{ 3, 4, 5 },									/* logical Z operator */
-	4,												/* number of x-stabilizer */
-	{ 
-		{ AX, 27, 2, { D1, D2 } },					/* AX1 */
-		{ AX, 28, 4, { D2, D3, D5, D6 } },			/* AX2 */
-		{ AX, 29, 4, { D4, D5, D7, D8 } },			/* AX3 */
-		{ AX, 30, 2, { D8, D9 } }					/* AX4 */
-	},
-	4,												/* number of z-stabilizer */
-	{ 
-		{ AZ, 31, 2, { D4, D7 } },					/* AZ1 */
-		{ AZ, 32, 4, { D1, D2, D4, D5 } },			/* AZ2 */
-		{ AZ, 33, 4, { D5, D6, D8, D9 } },			/* AZ3 */
-		{ AZ, 34, 2, { D3, D6 } }					/* AZ4 */
-	}, 
-	0,
-	0,
-	0
-};
+		/* set stabilizer circuit index */
+		if(flavor == X_LEFT) {
+			/* x-stabilizer */
+			xs_circuit[0].sq_index = Q1;
+			xs_circuit[0].dq_size = 2;
+			xs_circuit[0].dq_index[0] = Q4;
+			xs_circuit[0].dq_index[1] = Q5;
 
-struct logical_qubit _TQ = {
-	"TQ",											/* name */
-	1,												/* flavor */
-	9,												/* number of data qubit */
-	{ 9, 10, 11, 12, 13, 14, 15, 16, 17 },			/* data qubit list */
-	{ 10, 13, 16 },									/* logical X operator */
-	{ 12, 13, 14 },									/* logical Z operator */
-	4,												/* number of x-stabilizer */
-	{ 
-		{ AX, 38, 2, { D2, D3 } },					/* AX1 */
-		{ AX, 39, 4, { D1, D2, D4, D5 } },			/* AX2 */
-		{ AX, 40, 4, { D5, D6, D8, D9 } },			/* AX3 */
-		{ AX, 41, 2, { D7, D8 } }					/* AX4 */
-	},
-	4,												/* number of z-stabilizer */
-	{ 
-		{ AZ, 34, 2, { D1, D4 } },					/* AZ1 */
-		{ AZ, 35, 4, { D4, D5, D7, D8 } },			/* AZ2 */
-		{ AZ, 36, 4, { D2, D3, D5, D6 } },			/* AZ3 */
-		{ AZ, 37, 2, { D6, D9 } }					/* AZ4 */
-	}, 
-	0,
-	0,
-	0
-};
+			xs_circuit[1].sq_index = Q9;
+			xs_circuit[1].dq_size = 4;
+			xs_circuit[1].dq_index[0] = Q5;
+			xs_circuit[1].dq_index[1] = Q6;
+			xs_circuit[1].dq_index[2] = Q12;
+			xs_circuit[1].dq_index[3] = Q13;
 
-struct logical_qubit _CQ = {
-	"CQ",											/* name */
-	1,												/* flavor */
-	9,												/* number of data qubit */
-	{ 18, 19, 20, 21, 22, 23, 24, 25, 26 },			/* data qubit list */
-	{ 19, 22, 25 },									/* logical X operator */
-	{ 21, 22, 23 },									/* logical Z operator */
-	4,												/* number of x-stabilizer */
-	{ 
-		{ AX, 30, 2, { D2, D3 } },					/* AX1 */
-		{ AX, 46, 4, { D1, D2, D4, D5 } },			/* AX2 */
-		{ AX, 47, 4, { D5, D6, D8, D9 } },			/* AX3 */
-		{ AX, 48, 2, { D7, D8 } }					/* AX4 */
-	},
-	4,												/* number of z-stabilizer */
-	{ 
-		{ AZ, 42, 2, { D1, D4 } },					/* AZ1 */
-		{ AZ, 43, 4, { D4, D5, D7, D8 } },			/* AZ2 */
-		{ AZ, 44, 4, { D2, D3, D5, D6 } },			/* AZ3 */
-		{ AZ, 45, 2, { D6, D9 } }					/* AZ4 */
-	}, 
-	0,
-	0,
-	0
-};
+			xs_circuit[2].sq_index = Q15;
+			xs_circuit[2].dq_size = 4;
+			xs_circuit[2].dq_index[0] = Q11;
+			xs_circuit[2].dq_index[1] = Q12;
+			xs_circuit[2].dq_index[2] = Q18;
+			xs_circuit[2].dq_index[3] = Q19;
 
-struct logical_merge_qubit _MAT = {
-	2, 
-	{
-		{ AX, 50, 2, { 2, 9 } },					/* mxx1 */
-		{ AX, 51, 4, { 5, 8, 12, 15 } },			/* mxx2 */
-		{ AZ, 34, 4, { 2, 9, 5, 12 } }
-	},
-	{ 0, 0, 0 }
-};
+			xs_circuit[3].sq_index = Q23;
+			xs_circuit[3].dq_size = 2;
+			xs_circuit[3].dq_index[0] = Q19;
+			xs_circuit[3].dq_index[1] = Q20;
 
-struct logical_merge_qubit _MAC = {
-	2, 
-	{
-		{ AZ, 52, 4, { 6, 7, 18, 19 } },			/* mzz1 */
-		{ AZ, 53, 2, { 8, 20 } },					/* mzz2 */
-		{ AX, 30, 4, { 7, 8, 19, 20 } },
-	},
-	{ 0, 0, 0 }
+			/* z-stabilizer */
+			zs_circuit[0].sq_index = Q14;
+			zs_circuit[0].dq_size = 2;
+			zs_circuit[0].dq_index[0] = Q11;
+			zs_circuit[0].dq_index[1] = Q18;
+
+			zs_circuit[1].sq_index = Q8;
+			zs_circuit[1].dq_size = 4;
+			zs_circuit[1].dq_index[0] = Q4;
+			zs_circuit[1].dq_index[1] = Q5;
+			zs_circuit[1].dq_index[2] = Q11;
+			zs_circuit[1].dq_index[3] = Q12;
+
+			zs_circuit[2].sq_index = Q16;
+			zs_circuit[2].dq_size = 4;
+			zs_circuit[2].dq_index[0] = Q12;
+			zs_circuit[2].dq_index[1] = Q13;
+			zs_circuit[2].dq_index[2] = Q19;
+			zs_circuit[2].dq_index[3] = Q20;
+
+			zs_circuit[3].sq_index = Q10;
+			zs_circuit[3].dq_size = 2;
+			zs_circuit[3].dq_index[0] = Q6;
+			zs_circuit[3].dq_index[1] = Q13;
+		} else {	
+			/* x-stabilizer */
+			xs_circuit[0].sq_index = Q2;
+			xs_circuit[0].dq_size = 2;
+			xs_circuit[0].dq_index[0] = Q5;
+			xs_circuit[0].dq_index[1] = Q6;
+
+			xs_circuit[1].sq_index = Q8;
+			xs_circuit[1].dq_size = 4;
+			xs_circuit[1].dq_index[0] = Q4;
+			xs_circuit[1].dq_index[1] = Q5;
+			xs_circuit[1].dq_index[2] = Q11;
+			xs_circuit[1].dq_index[3] = Q12;
+
+			xs_circuit[2].sq_index = Q16;
+			xs_circuit[2].dq_size = 4;
+			xs_circuit[2].dq_index[0] = Q12;
+			xs_circuit[2].dq_index[1] = Q13;
+			xs_circuit[2].dq_index[2] = Q19;
+			xs_circuit[2].dq_index[3] = Q20;
+
+			xs_circuit[3].sq_index = Q22;
+			xs_circuit[3].dq_size = 2;
+			xs_circuit[3].dq_index[0] = Q18;
+			xs_circuit[3].dq_index[1] = Q19;
+
+			/* z-stabilizer */
+			zs_circuit[0].sq_index = Q7;
+			zs_circuit[0].dq_size = 2;
+			zs_circuit[0].dq_index[0] = Q4;
+			zs_circuit[0].dq_index[1] = Q11;
+
+			zs_circuit[1].sq_index = Q15;
+			zs_circuit[1].dq_size = 4;
+			zs_circuit[1].dq_index[0] = Q11;
+			zs_circuit[1].dq_index[1] = Q12;
+			zs_circuit[1].dq_index[2] = Q18;
+			zs_circuit[1].dq_index[3] = Q19;
+
+			zs_circuit[2].sq_index = Q9;
+			zs_circuit[2].dq_size = 4;
+			zs_circuit[2].dq_index[0] = Q5;
+			zs_circuit[2].dq_index[1] = Q6;
+			zs_circuit[2].dq_index[2] = Q12;
+			zs_circuit[2].dq_index[3] = Q13;
+
+			zs_circuit[3].sq_index = Q17;
+			zs_circuit[3].dq_size = 2;
+			zs_circuit[3].dq_index[0] = Q13;
+			zs_circuit[3].dq_index[1] = Q20;
+		}
+	}
+
+	~logicalQubit(void) { }
+
+	int QUBIT(int index) { return qubit_list[index]; }
+
+public:
+	void logical_XOP(void) {
+		for(int i=0; i<3; i++) {
+			X(QReg, QUBIT(logical_x[i]));
+		}
+	}
+
+	void logical_ZOP(void) {
+		for(int i=0; i<3; i++) {
+			Z(QReg, QUBIT(logical_z[i]));
+		}
+	}
+
+	void logical_HOP(void) {
+		for(int i=0; i<dq_size; i++) {
+			H(QReg, QUBIT(dq_list[i]));
+		}
+	}
+
+public:
+	int logical_MZV(void) {
+		int mv = 1;
+
+		for(int i=0; i<dq_size; i++) {
+			if(M(QReg, QUBIT(dq_list[i])) == 1) {
+				mv *= -1;
+			}
+		}
+
+		return mv;
+	}
+
+	int logical_MXV(void) {
+		for(int i=0; i<dq_size; i++) {
+			H(QReg, QUBIT(dq_list[i]));
+		}
+
+		return logical_MZV();
+	}
+
+	int logical_MZ(void) {
+		int mv = logical_MZV();
+		return mv == 1 ? 0 : 1;
+	}
+
+	int logical_MX(void) {
+		int mv = logical_MXV();
+		return mv == 1 ? 0 : 1;
+	}
+
+public:
+	int genStabilizerStates(struct stabilizer_circuit *circuit) {
+		int states = 0;
+
+		for(int i=0; i<4; i++) {
+			if(circuit[i].sq_mval == 1) {
+				states |= (1 << (3 - i));
+			}
+		}
+
+		return states;
+	}
+
+	void printStabilizerStates(char *type, int states) {
+		printf("Type(%s) : ", type);
+
+		int flag = 8;
+		do {
+			if(states&flag) printf("1");
+			else printf("0");
+			flag/=2;
+		} while(flag >= 1);
+		printf(">\n");
+	}
+
+	void ESM(void) {
+		/* build x-stabilizer circuit */
+		for(int i=0; i<4; i++) {
+			initZ(QReg, QUBIT(xs_circuit[i].sq_index));
+			H(QReg, QUBIT(xs_circuit[i].sq_index));
+			for(int j=0; j<xs_circuit[i].dq_size; j++) {
+				CX(QReg, QUBIT(xs_circuit[i].sq_index), QUBIT(xs_circuit[i].dq_index[j]));
+			}
+			H(QReg, QUBIT(xs_circuit[i].sq_index));
+			xs_circuit[i].sq_mval = M(QReg, QUBIT(xs_circuit[i].sq_index));
+		}
+
+		/* build x-stabilizer circuit */
+		for(int i=0; i<4; i++) {
+			initZ(QReg, QUBIT(zs_circuit[i].sq_index));
+			for(int j=0; j<zs_circuit[i].dq_size; j++) {
+				CX(QReg, QUBIT(zs_circuit[i].dq_index[j]), QUBIT(zs_circuit[i].sq_index));
+			}
+			zs_circuit[i].sq_mval = M(QReg, QUBIT(zs_circuit[i].sq_index));
+		}
+	}
+
+	void ErrorCorrection(void) {
+		int round = 3;
+
+		for(int i=0; i<round; i++) {
+			int xs_states = genStabilizerStates(xs_circuit);
+			int zs_states = genStabilizerStates(zs_circuit);
+
+			if(xs_states == 0 && zs_states == 0) {
+				break;
+			}
+
+			/* Z error correction */
+			if(xs_states != 0) {
+				Z(QReg, qubit_list[x_decoder[flavor][xs_states]]);
+			}
+
+			/* X error correction */
+			if(zs_states != 0) {
+				X(QReg, qubit_list[z_decoder[flavor][zs_states]]);
+			}
+
+			ESM();
+		}
+	}
+
+	void runStabilizer(void) {
+		ESM();
+		ErrorCorrection();
+	}
+
+public:
+	void initLZero(void) {
+		runStabilizer();
+	}
+
+	void initLOne(void) {
+		runStabilizer();
+		logical_XOP();
+	}
+
+	void initLPlus(void) {
+		logical_HOP();
+		runStabilizer();
+	}
+
+	void initLMinus(void) {
+		initLPlus();
+		logical_ZOP();
+	}
+
+	void initState(int mode) {
+		for(int i=0; i<qubit_size; i++) {
+			initZ(QReg, qubit_list[i]);
+		}
+
+		if(mode == KET_ZERO) {
+			initLZero();
+		} else if(mode == KET_ONE) {
+			initLOne();
+		} else if(mode == KET_PLUS) {
+			initLPlus();
+		} else if(mode == KET_MINUS) {
+			initLMinus();
+		} 
+	}
 };
 
 class SC17_3LQ_CNOT {
-private:
+public:
 	QRegister *QReg;
-	char bitString[512] = "";
-
-private:
-	struct logical_qubit *AQ;
-	struct logical_qubit *CQ;
-	struct logical_qubit *TQ;
-	struct logical_merge_qubit *MAT;
-	struct logical_merge_qubit *MAC;
+	struct qubit_delimiter qd;
 
 public:
 	SC17_3LQ_CNOT(void) {
-		QReg = new QRegister(54);
-
-		AQ = (struct logical_qubit *)(&_AQ);
-		CQ = (struct logical_qubit *)(&_CQ);
-		TQ = (struct logical_qubit *)(&_TQ);
-		MAT = (struct logical_merge_qubit *)(&_MAT);
-		MAC = (struct logical_merge_qubit *)(&_MAC);
+		QReg = new QRegister(85);
 	} 
 
 	~SC17_3LQ_CNOT(void) {
@@ -252,438 +506,86 @@ public:
 	}
 
 public:
-	/*********************************************/
-	/*             stabilizer handling           */
-	/*********************************************/
-	void buildAX(struct logical_qubit *LQ) {
-		for(int i=0; i<LQ->ax_num; i++) {
-			struct stabilizer_qubit *SQ = (struct stabilizer_qubit *)&LQ->ax_list[i];
-			initZ(QReg, SQ->sq);
-			H(QReg, SQ->sq);
-			for(int i=0; i<SQ->dq_num; i++) {
-				int dqidx = SQ->dq_list[i];
-				CX(QReg, SQ->sq, LQ->dq_list[dqidx]);
+	int MergeSplitXX(logicalQubit *AQ, logicalQubit *LQ) {
+		struct merge_circuit circuit[2] = {
+			AQ->qubit_list[Q3],
+			0,
+			2,
+			{
+				AQ->qubit_list[Q6],
+				LQ->qubit_list[Q4],
+			},
+			AQ->qubit_list[Q17],
+			0,
+			4,
+			{
+				AQ->qubit_list[Q13],
+				AQ->qubit_list[Q20],
+				LQ->qubit_list[Q11],
+				LQ->qubit_list[Q18],
 			}
-			H(QReg, SQ->sq);
-		}
-    }
+		};
 
-	void buildAZ(struct logical_qubit *LQ) {
-		for(int i=0; i<LQ->az_num; i++) {
-			struct stabilizer_qubit *SQ = (struct stabilizer_qubit *)&LQ->az_list[i];
-			initZ(QReg, SQ->sq);
-			for(int i=0; i<SQ->dq_num; i++) {
-				int dqidx = SQ->dq_list[i];
-				CX(QReg, LQ->dq_list[dqidx], SQ->sq);
+		/* build x-stabilizer circuit */
+		for(int i=0; i<2; i++) {
+			initZ(QReg, circuit[i].sq);
+			H(QReg, circuit[i].sq);
+			for(int j=0; j<circuit[i].dq_size; j++) {
+				CX(QReg, circuit[i].sq, circuit[i].dq_list[j]);
 			}
+			H(QReg, circuit[i].sq);
+			circuit[i].sq_mval = MV(QReg, circuit[i].sq);
 		}
+
+		AQ->runStabilizer();
+		LQ->runStabilizer();
+
+		return (circuit[0].sq_mval * circuit[1].sq_mval);
 	}
 
-	void buildXStabilizerState(struct logical_qubit *LQ) {
-		int ax = 0;
-
-		int m1 = M(QReg, LQ->ax_list[0].sq);
-		int m2 = M(QReg, LQ->ax_list[1].sq);
-		int m3 = M(QReg, LQ->ax_list[2].sq);
-		int m4 = M(QReg, LQ->ax_list[3].sq);
-
-		if(m4 != 0) ax |= (1 << 0);
-		if(m3 != 0) ax |= (1 << 1);
-		if(m2 != 0) ax |= (1 << 2);
-		if(m1 != 0) ax |= (1 << 3);
-
-		LQ->ax = ax;
-	}
-
-	void buildZStabilizerState(struct logical_qubit *LQ) {
-		int az = 0;
-
-		int m1 = M(QReg, LQ->az_list[0].sq);
-		int m2 = M(QReg, LQ->az_list[1].sq);
-		int m3 = M(QReg, LQ->az_list[2].sq);
-		int m4 = M(QReg, LQ->az_list[3].sq);
-
-		if(m4 != 0) az |= (1 << 0);
-		if(m3 != 0) az |= (1 << 1);
-		if(m2 != 0) az |= (1 << 2);
-		if(m1 != 0) az |= (1 << 3);
-
-		LQ->az = az;
-	}
-
-	void showStabilizer(struct logical_qubit *LQ) {
-		int ax = LQ->ax;
-		int az = LQ->az;
-		int flag;
-
-		printf("[%s] : AX=|", LQ->name);
-
-		flag = 8;
-		do {
-			if(ax&flag) printf("1");
-			else printf("0");
-        	flag/=2;        
-		} while(flag >= 1);
-		printf(">  ");
-
-		printf("AZ=|");
-		flag = 8;
-		do {
-			if(az&flag) printf("1");
-			else printf("0");
-        	flag/=2;        
-		} while(flag >= 1);
-		printf(">\n");
-	}
-
-public:
-	/*********************************************/
-	/*          ESM & Error Correction           */
-	/*********************************************/
-	void buildCircuit(struct logical_qubit *LQ) {
-		/* run stabilizer circuit */
-		buildAX(LQ);
-		buildAZ(LQ);
-
-		buildXStabilizerState(LQ);
-		buildZStabilizerState(LQ);
-		// showStabilizer(LQ);
-	} 
-	
-	void errorCorrection(struct logical_qubit *LQ) {
-		int round = 3;
-
-		for(int i=0; i<round * 2; i++) {
-			int flavor = LQ->flavor;
-			int ax = LQ->ax;
-			int az = LQ->az;
-
-			if(LQ->ax == 0 && LQ->az == 0) 
-				break;
-
-			/* X error correction */
-			if(LQ->ax != 0) {
-				Z(QReg, LQ->dq_list[x_decoder[flavor][ax]]);
+	int MergeSplitZZ(logicalQubit *AQ, logicalQubit *LQ) {
+		struct merge_circuit circuit[2] = {
+			AQ->qubit_list[Q22],
+			0,
+			4,
+			{
+				AQ->qubit_list[Q18],
+				AQ->qubit_list[Q19],
+				LQ->qubit_list[Q4],
+				LQ->qubit_list[Q5],
+			},
+			AQ->qubit_list[Q24],
+			0,
+			2,
+			{
+				AQ->qubit_list[Q20],
+				LQ->qubit_list[Q6],
 			}
-	
-			/* Z error correction */
-			if(LQ->az != 0) {
-				X(QReg, LQ->dq_list[z_decoder[flavor][az]]);
+		};
+
+		/* build x-stabilizer circuit */
+		for(int i=0; i<2; i++) {
+			initZ(QReg, circuit[i].sq);
+			for(int j=0; j<circuit[i].dq_size; j++) {
+				CX(QReg, circuit[i].dq_list[j], circuit[i].sq);
 			}
-
-			buildCircuit(LQ);
+			circuit[i].sq_mval = MV(QReg, circuit[i].sq);
 		}
+
+		AQ->runStabilizer();
+		LQ->runStabilizer();
+
+		return (circuit[0].sq_mval * circuit[1].sq_mval);
 	}
 
-	void ESM(struct logical_qubit *LQ) {
-		buildCircuit(LQ);
-		errorCorrection(LQ);
-	}
-
-public:
-	/*********************************************/
-	/*             Logical Operation             */
-	/*********************************************/
-	void logicalX(struct logical_qubit *LQ) {
-		for(int i=0; i<3; i++) {
-			X(QReg, LQ->logical_x[i]);
-		}
-	}
-
-	void logicalZ(struct logical_qubit *LQ) {
-		for(int i=0; i<3; i++) {
-			Z(QReg, LQ->logical_z[i]);
-		}
-	}
-
-	void logicalH(struct logical_qubit *LQ) {
-		for(int i=0; i<LQ->dq_num; i++) {
-			H(QReg, LQ->dq_list[i]);
-		}
-	}
-
-	int logicalMZ(struct logical_qubit *LQ) {
-		int mv = 1;
-		for(int i=0; i<LQ->dq_num; i++) {
-			int m = M(QReg, LQ->dq_list[i]);
-			if(m == 1) {
-				mv *= -1;
-			}
-		}
-
-		if(mv == 1) {
-			LQ->measure_value = 1;
-		} else {
-			LQ->measure_value = -1;
-		}
-
-		return LQ->measure_value;
-	}
-
-	int logicalMX(struct logical_qubit *LQ) {
-		logicalH(LQ);
-
-		int mv = 1;
-		for(int i=0; i<LQ->dq_num; i++) {
-			int m = M(QReg, LQ->dq_list[i]);
-			if(m == 1) {
-				mv *= -1;
-			}
-		}
-
-		if(mv == 1) {
-			LQ->measure_value = 1;
-		} else {
-			LQ->measure_value = -1;
-		}
-
-		return LQ->measure_value;
-	}
-
-public:
-	/*********************************************/
-	/*         Initialize Logical Qubit          */
-	/*********************************************/
-	void clearLQ(struct logical_qubit *LQ) {
-		for(int i=0; i<LQ->dq_num; i++) {
-			initZ(QReg, LQ->dq_list[i]);
-		}
-		for(int i=0; i<LQ->ax_num; i++) {
-			initZ(QReg, LQ->ax_list[i].sq);
-		}
-		for(int i=0; i<LQ->az_num; i++) {
-			initZ(QReg, LQ->az_list[i].sq);
-		}
-	}
-
-	void initLQZero(struct logical_qubit *LQ) {
-		buildCircuit(LQ);
-		errorCorrection(LQ);
-	}
-
-	void initLQOne(struct logical_qubit *LQ) {
-		buildCircuit(LQ);
-		errorCorrection(LQ);
-		logicalX(LQ);
-	}
-
-	void initLQPlus(struct logical_qubit *LQ) {
-		logicalH(LQ);
-		buildCircuit(LQ);
-		errorCorrection(LQ);
-	}
-
-	void initLQMinus(struct logical_qubit *LQ) {
-		logicalH(LQ);
-		buildCircuit(LQ);
-		errorCorrection(LQ);
-		logicalZ(LQ);
-	}
-
-public:
-	/*********************************************/
-	/*                Merge & Split              */
-	/*********************************************/
-	void MergeSplit(struct logical_merge_qubit *MQ, struct logical_qubit *AQ, struct logical_qubit *DQ) {
-		for(int i=0; i<MQ->num_stabilizer_qubit; i++) {
-			struct stabilizer_qubit *SQ = (struct stabilizer_qubit *)&MQ->merged_qubit[i];
-
-			initZ(QReg, SQ->sq);
-			if(SQ->type == AX) {
-				H(QReg, SQ->sq);
-				printf("H  : %d\n", SQ->sq);
-			}
-
-			for(int j=0; j<SQ->dq_num; j++) {
-				if(SQ->type == AX) {
-					CX(QReg, SQ->sq, SQ->dq_list[j]);
-					printf("CX  : %d -> %d\n", SQ->sq, SQ->dq_list[j]);
-				} else {
-					CX(QReg, SQ->dq_list[j], SQ->sq);
-					printf("CX  : %d -> %d\n", SQ->dq_list[j], SQ->sq);
-				}
-			}
-
-			if(SQ->type == AX) {
-				H(QReg, SQ->sq);
-				printf("H  : %d\n", SQ->sq);
-			}
-
-			printf("\n");
-		}
-
-		for(int i=0; i<MQ->num_stabilizer_qubit; i++) {
-			struct stabilizer_qubit *SQ = (struct stabilizer_qubit *)&MQ->merged_qubit[i];
-			int mv = M(QReg, SQ->sq);
-			if(mv == 0) {
-				MQ->measure_value[i] = +1;
-			} else {
-				MQ->measure_value[i] = -1;
-			}
-			printf("M[%d]  : Q%d --> %d\n", i, SQ->sq, MQ->measure_value[i]);
-		}
-
-		ESM(AQ);
-		ESM(DQ);
-	}
-
-	void postProcess(void) {
-		int mxx1 = MAT->measure_value[0];
-		int mxx2 = MAT->measure_value[1];
-		int mzz1 = MAC->measure_value[0];
-		int mzz2 = MAC->measure_value[1];
-		int mAQ;
-		int a;
-		int b;
-		int c;
-
-		/* measure logical ancila qubit */
-		mAQ = logicalMX(AQ);
-
-		a = ((mxx1 * mxx2) == 1 ? 0 : 1);
-		b = ((mzz1 * mzz2) == 1 ? 0 : 1);
-		c = (mAQ == 1 ? 0 : 1);
-
-		printf("mxx1=%d, mxx2=%d, mzz1=%d, mzz2=%d, mAQ=%d\n", mxx1, mxx2, mzz1, mzz2, mAQ);
-		printf("a=%d, b=%d, c=%d\n", a, b, c);
-
-#if 1
-	#if 1
-		if(a == 1) {
-			printf("Logical Z(a) : CQ\n");
-			logicalZ(CQ);
-		}
-
-		if(c == 1) {
-			printf("Logical Z(c) : CQ\n");
-			logicalZ(CQ);
-		}
-	#else
-		#if 0
-		/*
-		 * Only this combination transfers the phase of the target (|->) to 
-		 * control (|+> or |->). I don't understand the principle of why. 
-		 * So far, it has only been confirmed experimentally.
-		 * ---> it is wrong..... T.T
-		 */
-		if((a + c) != 1) {
-			printf("Logical Z(a+c) : CQ\n");
-			logicalZ(CQ);
-		}
-		#else
-		if(a == 1 || c == 1) {
-			printf("Logical Z(a+c) : CQ\n");
-			logicalZ(CQ);
-		}
-		#endif
-	#endif
-#else
-		if(a == 0 && c == 0) {
-			printf("Logical Z(ac=00) : CQ\n");
-			logicalZ(CQ);
-		} else if(a == 0 && c == 1) {
-			printf("Logical Z(ac=01) : CQ\n");
-			// logicalZ(CQ);
-		} else if(a == 1 && c == 0) {
-			printf("Logical Z(ac=10) : CQ\n");
-			// logicalZ(CQ);
-		} else if(a == 1 && c == 1) {
-			printf("Logical Z(ac=01) : CQ\n");
-			logicalZ(CQ);
-		}
-#endif
-
-	#if 0
-		if(c == 1) {
-			printf("Logical Z(c) : AQ\n");
-			logicalZ(AQ);
-		}
-	#endif
-
-		if(b == 1) {
-			printf("Logical X : TQ\n");
-			logicalX(TQ);
-		}
-
-		ESM(CQ);
-		ESM(TQ);
-	}
-
-public:
-	void prepare_lq(struct logical_qubit *LQ, int mode) {
-		if(mode == KET_ZERO) {
-			initLQZero(LQ);
-		} else if(mode == KET_ONE) {
-			initLQOne(LQ);
-		} else if(mode == KET_PLUS) {
-			initLQPlus(LQ);
-		} else if(mode == KET_MINUS) {
-			initLQMinus(LQ);
-		}
-	}
-
-	void lattice_surgery(void) {
-		/* merge & split */
-		printf("\n========== MERGE AQ & TQ ==========\n");
-		MergeSplit(MAT, AQ, TQ);
-
-		printf("\n========== MERGE AQ & CQ ==========\n");
-		MergeSplit(MAC, AQ, CQ);
-
-		printf("\n========== POST PROCESS ==========\n");
-		/* post process */
-		postProcess();
-	}
-
-	char *modeString(int mode) {
-		if(mode == KET_ZERO) {
-			return "|0>";
-		} else if(mode == KET_ONE) {
-			return "|1>";
-		} else if(mode == KET_PLUS) {
-			return "|+>";
-		} else if(mode == KET_MINUS) {
-			return "|->";
-		}
-
-		return "UNKNOWN";
-	}
-
-	void buildCNOT(int cqMode, int tqMode) {
-		int cq_mode = cqMode;
-		int tq_mode = tqMode;
+	void validateCNOT(int CQtype, logicalQubit *CQ, int TQtype, logicalQubit *TQ) {
+		/* measure CQ, TQ followed by basis */
 		int cq_measure_type;
 		int tq_measure_type;
-		struct qubit_delimiter qd;
-
-		QReg->reset();
-
-		qd.size = 3;
-		qd.qubits[0] = AQ->dq_list[8];
-		qd.qubits[1] = CQ->dq_list[8];
-		qd.qubits[2] = TQ->dq_list[8];
-
-		/***********************************/
-		/* STEP1: initialize logical qubit */
-		/***********************************/
-		prepare_lq(CQ, cq_mode);
-		prepare_lq(TQ, tq_mode);
-		prepare_lq(AQ, KET_ZERO);
-
-		/****************************************/
-		/* STEP2: lattice surgery of AQ, CQ, TQ */
-		/****************************************/
-		lattice_surgery();
-
-	#if 1
-		QReg->dump(qd);
-	#endif
-
-		/************************************/
-		/* STEP3: measure & validate CQ, TQ */
-		/************************************/
-		if(cq_mode == KET_PLUS || cq_mode == KET_MINUS) {
-			if(tq_mode == KET_ONE || tq_mode == KET_ZERO) {
+		int mc;
+		int mt;
+		if(CQtype == KET_PLUS || CQtype == KET_MINUS) {
+			if(TQtype == KET_ONE || TQtype == KET_ZERO) {
 				cq_measure_type = Z_BASIS;
 				tq_measure_type = Z_BASIS;
 			} else {
@@ -691,7 +593,7 @@ public:
 				tq_measure_type = X_BASIS;
 			}
 		} else {
-			if(tq_mode == KET_ONE || tq_mode == KET_ZERO) {
+			if(TQtype == KET_ONE || TQtype == KET_ZERO) {
 				cq_measure_type = Z_BASIS;
 				tq_measure_type = Z_BASIS;
 			} else {
@@ -700,31 +602,29 @@ public:
 			}
 		}
 
+		if(cq_measure_type == Z_BASIS) {
+			mc = CQ->logical_MZ();
+		} else {
+			mc = CQ->logical_MX();
+		}
+
 		if(tq_measure_type == Z_BASIS) {
-			logicalMZ(TQ);
+			mt = TQ->logical_MZ();
 		} else {
-			logicalMX(TQ);
+			mt = TQ->logical_MX();
 		}
 
-		if(cq_measure_type == Z_BASIS) {
-			logicalMZ(CQ);
-		} else {
-			logicalMX(CQ);
-		}
-
-		/*********************************/
-		/* STEP4: show validation result */
-		/*********************************/
+		/* validate CQ, TQ */
 		printf("\n******************** RESULT ********************\n");
-		printf("CNOT %s,%s\tStatus ", modeString(cq_mode), modeString(tq_mode));
+		printf("CNOT %s,%s\tStatus ", modeString(CQtype), modeString(TQtype));
 		if(cq_measure_type == Z_BASIS) {
-			if(CQ->measure_value == 1) {
+			if(mc == 0) {
 				printf("CQ=|0>, ");
 			} else {
 				printf("CQ=|1>, ");
 			}
 		} else {
-			if(CQ->measure_value == 1) {
+			if(mc == 0) {
 				printf("CQ=|+>, ");
 			} else {
 				printf("CQ=|->, ");
@@ -732,13 +632,13 @@ public:
 		}
 
 		if(tq_measure_type == Z_BASIS) {
-			if(TQ->measure_value == 1) {
+			if(mt == 0) {
 				printf("TQ:|0>");
 			} else {
 				printf("TQ:|1>");
 			}
 		} else {
-			if(TQ->measure_value == 1) {
+			if(mt == 0) {
 				printf("TQ:|+>");
 			} else {
 				printf("TQ:|->");
@@ -747,33 +647,87 @@ public:
 		printf("\n");
 	}
 
-	void run(void) { 
+public:
+	void cnot(void) {
+		logicalQubit *AQ = new logicalQubit(QReg, "LQ0", X_LEFT, &LQ0_qubits);
+		logicalQubit *TQ = new logicalQubit(QReg, "LQ1", X_RIGHT, &LQ1_qubits);
+		logicalQubit *CQ = new logicalQubit(QReg, "LQ2", X_RIGHT, &LQ2_qubits);
+		int cq_mode = KET_PLUS;
+		int tq_mode = KET_MINUS;
+
+		qd.size = 3;
+		qd.qubits[0] = AQ->QUBIT(AQ->dq_list[8]);
+		qd.qubits[1] = CQ->QUBIT(CQ->dq_list[8]);
+		qd.qubits[2] = TQ->QUBIT(TQ->dq_list[8]);
+
+		/************************************/
+		/* STEP1: initialize logical qubits */
+		/************************************/
+		AQ->initState(KET_ZERO);
+		CQ->initState(cq_mode);
+		TQ->initState(tq_mode);
+
+		/************************************/
+		/* STEP2: merge & split             */
+		/************************************/
+		int mxx = MergeSplitXX(AQ, TQ);
+		int mzz = MergeSplitZZ(AQ, CQ);
+		int mx = AQ->logical_MXV();
+
+		/************************************/
+		/* STEP3: post process              */
+		/************************************/
+		int a = (mxx == -1 ? 1 : 0);
+		int b = (mzz == -1 ? 1 : 0);
+		int c = (mx == -1 ? 1 : 0);
+
+		if(a == 1) CQ->logical_ZOP();
+		if(c == 1) CQ->logical_ZOP();
+		if(b == 1) TQ->logical_XOP();
+
 	#if 1
-		buildCNOT(KET_MINUS, KET_MINUS);
+		/************************************/
+		/* STEP4: validate status of CQ, TQ */
+		/************************************/
+		validateCNOT(cq_mode, CQ, tq_mode, TQ);
 	#else
-		buildCNOT(KET_ZERO, KET_ZERO);
-		buildCNOT(KET_ZERO, KET_ONE);
-		buildCNOT(KET_ZERO, KET_PLUS);
-		buildCNOT(KET_ZERO, KET_MINUS);
-		buildCNOT(KET_ONE, KET_ZERO);
-		buildCNOT(KET_ONE, KET_ONE);
-		buildCNOT(KET_ONE, KET_PLUS);
-		buildCNOT(KET_ONE, KET_MINUS);
-		buildCNOT(KET_PLUS, KET_ZERO);
-		buildCNOT(KET_PLUS, KET_ONE);
-		buildCNOT(KET_PLUS, KET_PLUS);
-		buildCNOT(KET_PLUS, KET_MINUS);
-		buildCNOT(KET_MINUS, KET_ZERO);
-		buildCNOT(KET_MINUS, KET_ONE);
-		buildCNOT(KET_MINUS, KET_PLUS);
-		buildCNOT(KET_MINUS, KET_MINUS);
+		AQ->checkLogicalStatus();
+		TQ->checkLogicalStatus();
+		CQ->checkLogicalStatus();
 	#endif
+	}
+
+	void genMLQState(void) {
+		logicalQubit *LQ0 = new logicalQubit(QReg, "LQ0", X_LEFT, &LQ0_qubits);
+        logicalQubit *LQ1 = new logicalQubit(QReg, "LQ1", X_RIGHT, &LQ1_qubits);
+        logicalQubit *LQ2 = new logicalQubit(QReg, "LQ2", X_RIGHT, &LQ2_qubits);
+
+		qd.size = 3;
+		qd.qubits[0] = LQ0->QUBIT(LQ0->dq_list[8]);
+		qd.qubits[1] = LQ1->QUBIT(LQ1->dq_list[8]);
+		qd.qubits[2] = LQ2->QUBIT(LQ2->dq_list[8]);
+
+	#if 0
+		LQ2->initState(KET_MINUS);
+		LQ1->initState(KET_ZERO);
+		X(QReg, LQ0->QUBIT(LQ0->dq_list[4]));
+		H(QReg, LQ0->QUBIT(LQ0->dq_list[4]));
+	#else
+		LQ1->initState(KET_PLUS);
+		LQ0->initState(KET_MINUS);
+	#endif
+
+		showQState(QReg, qd);
 	}
 };
 
 int main(int argc, char **argv)
 {
     SC17_3LQ_CNOT *CNOT = new SC17_3LQ_CNOT();
-    CNOT->run();
+#if 0
+    CNOT->cnot();
+#else
+	CNOT->genMLQState();
+#endif
 }
 

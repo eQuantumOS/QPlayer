@@ -24,7 +24,7 @@ private:
 private:
 	void log_printf(int begin1, int end1, int begin2, int end2, int begin3, int end3) {
 			printf("Data Qubits : %d/%d/%d %d/%d/%d %d/%d/%d\n", end1, end1-1, begin1, end2, end2-1, begin2, end3, end3-1, begin3);
-			QReg->dump(begin1, end1, begin2, end2, begin3, end3);
+			showQState(QReg, begin1, end1, begin2, end2, begin3, end3);
 	}
 
 	int X_Stabilizer(int X, int a, int b) {
@@ -81,7 +81,7 @@ private:
 		} else {
 			printf("Measure_LQ - %d/%d/%d/%d/%d/%d/%d/%d/%d\n", q[2],q[1],q[0],q[5],q[4],q[3],q[8],q[7],q[6]);
 #ifdef DUMP
-			QReg->dump(q[0], q[2], q[3], q[5], q[6], q[8]);
+			showQState(QReg, q[0], q[2], q[3], q[5], q[6], q[8]);
 #endif
 		}
 
@@ -107,7 +107,7 @@ private:
 		} else {
 			printf("Measure_LQ - %d/%d/%d/%d/%d/%d/%d/%d/%d\n", q[2],q[1],q[0],q[5],q[4],q[3],q[8],q[7],q[6]);
 #ifdef DUMP
-			QReg->dump(q[0], q[2], q[3], q[5], q[6], q[8]);
+			showQState(QReg, q[0], q[2], q[3], q[5], q[6], q[8]);
 #endif
 		}
 
@@ -258,7 +258,7 @@ private:
 
 #ifdef DUMP
 		printf("CQ: 4/3/2 11/10/9 18/17/16\n");
-		QReg->dump(2, 4, 9, 11, 16, 18);
+		showQState(QReg, 2, 4, 9, 11, 16, 18);
 #endif
 	}
 
@@ -334,59 +334,12 @@ private:
 	}
 
 	void Transversal_hadamard(void) {
-#if 1
 		for (int i = 2; i <= 4; i++)
 			H(QReg, i);
 		for (int i = 9; i <= 11; i++)
 			H(QReg, i);
 		for (int i = 16; i <= 18; i++)
 			H(QReg, i);
-#else
-		printf("---------> H to D2\n");
-		H(QReg, 2);
-		printf("DQ1: 4/3/2 11/10/9 18/17/16\n");
-		QReg->dump(2, 4, 9, 11, 16, 18);
-
-		printf("---------> H to D3\n");
-		H(QReg, 3);
-		printf("DQ1: 4/3/2 11/10/9 18/17/16\n");
-		QReg->dump(2, 4, 9, 11, 16, 18);
-
-		printf("---------> H to D4\n");
-		H(QReg, 4);
-		printf("DQ1: 4/3/2 11/10/9 18/17/16\n");
-		QReg->dump(2, 4, 9, 11, 16, 18);
-
-		printf("---------> H to D9\n");
-		H(QReg, 9);
-		printf("DQ1: 4/3/2 11/10/9 18/17/16\n");
-		QReg->dump(2, 4, 9, 11, 16, 18);
-
-		printf("---------> H to D10\n");
-		H(QReg, 10);
-		printf("DQ1: 4/3/2 11/10/9 18/17/16\n");
-		QReg->dump(2, 4, 9, 11, 16, 18);
-
-		printf("---------> H to D11\n");
-		H(QReg, 11);
-		printf("DQ1: 4/3/2 11/10/9 18/17/16\n");
-		QReg->dump(2, 4, 9, 11, 16, 18);
-
-		printf("---------> H to D16\n");
-		H(QReg, 16);
-		printf("DQ1: 4/3/2 11/10/9 18/17/16\n");
-		QReg->dump(2, 4, 9, 11, 16, 18);
-
-		printf("---------> H to D17\n");
-		H(QReg, 17);
-		printf("DQ1: 4/3/2 11/10/9 18/17/16\n");
-		QReg->dump(2, 4, 9, 11, 16, 18);
-
-		printf("---------> H to D18\n");
-		H(QReg, 18);
-		printf("DQ1: 4/3/2 11/10/9 18/17/16\n");
-		QReg->dump(2, 4, 9, 11, 16, 18);
-#endif
 
 		int mx_stb6, mx_stb8, mx_stb12, mx_stb14, mz_stb0, mz_stb7, mz_stb13, mz_stb21;
 		Z_Left_LQ_ESM(mx_stb6, mx_stb8, mx_stb12, mx_stb14, mz_stb0, mz_stb7, mz_stb13, mz_stb21);
@@ -397,7 +350,7 @@ private:
 		/* measure 9 data qubits */ 
 #ifdef DUMP
 		printf("CQ: 4/3/2 11/10/9 18/17/16\n");
-		QReg->dump(2, 4, 9, 11, 16, 18);
+		showQState(QReg, 2, 4, 9, 11, 16, 18);
 #endif
 	}
 
@@ -492,7 +445,7 @@ private:
 			Logical_X(3, 10, 17);
 #ifdef DUMP
 		printf("CQ: 4/3/2 11/10/9 18/17/16\n");
-		QReg->dump(2, 4, 9, 11, 16, 18);
+		showQState(QReg, 2, 4, 9, 11, 16, 18);
 #endif
 #if 0
 		vector<int> q;
@@ -619,7 +572,7 @@ private:
 		b = (mz_stb19 == 1 ? -1 : 1) * (mz_stb21 == 1 ? -1 : 1);
 #ifdef DUMP
 		printf("(CQ+AQ)+TQ: 4/3/2 11/10/9 18/17/16 26/25/24 29/28/27 38/37/36 41/40/39 51/50/49 54/53/52\n");
-		QReg->dump1(2, 4, 9, 11, 16, 18, 24, 26, 27, 29, 36, 38, 39, 41, 49, 51, 52, 54);
+		showQState1(QReg, 2, 4, 9, 11, 16, 18, 24, 26, 27, 29, 36, 38, 39, 41, 49, 51, 52, 54);
 #endif
 
 		printf("\tSTEP 7-2. Mzz split \n");
@@ -713,7 +666,7 @@ private:
 		}
 #ifdef DUMP
 	//	printf("DQ2: 4/3/2 11/10/9 18/17/16 29/28/27 41/40/39 54/53/52\n");
-	//	QReg->dump(2, 4, 9, 11, 16, 18, 27, 29, 39, 41, 52, 54);
+	//	showQState(QReg, 2, 4, 9, 11, 16, 18, 27, 29, 39, 41, 52, 54);
 #endif
 	}
 
@@ -758,7 +711,7 @@ private:
 		a = (mx_stb22 == 1 ? -1 : 1) * (mx_stb45 == 1 ? -1 : 1);
 #ifdef DUMP
 		printf("CQ+(AQ+TQ): 4/3/2 11/10/9 18/17/16 29/28/27/26/25/24 41/40/39/38/37/36 54/53/52/51/50/49 \n");
-		QReg->dump(2, 4, 9, 11, 16, 18, 24, 29, 36, 41, 49, 54);
+		showQState(QReg, 2, 4, 9, 11, 16, 18, 24, 29, 36, 41, 49, 54);
 #endif
 
 		printf("\tSTEP 6-2. Mxx split \n");
@@ -834,28 +787,28 @@ public:
 			Create_TQ();
 #ifdef DUMP
 			printf("CQ+TQ: 4/3/2 11/10/9 18/17/16 29/28/27 41/40/39 54/53/52\n");
-			QReg->dump(2, 4, 9, 11, 16, 18, 27, 29, 39, 41, 52, 54);
+			showQState(QReg, 2, 4, 9, 11, 16, 18, 27, 29, 39, 41, 52, 54);
 #endif
 
 			printf("\nSTEP 5. Create AQ with X-LEFT in |0> state\n");
 			Create_AQ();
 #ifdef DUMP
 			printf("CQ+AQ+TQ: 4/3/2 11/10/9 18/17/16 26/25/24 29/28/27 38/37/36 41/40/39 51/50/49 54/53/52\n");
-			QReg->dump(2, 4, 9, 11, 16, 18, 24, 26, 27, 29, 36, 38, 39, 41, 49, 51, 52, 54);
+			showQState(QReg, 2, 4, 9, 11, 16, 18, 24, 26, 27, 29, 36, 38, 39, 41, 49, 51, 52, 54);
 #endif
 
 			printf("\nSTEP 6. Mxx AQ and TQ : ESM round\n");
 			Mxx_Merge_Split();
 #ifdef DUMP
 			printf("CQ+AQ+TQ: 4/3/2 11/10/9 18/17/16 26/25/24 29/28/27 38/37/36 41/40/39 51/50/49 54/53/52\n");
-			QReg->dump(2, 4, 9, 11, 16, 18, 24, 26, 27, 29, 36, 38, 39, 41, 49, 51, 52, 54);
+			showQState(QReg, 2, 4, 9, 11, 16, 18, 24, 26, 27, 29, 36, 38, 39, 41, 49, 51, 52, 54);
 #endif
 
 			printf("\nSTEP 7. Mzz CQ and AQ : ESM round\n");
 			Mzz_Merge_Split();
 #ifdef DUMP
 			printf("CQ+AQ+TQ: 4/3/2 11/10/9 18/17/16 26/25/24 29/28/27 38/37/36 41/40/39 51/50/49 54/53/52\n");
-			QReg->dump(2, 4, 9, 11, 16, 18, 24, 26, 27, 29, 36, 38, 39, 41, 49, 51, 52, 54);
+			showQState(QReg, 2, 4, 9, 11, 16, 18, 24, 26, 27, 29, 36, 38, 39, 41, 49, 51, 52, 54);
 #endif
 
 			/* measure AQ in X-basis */
@@ -887,7 +840,7 @@ public:
 
 #ifdef DUMP
 			printf("CQ+TQ: 4/3/2 11/10/9 18/17/16 29/28/27 41/40/39 54/53/52\n");
-			QReg->dump(2, 4, 9, 11, 16, 18, 27, 29, 39, 41, 52, 54);
+			showQState(QReg, 2, 4, 9, 11, 16, 18, 27, 29, 39, 41, 52, 54);
 #endif
 
 			printf("\nSTEP 9. Measurement\n");

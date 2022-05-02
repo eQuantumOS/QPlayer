@@ -23,23 +23,21 @@
 #include "qplayer.h"
 
 void run(QRegister *QReg) {
-//	X(QReg, 0);
+	X(QReg, 0);
 	H(QReg, 0);
 
 	X(QReg, 1);
-	H(QReg, 1);
+	X(QReg, 3);
 
 	CX(QReg, 0, 1);
-	QReg->dump();
-
-	printf("\n\n");
-	M(QReg, 1);
-	QReg->dump();
+	CX(QReg, 0, 2);
+	CX(QReg, 0, 3);
+	showQState(QReg);
 };
 
 int main(int argc, char **argv)
 {
-	QRegister *QReg = new QRegister(2);
+	QRegister *QReg = new QRegister(4);
 
 	run(QReg);
 }

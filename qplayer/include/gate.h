@@ -14,7 +14,6 @@
 /**
  * @file    gate.h
  * @author  Kisung Jin - ksjin@etri.re.kr
- * @date    10-09-21
  * @brief       
  */
 
@@ -49,9 +48,10 @@ extern void CR(QRegister *QReg, int control, int target, double angle);
 extern void CCX(QRegister *QReg, int control1, int control2, int target);
 extern void SWAP(QRegister *QReg, int qubit1, int qubit2);
 extern int M(QRegister *QReg, int qubit);
+extern int MV(QRegister *QReg, int qubit);
 extern int MF(QRegister *QReg, int qubit, int collapse);
-extern void applyMatrix(QRegister *QReg, int qubit, complex_t M[]);
-extern void applyControlledMatrix(QRegister *QReg, int control, int target, complex_t M[]);
+
+/* These are experimental functions */
 extern void EstimateQState(QRegister *QReg, int qubit);
 extern void isEntangled(QRegister *QReg, int qubit, bool &entangled, int &sign);
 extern int QType(QRegister *QReg, int qubit);

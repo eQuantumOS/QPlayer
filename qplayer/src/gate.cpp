@@ -62,6 +62,293 @@ static void reset_gphase(complex_t M[])
 }
 
 /*
+ * Apply 1-qubit matrix operations to quantum states. 
+ */
+static void applyMatrix(QRegister *QReg, int qubit, complex_t M[])
+{
+	if(qubit >= QReg->getNumQubits()) {
+		printf("[%s] qubit(%d) out of range!\n", __func__, qubit);
+		exit(0);
+	}
+
+	size_t stage = QReg->incStage();
+
+	qsize_t stride = quantum_shiftL(1, (qsize_t)qubit);
+
+	complex_t m00 = M[0];
+	complex_t m01 = M[1];
+	complex_t m10 = M[2];
+	complex_t m11 = M[3];
+
+	/*
+	 * We apply the matrix by traversing the qstores of all quantum registers.
+	 */
+	std::vector<QState *> newQState[QSTORE_PARTITION];
+	std::vector<QState *> delQState[QSTORE_PARTITION];
+
+	/* 
+	 * (STEP1) apply matrix
+	 */
+	#pragma omp parallel for
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		std::map<qsize_t, QState*>::iterator it;
+		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
+			QState *Q = it->second;
+			QState *lower = NULL;
+			QState *upper = NULL;
+			complex_t amp0, amp1;
+			complex_t in0, in1;
+			qsize_t i0, i1;
+
+			i0 = Q->getIndex();
+
+			if(stripe_lower(i0, qubit) == true) {
+				/* lower bound of this stripe */
+				i1 = i0 + stride;
+
+				lower = Q;
+				upper = QReg->findQState(i1);
+			} else {
+				/* upper bound of this stripe */
+				i1 = i0;
+				i0 = i1 - stride;
+
+				lower = QReg->findQState(i0);
+				upper = Q;
+			}
+
+			/* check if already applied by other thread */
+			if(QReg->checkStage(lower, upper, i0, stage) < 0) {
+				/* just skip previously applied states */
+				continue;
+			}
+
+			if(lower == NULL) {
+				in0 = 0.0;
+			} else {
+				in0 = lower->getAmplitude();
+			}
+
+			if(upper == NULL) {
+				in1 = 0.0;
+			} else {
+				in1 = upper->getAmplitude();
+			}
+	
+			amp0 = m00*in0+m01*in1;
+			amp1 = m10*in0+m11*in1;
+
+			if(lower) {
+			#if 0
+				if(norm(amp0) > AMPLITUDE_EPS) {
+			#else
+				if(norm(amp0) > 0) {
+			#endif
+					lower->setAmplitude(amp0);
+				} else {
+					delQState[i].push_back(lower);
+				}
+			} else {
+			#if 0
+				if(norm(amp0) > AMPLITUDE_EPS) {
+			#else
+				if(norm(amp0) > 0) {
+			#endif
+					lower = new QState(i0, amp0);
+			
+					newQState[i].push_back(lower);
+				}
+			}
+
+			if(upper) {
+			#if 0
+				if(norm(amp1) > AMPLITUDE_EPS) {
+			#else
+				if(norm(amp1) > 0) {
+			#endif
+					upper->setAmplitude(amp1);
+				} else {
+					delQState[i].push_back(upper);
+				}
+			} else {
+			#if 0
+				if(norm(amp1) > AMPLITUDE_EPS) {
+			#else
+				if(norm(amp1) > 0) {
+			#endif
+					upper = new QState(i1, amp1);
+					newQState[i].push_back(upper);
+				}
+			}
+		}
+	}
+
+	/* 
+	 * (STEP2) remove zero amplitude states 
+	 */
+	#pragma omp parallel for
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		for(int j=0; j<delQState[i].size(); j++) {
+			QState *Q = delQState[i][j];
+			QReg->eraseQState(Q->getIndex());
+		}
+		delQState[i].clear();
+	}
+
+	/* 
+	 * (STEP3) add new non-zero amplitude states
+	 */
+	#pragma omp parallel for
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		for(int j=0; j<newQState[i].size(); j++) {
+			QState *Q = newQState[i][j];
+			QReg->setQState(Q->getIndex(), Q);
+		}
+		newQState[i].clear();
+	}
+}
+
+/*
+ * Apply controlled matrix operations to quantum states. 
+ */
+static void applyControlledMatrix(QRegister *QReg, int control, int target, complex_t M[])
+{
+	if(target >= QReg->getNumQubits()) {
+		printf("target(%d) out of range!\n", target);
+		exit(0);
+	}
+
+	if(control >= QReg->getNumQubits()) {
+		printf("control(%d) out of range!\n", control);
+		exit(0);
+	}
+
+	size_t stage = QReg->incStage();
+
+	qsize_t stride = quantum_shiftL(1, (qsize_t)target);
+
+	complex_t m00 = M[0];
+	complex_t m01 = M[1];
+	complex_t m10 = M[2];
+	complex_t m11 = M[3];
+
+	/*
+	 * We apply the matrix by traversing the qstores of all quantum registers.
+	 */
+	std::vector<QState *> newQState[QSTORE_PARTITION];
+	std::vector<QState *> delQState[QSTORE_PARTITION];
+
+	/* 
+	 * (STEP1) apply matrix
+	 */
+	#pragma omp parallel for
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		std::map<qsize_t, QState*>::iterator it;
+		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
+			QState *Q = it->second;
+			QState *lower = NULL;
+			QState *upper = NULL;
+			complex_t amp0, amp1;
+			complex_t in0, in1;
+			qsize_t i0, i1;
+
+			i0 = Q->getIndex();
+
+			if(stripe_lower(Q->getIndex(), control) == true) {
+				/* control is |0> */
+				continue;
+			}
+
+			if(stripe_lower(i0, target) == true) {
+				/* lower bound of this stripe */
+				i1 = i0 + stride;
+
+				lower = Q;
+				upper = QReg->findQState(i1);
+			} else {
+				/* upper bound of this stripe */
+				i1 = i0;
+				i0 = i1 - stride;
+
+				lower = QReg->findQState(i0);
+				upper = Q;
+			}
+
+			/* check if already applied by other thread */
+			if(QReg->checkStage(lower, upper, i0, stage) < 0) {
+				/* just skip previously applied states */
+				continue;
+			}
+
+			if(lower == NULL) {
+				in0 = 0.0;
+			} else {
+				in0 = lower->getAmplitude();
+			}
+
+			if(upper == NULL) {
+				in1 = 0.0;
+			} else {
+				in1 = upper->getAmplitude();
+			}
+	
+			amp0 = m00*in0+m01*in1;
+			amp1 = m10*in0+m11*in1;
+	
+			if(lower) {
+				if(norm(amp0) > AMPLITUDE_EPS) {
+					lower->setAmplitude(amp0);
+				} else {
+					delQState[i].push_back(lower);
+				}
+			} else {
+				if(norm(amp0) > AMPLITUDE_EPS) {
+					lower = new QState(i0, amp0);
+					newQState[i].push_back(lower);
+				}
+			}
+
+			if(upper) {
+				if(norm(amp1) > AMPLITUDE_EPS) {
+					upper->setAmplitude(amp1);
+				} else {
+					delQState[i].push_back(upper);
+				}
+			} else {
+				if(norm(amp1) > AMPLITUDE_EPS) {
+					upper = new QState(i1, amp1);
+					newQState[i].push_back(upper);
+				}
+			}
+		}
+	}
+
+	/* 
+	 * (STEP2) remove zero amplitude states 
+	 */
+	#pragma omp parallel for
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		for(int j=0; j<delQState[i].size(); j++) {
+			QState *Q = delQState[i][j];
+			QReg->eraseQState(Q->getIndex());
+		}
+		delQState[i].clear();
+	}
+
+	/* 
+	 * (STEP3) add new non-zero amplitude states
+	 */
+	#pragma omp parallel for
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		for(int j=0; j<newQState[i].size(); j++) {
+			QState *Q = newQState[i][j];
+			QReg->setQState(Q->getIndex(), Q);
+		}
+		newQState[i].clear();
+	}
+}
+
+/*
  * initZ() initialize the qubit to |0>.
  */
 void initZ(QRegister *QReg, int qubit)
@@ -512,7 +799,13 @@ void SWAP(QRegister *QReg, int qubit1, int qubit2)
 int M(QRegister *QReg, int qubit) 
 {
 	if(qubit >= QReg->getNumQubits()) {
-		printf("qubit(%d) out of range!\n", qubit);
+		printf("[%s] qubit(%d) out of range!\n", __func__, qubit);
+
+	#if 1
+		char *ptr = NULL;
+		strcpy(ptr, "hello");
+	#endif
+
 		exit(0);
 	}
 
@@ -601,10 +894,16 @@ int M(QRegister *QReg, int qubit)
 	return state;
 }
 
+int MV(QRegister *QReg, int qubit) {
+	int mv = M(QReg, qubit);
+
+	return mv == 0 ? 1 : -1;
+}
+
 int MF(QRegister *QReg, int qubit, int collapse) 
 {
 	if(qubit >= QReg->getNumQubits()) {
-		printf("qubit(%d) out of range!\n", qubit);
+		printf("[%s] qubit(%d) out of range!\n", __func__, qubit);
 		exit(0);
 	}
 
@@ -690,299 +989,12 @@ int MF(QRegister *QReg, int qubit, int collapse)
 }
 
 /*
- * Apply 1-qubit matrix operations to quantum states. 
- */
-void applyMatrix(QRegister *QReg, int qubit, complex_t M[])
-{
-	if(qubit >= QReg->getNumQubits()) {
-		printf("qubit(%d) out of range!\n", qubit);
-		exit(0);
-	}
-
-	size_t stage = QReg->incStage();
-
-	qsize_t stride = quantum_shiftL(1, (qsize_t)qubit);
-
-	complex_t m00 = M[0];
-	complex_t m01 = M[1];
-	complex_t m10 = M[2];
-	complex_t m11 = M[3];
-
-	/*
-	 * We apply the matrix by traversing the qstores of all quantum registers.
-	 */
-	std::vector<QState *> newQState[QSTORE_PARTITION];
-	std::vector<QState *> delQState[QSTORE_PARTITION];
-
-	/* 
-	 * (STEP1) apply matrix
-	 */
-	#pragma omp parallel for
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		std::map<qsize_t, QState*>::iterator it;
-		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
-			QState *Q = it->second;
-			QState *lower = NULL;
-			QState *upper = NULL;
-			complex_t amp0, amp1;
-			complex_t in0, in1;
-			qsize_t i0, i1;
-
-			i0 = Q->getIndex();
-
-			if(stripe_lower(i0, qubit) == true) {
-				/* lower bound of this stripe */
-				i1 = i0 + stride;
-
-				lower = Q;
-				upper = QReg->findQState(i1);
-			} else {
-				/* upper bound of this stripe */
-				i1 = i0;
-				i0 = i1 - stride;
-
-				lower = QReg->findQState(i0);
-				upper = Q;
-			}
-
-			/* check if already applied by other thread */
-			if(QReg->checkStage(lower, upper, i0, stage) < 0) {
-				/* just skip previously applied states */
-				continue;
-			}
-
-			if(lower == NULL) {
-				in0 = 0.0;
-			} else {
-				in0 = lower->getAmplitude();
-			}
-
-			if(upper == NULL) {
-				in1 = 0.0;
-			} else {
-				in1 = upper->getAmplitude();
-			}
-	
-			amp0 = m00*in0+m01*in1;
-			amp1 = m10*in0+m11*in1;
-
-			if(lower) {
-			#if 0
-				if(norm(amp0) > AMPLITUDE_EPS) {
-			#else
-				if(norm(amp0) > 0) {
-			#endif
-					lower->setAmplitude(amp0);
-				} else {
-					delQState[i].push_back(lower);
-				}
-			} else {
-			#if 0
-				if(norm(amp0) > AMPLITUDE_EPS) {
-			#else
-				if(norm(amp0) > 0) {
-			#endif
-					lower = new QState(i0, amp0);
-			
-					newQState[i].push_back(lower);
-				}
-			}
-
-			if(upper) {
-			#if 0
-				if(norm(amp1) > AMPLITUDE_EPS) {
-			#else
-				if(norm(amp1) > 0) {
-			#endif
-					upper->setAmplitude(amp1);
-				} else {
-					delQState[i].push_back(upper);
-				}
-			} else {
-			#if 0
-				if(norm(amp1) > AMPLITUDE_EPS) {
-			#else
-				if(norm(amp1) > 0) {
-			#endif
-					upper = new QState(i1, amp1);
-					newQState[i].push_back(upper);
-				}
-			}
-		}
-	}
-
-	/* 
-	 * (STEP2) remove zero amplitude states 
-	 */
-	#pragma omp parallel for
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		for(int j=0; j<delQState[i].size(); j++) {
-			QState *Q = delQState[i][j];
-			QReg->eraseQState(Q->getIndex());
-		}
-		delQState[i].clear();
-	}
-
-	/* 
-	 * (STEP3) add new non-zero amplitude states
-	 */
-	#pragma omp parallel for
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		for(int j=0; j<newQState[i].size(); j++) {
-			QState *Q = newQState[i][j];
-			QReg->setQState(Q->getIndex(), Q);
-		}
-		newQState[i].clear();
-	}
-}
-
-/*
- * Apply controlled matrix operations to quantum states. 
- */
-void applyControlledMatrix(QRegister *QReg, int control, int target, complex_t M[])
-{
-	if(target >= QReg->getNumQubits()) {
-		printf("target(%d) out of range!\n", target);
-		exit(0);
-	}
-
-	if(control >= QReg->getNumQubits()) {
-		printf("control(%d) out of range!\n", control);
-		exit(0);
-	}
-
-	size_t stage = QReg->incStage();
-
-	qsize_t stride = quantum_shiftL(1, (qsize_t)target);
-
-	complex_t m00 = M[0];
-	complex_t m01 = M[1];
-	complex_t m10 = M[2];
-	complex_t m11 = M[3];
-
-	/*
-	 * We apply the matrix by traversing the qstores of all quantum registers.
-	 */
-	std::vector<QState *> newQState[QSTORE_PARTITION];
-	std::vector<QState *> delQState[QSTORE_PARTITION];
-
-	/* 
-	 * (STEP1) apply matrix
-	 */
-	#pragma omp parallel for
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		std::map<qsize_t, QState*>::iterator it;
-		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
-			QState *Q = it->second;
-			QState *lower = NULL;
-			QState *upper = NULL;
-			complex_t amp0, amp1;
-			complex_t in0, in1;
-			qsize_t i0, i1;
-
-			i0 = Q->getIndex();
-
-			if(stripe_lower(Q->getIndex(), control) == true) {
-				/* control is |0> */
-				continue;
-			}
-
-			if(stripe_lower(i0, target) == true) {
-				/* lower bound of this stripe */
-				i1 = i0 + stride;
-
-				lower = Q;
-				upper = QReg->findQState(i1);
-			} else {
-				/* upper bound of this stripe */
-				i1 = i0;
-				i0 = i1 - stride;
-
-				lower = QReg->findQState(i0);
-				upper = Q;
-			}
-
-			/* check if already applied by other thread */
-			if(QReg->checkStage(lower, upper, i0, stage) < 0) {
-				/* just skip previously applied states */
-				continue;
-			}
-
-			if(lower == NULL) {
-				in0 = 0.0;
-			} else {
-				in0 = lower->getAmplitude();
-			}
-
-			if(upper == NULL) {
-				in1 = 0.0;
-			} else {
-				in1 = upper->getAmplitude();
-			}
-	
-			amp0 = m00*in0+m01*in1;
-			amp1 = m10*in0+m11*in1;
-	
-			if(lower) {
-				if(norm(amp0) > AMPLITUDE_EPS) {
-					lower->setAmplitude(amp0);
-				} else {
-					delQState[i].push_back(lower);
-				}
-			} else {
-				if(norm(amp0) > AMPLITUDE_EPS) {
-					lower = new QState(i0, amp0);
-					newQState[i].push_back(lower);
-				}
-			}
-
-			if(upper) {
-				if(norm(amp1) > AMPLITUDE_EPS) {
-					upper->setAmplitude(amp1);
-				} else {
-					delQState[i].push_back(upper);
-				}
-			} else {
-				if(norm(amp1) > AMPLITUDE_EPS) {
-					upper = new QState(i1, amp1);
-					newQState[i].push_back(upper);
-				}
-			}
-		}
-	}
-
-	/* 
-	 * (STEP2) remove zero amplitude states 
-	 */
-	#pragma omp parallel for
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		for(int j=0; j<delQState[i].size(); j++) {
-			QState *Q = delQState[i][j];
-			QReg->eraseQState(Q->getIndex());
-		}
-		delQState[i].clear();
-	}
-
-	/* 
-	 * (STEP3) add new non-zero amplitude states
-	 */
-	#pragma omp parallel for
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		for(int j=0; j<newQState[i].size(); j++) {
-			QState *Q = newQState[i][j];
-			QReg->setQState(Q->getIndex(), Q);
-		}
-		newQState[i].clear();
-	}
-}
-
-/*
  * Perform weak-measurement without collapsing the quantum state.
  */
 void EstimateQState(QRegister *QReg, int qubit) 
 {
 	if(qubit >= QReg->getNumQubits()) {
-		printf("qubit(%d) out of range!\n", qubit);
+		printf("[%s] qubit(%d) out of range!\n", __func__, qubit);
 		exit(0);
 	}
 

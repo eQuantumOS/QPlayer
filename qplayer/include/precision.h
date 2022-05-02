@@ -14,7 +14,6 @@
 /**
  * @file    precision.h
  * @author  Kisung Jin - ksjin@etri.re.kr
- * @date    10-09-21
  * @brief       
  */
 
@@ -33,11 +32,6 @@ using namespace std;
 
 #define AMPLITUDE_EPS 1e-13
 
-#define __bit_test(x,pos) ((x) & (1ULL<<(pos)))
-#define __bit_set(x,pos) ((x) | (1ULL<<(pos)))
-#define __bit_flip(x,pos) ((x) ^ (1ULL<<(pos)))
-#define __bit_reset(x,pos) ((x) & ~(1ULL<<(pos)))
-
 #ifdef LARGE_SCALE
 #include <boost/multiprecision/cpp_int.hpp>
 using namespace boost::multiprecision;
@@ -45,8 +39,8 @@ using namespace boost::multiprecision;
 
 #ifdef LARGE_SCALE
 #if 1
-typedef uint128_t qsize_t;
-#define MAX_QUBITS	128
+typedef uint1024_t qsize_t;
+#define MAX_QUBITS	1024
 #else
 //typedef uint256_t qsize_t;
 //typedef uint512_t qsize_t;
@@ -57,30 +51,8 @@ typedef uint64_t qsize_t;
 #define MAX_QUBITS	64
 #endif
 
-#define MAX_LQUBITS 20
 #define QSTORE_PARTITION    1024
 
-struct qubit_delimiter {
-    int size;
-    int qubits[128];
-};
-
 typedef complex<double> complex_t;
-
-typedef enum {
-    KET_ZERO=0,
-    KET_ONE,
-    KET_PLUS,
-    KET_MINUS,
-    KET_SPLUS,
-    KET_SMINUS,
-    KET_UNKNOWN
-} QUBIT_TYPE_T;
-
-extern qsize_t quantum_shiftL(qsize_t left, qsize_t right);
-extern qsize_t quantum_shiftR(qsize_t left, qsize_t right);
-extern bool stripe_lower(qsize_t index, int qubit);
-extern bool stripe_upper(qsize_t index, int qubit);
-extern void print_binary(int size, qsize_t value);
 
 #endif

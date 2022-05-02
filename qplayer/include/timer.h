@@ -14,7 +14,6 @@
 /**
  * @file    qtimer.h
  * @author  Kisung Jin - ksjin@etri.re.kr
- * @date    10-09-21
  * @brief       
  */
 
