@@ -321,8 +321,8 @@ class logicalQubit {
 	int getPQ(int index) {
 		return LQ->qubits[index];
 	}
-	void dump(void) {
-		showQState(QReg);
+	void showQState(void) {
+		dump(QReg);
 	}
 
   public:
@@ -564,7 +564,7 @@ int main(int argc, char **argv)
 			case '8' : CASE_ZERROR_CORRECTION(LQ); break;
 		}
 
-		LQ->dump();
+		LQ->showQState();
 		
 		/* this is for ignoring carrige return */
 		c = getchar();

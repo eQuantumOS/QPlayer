@@ -108,12 +108,12 @@ void grover(QRegister *QReg, int qubits) {
  	 */
 	H(QReg, mid);
 	M(QReg, mid);
-	showQState(QReg);
+	dump(QReg);
 
 	for(int i=0; i<qubits; i++) {
 		M(QReg, i);
 	}
-	showQState(QReg);
+	dump(QReg);
 	printf("States: %ld\n", (size_t)QReg->getNumStates());
 }
 

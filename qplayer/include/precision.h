@@ -38,17 +38,11 @@ using namespace boost::multiprecision;
 #endif
 
 #ifdef LARGE_SCALE
-#if 1
-typedef uint1024_t qsize_t;
-#define MAX_QUBITS	1024
+    typedef uint1024_t qsize_t;
+    #define MAX_QUBITS	1024
 #else
-//typedef uint256_t qsize_t;
-//typedef uint512_t qsize_t;
-//typedef uint1024_t qsize_t;
-#endif
-#else
-typedef uint64_t qsize_t;
-#define MAX_QUBITS	64
+    typedef uint64_t qsize_t;
+    #define MAX_QUBITS	64
 #endif
 
 #define QSTORE_PARTITION    1024

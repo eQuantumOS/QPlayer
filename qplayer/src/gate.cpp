@@ -19,6 +19,7 @@
  */
 
 #include "gate.h"
+#include "dump.h"
 
 using namespace std;
 

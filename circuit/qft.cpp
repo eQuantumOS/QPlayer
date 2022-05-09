@@ -42,7 +42,7 @@ void qft(QRegister *QReg, int qubits) {
 		SWAP(QReg, i, qubits-i-1);
 	}
 
-	showQState(QReg);
+	dump(QReg);
 	printf("States: %ld\n", (size_t)QReg->getNumStates());
 }
 

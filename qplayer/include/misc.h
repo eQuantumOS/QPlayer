@@ -50,8 +50,8 @@ typedef enum {
 } QUBIT_TYPE_T;
 
 typedef enum { 
-	TENSOR=0, 
-	ENTANGLE 
+    TENSOR=0, 
+    ENTANGLE 
 } QUBIT_RELATION;
 
 extern qsize_t quantum_shiftL(qsize_t left, qsize_t right);

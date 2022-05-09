@@ -57,42 +57,7 @@ public:
 	QRegister(int n);
 	~QRegister(void);
 
-	/* 
-	 * Reset quantum state to |00...00> 
-	 */
-	void reset(void) {
-		clear();
-		init();
-	}
-
-	/* 
-	 * Initialize quantum state to |00...00> 
-	 */
-	void init(void) {
-		QState *q = new QState(0, 1.0);
-		qstore[0][0] = q;
-		curStage = 0;
-	}
-
-	/* 
-	 * Replace quantum state by using input QRegister 
-	 */
-	void replace(QRegister *qreg) {
-		QState *Q;
-
-		/* clear all states of this register */
-		clear();
-
-		qreg->setOrderedQState();
-		while((Q = qreg->getOrderedQState()) != NULL) {
-			QState *newQ = new QState(Q->getIndex(), Q->getAmplitude());
-			setQState(newQ->getIndex(), newQ);
-		}
-	}
-
-	/* 
-	 * QRegister clear all states 
-	 */
+	/* clear all quantum states */
 	void clear(void) {
 		for(int i=0; i<QSTORE_PARTITION; i++) {
 			for(auto entry : qstore[i]) {
@@ -102,14 +67,36 @@ public:
 		}
 	}
 
-	/* 
-	 * Returns the number of qubits for this Q-register 
-	 */
+	/* initialize quantum state to |00...00> */
+	void init(void) {
+		QState *q = new QState(0, 1.0);
+		qstore[0][0] = q;
+		curStage = 0;
+	}
+
+	/* reset quantum state to |00...00> */
+	void reset(void) {
+		clear();
+		init();
+	}
+
+	/* replace quantum state by using input QRegister */
+	void replace(QRegister *qreg) {
+		QState *Q;
+
+		clear();
+
+		qreg->setOrderedQState();
+		while((Q = qreg->getOrderedQState()) != NULL) {
+			QState *newQ = new QState(Q->getIndex(), Q->getAmplitude());
+			setQState(newQ->getIndex(), newQ);
+		}
+	}
+
+	/* return the number of qubits for this Q-register */
 	int getNumQubits(void) { return numQubit; }
 
-	/* 
-	 * Returns the total number of non-zero amplitude states 
-	 */
+	/* return the total number of non-zero amplitude states */
 	qsize_t getNumStates() { 
 		qsize_t states = 0;
 
@@ -120,28 +107,20 @@ public:
 		return states; 
 	}
 
-	/* 
-	 * Returns qstore partition id according to state index 
-	 */
+	/* return qstore partition id according to state index */
 	int getPartId(qsize_t index) { return (int)(index % QSTORE_PARTITION); } 
 
-	/* 
-	 * qstore lock & unlock 
-	 */
+	/* increase operation stage */
+	short incStage(void) { return ++curStage; }
+
+	/* qstore lock & unlock */
 	void QLock(int index) { qlock[index].lock(); }
 	void QUnlock(int index) { qlock[index].unlock(); } 
 	void QLock(qsize_t index) { qlock[getPartId(index)].lock(); }
 	void QUnlock(qsize_t index) { qlock[getPartId(index)].unlock(); } 
 
-	void SLock(void) { slock.lock(); }
-	void SUnlock(void) { slock.unlock(); } 
-
-	short incStage(void) { return ++curStage; }
-
 public:
-	/*
-	 * Set check & set operation state 
-	 */
+	/* set check & set operation state */
 	int checkStage(QState *s0, QState *s1, qsize_t lower_idx, short stage) {
 		int ret = 0;
 
@@ -169,9 +148,7 @@ public:
 	}
 	
 
-	/*
-	 * Add new state to the quantum register 
-	 */
+	/* add new state to the quantum register */
 	void setQState(qsize_t index, QState *state) {
 		std::map<qsize_t, QState*> *part = &qstore[getPartId(index)];
 
@@ -205,9 +182,7 @@ public:
 		QUnlock(index);
 	}
 
-	/* 
-	 * Search the quantum state corresponding to state index 
-	 */
+	/* search the quantum state corresponding to state index */
 	QState *findQState(qsize_t index) {
 		std::map<qsize_t, QState*>::iterator it;
 		std::map<qsize_t, QState*> *part = &qstore[getPartId(index)];
@@ -225,9 +200,7 @@ public:
 		return Q;
 	}
 
-	/* 
-	 * Normalize amplitudes 
-	 */
+	/* Normalize amplitudes */
 	void normalize(void) {
 		double lengthm[QSTORE_PARTITION];
 		double length = 0;
@@ -260,18 +233,14 @@ public:
 		}
 	}
 
-	/* 
-	 * Set all qstore iterators to the starting position
-	 */
+	/* set all qstore iterators to the starting position */
 	void setOrderedQState() {
 		for(int i =0; i<QSTORE_PARTITION; i++) {
 			qiter[i] = qstore[i].begin();
 		}
 	}
 
-	/* 
-	 * Returns the quantum state in state index order
-	 */
+	/* returns the quantum state in state index order */
 	QState *getOrderedQState() {
 		QState *Q = NULL;
 		qsize_t minState = maxStates + 1;
@@ -296,9 +265,7 @@ public:
 		return Q;
 	}
 
-	/*
-	 * Cleanup all zero amplitude states
-	 */
+	/* cleanup all zero amplitude states */
 	void clearZeroStates() {
 		#pragma omp parallel for
 		for(int i=0; i<QSTORE_PARTITION; i++) {

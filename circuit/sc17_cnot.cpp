@@ -479,13 +479,13 @@ public:
 			initZ(QReg, qubit_list[i]);
 		}
 
-		if(mode == KET_ZERO) {
+		if(mode == KET_LZERO) {
 			initLZero();
-		} else if(mode == KET_ONE) {
+		} else if(mode == KET_LONE) {
 			initLOne();
-		} else if(mode == KET_PLUS) {
+		} else if(mode == KET_LPLUS) {
 			initLPlus();
-		} else if(mode == KET_MINUS) {
+		} else if(mode == KET_LMINUS) {
 			initLMinus();
 		} 
 	}
@@ -584,8 +584,8 @@ public:
 		int tq_measure_type;
 		int mc;
 		int mt;
-		if(CQtype == KET_PLUS || CQtype == KET_MINUS) {
-			if(TQtype == KET_ONE || TQtype == KET_ZERO) {
+		if(CQtype == KET_LPLUS || CQtype == KET_LMINUS) {
+			if(TQtype == KET_LONE || TQtype == KET_LZERO) {
 				cq_measure_type = Z_BASIS;
 				tq_measure_type = Z_BASIS;
 			} else {
@@ -593,7 +593,7 @@ public:
 				tq_measure_type = X_BASIS;
 			}
 		} else {
-			if(TQtype == KET_ONE || TQtype == KET_ZERO) {
+			if(TQtype == KET_LONE || TQtype == KET_LZERO) {
 				cq_measure_type = Z_BASIS;
 				tq_measure_type = Z_BASIS;
 			} else {
@@ -652,8 +652,8 @@ public:
 		logicalQubit *AQ = new logicalQubit(QReg, "LQ0", X_LEFT, &LQ0_qubits);
 		logicalQubit *TQ = new logicalQubit(QReg, "LQ1", X_RIGHT, &LQ1_qubits);
 		logicalQubit *CQ = new logicalQubit(QReg, "LQ2", X_RIGHT, &LQ2_qubits);
-		int cq_mode = KET_PLUS;
-		int tq_mode = KET_MINUS;
+		int cq_mode = KET_LPLUS;
+		int tq_mode = KET_LZERO;
 
 		qd.size = 3;
 		qd.qubits[0] = AQ->QUBIT(AQ->dq_list[8]);
@@ -685,49 +685,22 @@ public:
 		if(c == 1) CQ->logical_ZOP();
 		if(b == 1) TQ->logical_XOP();
 
-	#if 1
 		/************************************/
 		/* STEP4: validate status of CQ, TQ */
 		/************************************/
 		validateCNOT(cq_mode, CQ, tq_mode, TQ);
-	#else
-		AQ->checkLogicalStatus();
-		TQ->checkLogicalStatus();
-		CQ->checkLogicalStatus();
-	#endif
-	}
-
-	void genMLQState(void) {
-		logicalQubit *LQ0 = new logicalQubit(QReg, "LQ0", X_LEFT, &LQ0_qubits);
-        logicalQubit *LQ1 = new logicalQubit(QReg, "LQ1", X_RIGHT, &LQ1_qubits);
-        logicalQubit *LQ2 = new logicalQubit(QReg, "LQ2", X_RIGHT, &LQ2_qubits);
-
-		qd.size = 3;
-		qd.qubits[0] = LQ0->QUBIT(LQ0->dq_list[8]);
-		qd.qubits[1] = LQ1->QUBIT(LQ1->dq_list[8]);
-		qd.qubits[2] = LQ2->QUBIT(LQ2->dq_list[8]);
-
-	#if 0
-		LQ2->initState(KET_MINUS);
-		LQ1->initState(KET_ZERO);
-		X(QReg, LQ0->QUBIT(LQ0->dq_list[4]));
-		H(QReg, LQ0->QUBIT(LQ0->dq_list[4]));
-	#else
-		LQ1->initState(KET_PLUS);
-		LQ0->initState(KET_MINUS);
-	#endif
-
-		showQState(QReg, qd);
 	}
 };
 
 int main(int argc, char **argv)
 {
     SC17_3LQ_CNOT *CNOT = new SC17_3LQ_CNOT();
-#if 0
-    CNOT->cnot();
-#else
-	CNOT->genMLQState();
-#endif
-}
+	QTimer timer;
 
+	timer.start();
+
+    CNOT->cnot();
+
+	timer.end();
+    printf("\nElapsed Time : %s\n", timer.getTime());
+}

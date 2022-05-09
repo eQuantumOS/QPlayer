@@ -32,7 +32,7 @@ void run(QRegister *QReg) {
 	CX(QReg, 0, 1);
 	CX(QReg, 0, 2);
 	CX(QReg, 0, 3);
-	showQState(QReg);
+	dump(QReg);
 };
 
 int main(int argc, char **argv)

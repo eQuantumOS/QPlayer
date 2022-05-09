@@ -8,6 +8,672 @@ using namespace std;
 #define DUMP
 
 /* 
+ * dump() prints out all 2^N states in the quantum register.
+ * However, the zero * amplitude state is not included.
+ * - added by sanglee
+ */
+void dump(QRegister *QReg, int begin11, int end11, int begin21, int end21, int begin31, int end31, int begin12, int end12,
+		  int begin22, int end22, int begin32, int end32, int begin13, int end13, int begin23, int end23,
+		  int begin33, int end33)
+{
+	QState *Q;
+	qsize_t totalStates = QReg->getNumStates();
+	int numQubits = QReg->getNumQubits();
+
+	for (int i = 0; i < QSTORE_PARTITION; i++) {
+		totalStates += QReg->qstore[i].size();
+	}
+
+	printf("======== dump quantum states(%lu) : 3 LQs ========\n", (uint64_t) totalStates);
+#if 1
+#if 0
+	if (totalStates > LIMIT_STATES)
+		return;
+#else
+	qsize_t limitation = 1024;
+	if (totalStates < limitation)
+		limitation = totalStates;
+#endif
+	QReg->setOrderedQState();
+	while ((Q = QReg->getOrderedQState()) != NULL) {
+		double real = Q->getAmplitude().real();
+		double imag = Q->getAmplitude().imag();
+		double p = norm(Q->getAmplitude());
+		char qstring[1024] = "";
+
+		// printf("[%5ld] ", (uint64_t)Q->getIndex());
+#ifdef COEFF
+		printf("[P=%f] ", p);
+		if (real >= 0 && imag >= 0) {
+			printf("[+%.6f, +%.6f] ", real, imag);
+		} else if (real >= 0 && imag < 0) {
+			printf("[+%.6f, %.6f] ", real, imag);
+		} else if (real < 0 && imag >= 0) {
+			printf("[%.6f, +%.6f] ", real, imag);
+		} else {
+			printf("[%.6f, %.6f] ", real, imag);
+		}
+		to_binary(Q->getIndex(), qubits, qstring);
+		int ones = 0, ones2 = 0, ones3 = 0;
+		printf("|");
+		for (int i = end11; i >= begin11; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones++;
+		}
+		printf(" ");
+		for (int i = end21; i >= begin21; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones++;
+		}
+		printf(" ");
+		for (int i = end31; i >= begin31; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones++;
+		}
+		printf(" ");
+
+		for (int i = end12; i >= begin12; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones2++;
+		}
+		printf(" ");
+		for (int i = end22; i >= begin22; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones3++;
+		}
+		printf(" ");
+		for (int i = end32; i >= begin32; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones2++;
+		}
+		printf(" ");
+
+		for (int i = end13; i >= begin13; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones3++;
+		}
+		printf(" ");
+		for (int i = end23; i >= begin23; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones2++;
+		}
+		printf(" ");
+		for (int i = end33; i >= begin33; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones3++;
+		}
+		if (ones % 2 == 0)
+			printf(" [E] ");
+		else
+			printf(" [O] ");
+
+		if (ones2 % 2 == 0)
+			printf(" [E] ");
+		else
+			printf(" [O] ");
+
+		if (ones3 % 2 == 0)
+			printf(" [E]");
+		else
+			printf(" [O]");
+
+		printf(">\n");
+#else
+		to_binary(Q->getIndex(), numQubits, qstring);
+		for (int i = end11; i >= begin11; i--)
+			printf("%c", qstring[numQubits - i - 1]);
+		printf(" ");
+		for (int i = end21; i >= begin21; i--)
+			printf("%c", qstring[numQubits - i - 1]);
+		printf(" ");
+		for (int i = end31; i >= begin31; i--)
+			printf("%c", qstring[numQubits - i - 1]);
+		printf(" ");
+		for (int i = end12; i >= begin12; i--)
+			printf("%c", qstring[numQubits - i - 1]);
+		printf(" ");
+		for (int i = end22; i >= begin22; i--)
+			printf("%c", qstring[numQubits - i - 1]);
+		printf(" ");
+		for (int i = end32; i >= begin32; i--)
+			printf("%c", qstring[numQubits - i - 1]);
+		printf(" ");
+		for (int i = end13; i >= begin13; i--)
+			printf("%c", qstring[numQubits - i - 1]);
+		printf(" ");
+		for (int i = end23; i >= begin23; i--)
+			printf("%c", qstring[numQubits - i - 1]);
+		printf(" ");
+		for (int i = end33; i >= begin33; i--)
+			printf("%c", qstring[numQubits - i - 1]);
+		printf("\n");
+#endif
+#if 0
+		if (--limitation == 0)
+			break;
+#endif
+	}
+	printf("\n");
+#endif
+}
+
+/* 
+ * dump1() prints out all 2^N states in the quantum register.
+ * However, the zero * amplitude state is not included.
+ * - added by sanglee
+ */
+void dump1(QRegister *QReg, int begin11, int end11, int begin21, int end21, int begin31, int end31, int begin12, int end12,
+		   int begin22, int end22, int begin32, int end32, int begin13, int end13, int begin23, int end23,
+		   int begin33, int end33)
+{
+	QState *Q;
+	qsize_t totalStates = QReg->getNumStates();
+	int numQubits = QReg->getNumQubits();
+
+	for (int i = 0; i < QSTORE_PARTITION; i++) {
+		totalStates += QReg->qstore[i].size();
+	}
+
+	printf("======== dump quantum states(%lu) : 2 LQs ========\n", (uint64_t) totalStates);
+#if 1
+#if 0
+	if (totalStates > LIMIT_STATES)
+		return;
+#else
+	qsize_t limitation = 1024;
+	if (totalStates < limitation)
+		limitation = totalStates;
+#endif
+	QReg->setOrderedQState();
+	while ((Q = QReg->getOrderedQState()) != NULL) {
+		double real = Q->getAmplitude().real();
+		double imag = Q->getAmplitude().imag();
+		double p = norm(Q->getAmplitude());
+		char qstring[1024] = "";
+
+		// printf("[%5ld] ", (uint64_t)Q->getIndex());
+#ifdef COEFF
+		printf("[P=%f] ", p);
+		if (real >= 0 && imag >= 0) {
+			printf("[+%.6f, +%.6f] ", real, imag);
+		} else if (real >= 0 && imag < 0) {
+			printf("[+%.6f, %.6f] ", real, imag);
+		} else if (real < 0 && imag >= 0) {
+			printf("[%.6f, +%.6f] ", real, imag);
+		} else {
+			printf("[%.6f, %.6f] ", real, imag);
+		}
+		to_binary(Q->getIndex(), qubits, qstring);
+		int ones = 0, ones2 = 0;
+		printf("|");
+		for (int i = end11; i >= begin11; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones++;
+		}
+		printf(" ");
+		for (int i = end21; i >= begin21; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones++;
+		}
+		printf(" ");
+		for (int i = end31; i >= begin31; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones++;
+		}
+		printf(" ");
+
+		for (int i = end12; i >= begin12; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones++;
+		}
+		printf(" ");
+		for (int i = end22; i >= begin22; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones2++;
+		}
+		printf(" ");
+		for (int i = end32; i >= begin32; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones++;
+		}
+		printf(" ");
+
+		for (int i = end13; i >= begin13; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones2++;
+		}
+		printf(" ");
+		for (int i = end23; i >= begin23; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones++;
+		}
+		printf(" ");
+		for (int i = end33; i >= begin33; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones2++;
+		}
+		if (ones % 2 == 0)
+			printf(" [E] ");
+		else
+			printf(" [O] ");
+
+		if (ones2 % 2 == 0)
+			printf(" [E] ");
+		else
+			printf(" [O] ");
+		printf(">\n");
+#else
+		to_binary(Q->getIndex(), numQubits, qstring);
+		for (int i = end11; i >= begin11; i--)
+			printf("%c", qstring[numQubits - i - 1]);
+		printf(" ");
+		for (int i = end21; i >= begin21; i--)
+			printf("%c", qstring[numQubits - i - 1]);
+		printf(" ");
+		for (int i = end31; i >= begin31; i--)
+			printf("%c", qstring[numQubits - i - 1]);
+		printf(" ");
+		for (int i = end12; i >= begin12; i--)
+			printf("%c", qstring[numQubits - i - 1]);
+		printf(" ");
+		for (int i = end22; i >= begin22; i--)
+			printf("%c", qstring[numQubits - i - 1]);
+		printf(" ");
+		for (int i = end32; i >= begin32; i--)
+			printf("%c", qstring[numQubits - i - 1]);
+		printf(" ");
+		for (int i = end13; i >= begin13; i--)
+			printf("%c", qstring[numQubits - i - 1]);
+		printf(" ");
+		for (int i = end23; i >= begin23; i--)
+			printf("%c", qstring[numQubits - i - 1]);
+		printf(" ");
+		for (int i = end33; i >= begin33; i--)
+			printf("%c", qstring[numQubits - i - 1]);
+		printf("\n");
+#endif
+#if 0
+		if (--limitation == 0)
+			break;
+#endif
+	}
+	printf("\n");
+#endif
+}
+
+	/* 
+	 * dump() prints out all 2^N states in the quantum register.
+	 * However, the zero * amplitude state is not included.
+	 * - added by sanglee
+	 */
+void dump(QRegister *QReg, int begin11, int end11, int begin21, int end21, int begin31, int end31, int begin12, int end12,
+		  int begin22, int end22, int begin32, int end32)
+{
+	QState *Q;
+	qsize_t totalStates = QReg->getNumStates();
+	int numQubits = QReg->getNumQubits();
+
+	for (int i = 0; i < QSTORE_PARTITION; i++) {
+		totalStates += QReg->qstore[i].size();
+	}
+
+	printf("======== dump quantum states(%lu) : 2 LQs ========\n", (uint64_t) totalStates);
+#if 1
+#if 0
+	if (totalStates > LIMIT_STATES)
+		return;
+#else
+	qsize_t limitation = 1024;
+	if (totalStates < limitation)
+		limitation = totalStates;
+#endif
+	QReg->setOrderedQState();
+	while ((Q = QReg->getOrderedQState()) != NULL) {
+		double real = Q->getAmplitude().real();
+		double imag = Q->getAmplitude().imag();
+		double p = norm(Q->getAmplitude());
+		char qstring[1024] = "";
+
+		// printf("[%5ld] ", (uint64_t)Q->getIndex());
+#ifdef COEFF
+		printf("[P=%f] ", p);
+		if (real >= 0 && imag >= 0) {
+			printf("[+%.6f, +%.6f] ", real, imag);
+		} else if (real >= 0 && imag < 0) {
+			printf("[+%.6f, %.6f] ", real, imag);
+		} else if (real < 0 && imag >= 0) {
+			printf("[%.6f, +%.6f] ", real, imag);
+		} else {
+			printf("[%.6f, %.6f] ", real, imag);
+		}
+		to_binary(Q->getIndex(), qubits, qstring);
+		int ones = 0, ones2 = 0;
+		printf("|");
+		for (int i = end11; i >= begin11; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones++;
+		}
+		printf(" ");
+		for (int i = end21; i >= begin21; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones++;
+		}
+		printf(" ");
+		for (int i = end31; i >= begin31; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones++;
+		}
+		if (ones % 2 == 0)
+			printf(" [E] ");
+		else
+			printf(" [O] ");
+
+		for (int i = end12; i >= begin12; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones2++;
+		}
+		printf(" ");
+		for (int i = end22; i >= begin22; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones2++;
+		}
+		printf(" ");
+		for (int i = end32; i >= begin32; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones2++;
+		}
+		if (ones2 % 2 == 0)
+			printf(" [E]");
+		else
+			printf(" [O]");
+
+		printf(">\n");
+#else
+		to_binary(Q->getIndex(), numQubits, qstring);
+		int ones = 0;
+		int ones2 = 0;
+		for (int i = end11; i >= begin11; i--) {
+			printf("%c", qstring[numQubits - i - 1]);
+			if (qstring[numQubits - i - 1] == '1')
+				ones++;
+		}
+		printf(" ");
+		for (int i = end21; i >= begin21; i--) {
+			printf("%c", qstring[numQubits - i - 1]);
+			if (qstring[numQubits - i - 1] == '1')
+				ones++;
+		}
+		printf(" ");
+		for (int i = end31; i >= begin31; i--) {
+			printf("%c", qstring[numQubits - i - 1]);
+			if (qstring[numQubits - i - 1] == '1')
+				ones++;
+		}
+		if (ones % 2 == 0)
+			printf(" [E]");
+		else
+			printf(" [O]");
+		printf(" ");
+		for (int i = end12; i >= begin12; i--) {
+			printf("%c", qstring[numQubits - i - 1]);
+			if (qstring[numQubits - i - 1] == '1')
+				ones2++;
+		}
+		printf(" ");
+		for (int i = end22; i >= begin22; i--) {
+			printf("%c", qstring[numQubits - i - 1]);
+			if (qstring[numQubits - i - 1] == '1')
+				ones2++;
+		}
+		printf(" ");
+		for (int i = end32; i >= begin32; i--) {
+			printf("%c", qstring[numQubits - i - 1]);
+			if (qstring[numQubits - i - 1] == '1')
+				ones2++;
+		}
+		if (ones2 % 2 == 0)
+			printf(" [E]");
+		else
+			printf(" [O]");
+		printf("\n");
+#endif
+#if 0
+		if (--limitation == 0)
+			break;
+#endif
+	}
+	printf("\n");
+#endif
+}
+
+	/* 
+	 * dump() prints out all 2^N states in the quantum register.
+	 * However, the zero * amplitude state is not included.
+	 * - added by sanglee
+	 */
+void dump(QRegister *QReg, int begin1, int end1, int begin2, int end2, int begin3, int end3)
+{
+	QState *Q;
+	qsize_t totalStates = QReg->getNumStates();
+	int numQubits = QReg->getNumQubits();
+
+	for (int i = 0; i < QSTORE_PARTITION; i++) {
+		totalStates += QReg->qstore[i].size();
+	}
+
+	printf("======== dump quantum states(%lu) ========\n", (uint64_t) totalStates);
+#if 1
+#if 0
+	if (totalStates > LIMIT_STATES)
+		return;
+#else
+	qsize_t limitation = 1024;
+	if (totalStates < limitation)
+		limitation = totalStates;
+#endif
+	QReg->setOrderedQState();
+	while ((Q = QReg->getOrderedQState()) != NULL) {
+		double real = Q->getAmplitude().real();
+		double imag = Q->getAmplitude().imag();
+		double p = norm(Q->getAmplitude());
+		char qstring[1024] = "";
+
+		// printf("[%5ld] ", (uint64_t)Q->getIndex());
+#ifdef COEFF
+		printf("[P=%f] ", p);
+		if (real >= 0 && imag >= 0) {
+			printf("[+%.6f, +%.6f] ", real, imag);
+		} else if (real >= 0 && imag < 0) {
+			printf("[+%.6f, %.6f] ", real, imag);
+		} else if (real < 0 && imag >= 0) {
+			printf("[%.6f, +%.6f] ", real, imag);
+		} else {
+			printf("[%.6f, %.6f] ", real, imag);
+		}
+		to_binary(Q->getIndex(), qubits, qstring);
+		int ones = 0;
+		printf("|");
+		for (int i = end1; i >= begin1; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones++;
+		}
+		printf(" ");
+		for (int i = end2; i >= begin2; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones++;
+		}
+		printf(" ");
+		for (int i = end3; i >= begin3; i--) {
+			printf("%c", qstring[qubits - i - 1]);
+			if (qstring[qubits - i - 1] == '1')
+				ones++;
+		}
+		if (ones % 2 == 0)
+			printf(" [E]");
+		else
+			printf(" [O]");
+		printf(">\n");
+#else
+		to_binary(Q->getIndex(), numQubits, qstring);
+		int ones = 0;
+		for (int i = end1; i >= begin1; i--) {
+			printf("%c", qstring[numQubits - i - 1]);
+			if (qstring[numQubits - i - 1] == '1')
+				ones++;
+		}
+		printf(" ");
+		for (int i = end2; i >= begin2; i--) {
+			printf("%c", qstring[numQubits - i - 1]);
+			if (qstring[numQubits - i - 1] == '1')
+				ones++;
+		}
+		printf(" ");
+		for (int i = end3; i >= begin3; i--) {
+			printf("%c", qstring[numQubits - i - 1]);
+			if (qstring[numQubits - i - 1] == '1')
+				ones++;
+		}
+		if (ones % 2 == 0)
+			printf(" [E]");
+		else
+			printf(" [O]");
+		printf("\n");
+#endif
+#if 0
+		if (--limitation == 0)
+			break;
+#endif
+	}
+	printf("\n");
+#endif
+}
+
+void dump(QRegister *QReg, int q1, int q2, int q3, int q4, int q5, int q6, int q7, int q8, int q9)
+{
+	QState *Q;
+	qsize_t totalStates = QReg->getNumStates();
+	int numQubits = QReg->getNumQubits();
+
+	for (int i = 0; i < QSTORE_PARTITION; i++) {
+		totalStates += QReg->qstore[i].size();
+	}
+
+	printf("======== dump quantum states(%lu) ========\n", (uint64_t) totalStates);
+#if 1
+#if 0
+	if (totalStates > LIMIT_STATES)
+		return;
+#else
+	qsize_t limitation = 64;
+	if (totalStates < limitation)
+		limitation = totalStates;
+#endif
+	QReg->setOrderedQState();
+	while ((Q = QReg->getOrderedQState()) != NULL) {
+		double real = Q->getAmplitude().real();
+		double imag = Q->getAmplitude().imag();
+		double p = norm(Q->getAmplitude());
+		char qstring[1024] = "";
+
+		// printf("[%5ld] ", (uint64_t)Q->getIndex());
+#ifdef COEFF
+		printf("[P=%f] ", p);
+
+		if (real >= 0 && imag >= 0) {
+			printf("[+%.6f, +%.6f] ", real, imag);
+		} else if (real >= 0 && imag < 0) {
+			printf("[+%.6f, %.6f] ", real, imag);
+		} else if (real < 0 && imag >= 0) {
+			printf("[%.6f, +%.6f] ", real, imag);
+		} else {
+			printf("[%.6f, %.6f] ", real, imag);
+		}
+
+		to_binary(Q->getIndex(), qubits, qstring);
+		int ones = 0;
+		printf("|");
+		printf("%c", qstring[qubits - q1 - 1]);
+		if (qstring[qubits - q1 - 1] == '1')
+			ones++;
+		printf("%c", qstring[qubits - q2 - 1]);
+		if (qstring[qubits - q2 - 1] == '1')
+			ones++;
+		printf("%c", qstring[qubits - q3 - 1]);
+		if (qstring[qubits - q3 - 1] == '1')
+			ones++;
+		printf(" %c", qstring[qubits - q4 - 1]);
+		if (qstring[qubits - q4 - 1] == '1')
+			ones++;
+		printf("%c", qstring[qubits - q5 - 1]);
+		if (qstring[qubits - q5 - 1] == '1')
+			ones++;
+		printf("%c", qstring[qubits - q6 - 1]);
+		if (qstring[qubits - q6 - 1] == '1')
+			ones++;
+		printf(" %c", qstring[qubits - q7 - 1]);
+		if (qstring[qubits - q7 - 1] == '1')
+			ones++;
+		printf("%c", qstring[qubits - q8 - 1]);
+		if (qstring[qubits - q8 - 1] == '1')
+			ones++;
+		printf("%c", qstring[qubits - q9 - 1]);
+		if (qstring[qubits - q9 - 1] == '1')
+			ones++;
+
+		if (ones % 2 == 0)
+			printf(" [E]");
+		else
+			printf(" [O]");
+		printf(">\n");
+#else
+		to_binary(Q->getIndex(), numQubits, qstring);
+		printf("%c", qstring[numQubits - q1 - 1]);
+		printf("%c", qstring[numQubits - q2 - 1]);
+		printf("%c", qstring[numQubits - q3 - 1]);
+		printf(" %c", qstring[numQubits - q4 - 1]);
+		printf("%c", qstring[numQubits - q5 - 1]);
+		printf("%c", qstring[numQubits - q6 - 1]);
+		printf(" %c", qstring[numQubits - q7 - 1]);
+		printf("%c", qstring[numQubits - q8 - 1]);
+		printf("%c", qstring[numQubits - q9 - 1]);
+		printf("\n");
+#endif
+#if 0
+		if (--limitation == 0)
+			break;
+#endif
+	}
+	printf("\n");
+#endif
+}
+
+/* 
  * This class defined for Hadamard Type 4 moved from bottom left to top right 
  */
 class HADAMARD_TYPE5 {
@@ -24,7 +690,7 @@ private:
 private:
 	void log_printf(int begin1, int end1, int begin2, int end2, int begin3, int end3) {
 			printf("Data Qubits : %d/%d/%d %d/%d/%d %d/%d/%d\n", end1, end1-1, begin1, end2, end2-1, begin2, end3, end3-1, begin3);
-			showQState(QReg, begin1, end1, begin2, end2, begin3, end3);
+			dump(QReg, begin1, end1, begin2, end2, begin3, end3);
 	}
 
 	int X_Stabilizer(int X, int a, int b) {
@@ -81,7 +747,7 @@ private:
 		} else {
 			printf("Measure_LQ - %d/%d/%d/%d/%d/%d/%d/%d/%d\n", q[2],q[1],q[0],q[5],q[4],q[3],q[8],q[7],q[6]);
 #ifdef DUMP
-			showQState(QReg, q[0], q[2], q[3], q[5], q[6], q[8]);
+			dump(QReg, q[0], q[2], q[3], q[5], q[6], q[8]);
 #endif
 		}
 
@@ -107,7 +773,7 @@ private:
 		} else {
 			printf("Measure_LQ - %d/%d/%d/%d/%d/%d/%d/%d/%d\n", q[2],q[1],q[0],q[5],q[4],q[3],q[8],q[7],q[6]);
 #ifdef DUMP
-			showQState(QReg, q[0], q[2], q[3], q[5], q[6], q[8]);
+			dump(QReg, q[0], q[2], q[3], q[5], q[6], q[8]);
 #endif
 		}
 
@@ -258,7 +924,7 @@ private:
 
 #ifdef DUMP
 		printf("CQ: 4/3/2 11/10/9 18/17/16\n");
-		showQState(QReg, 2, 4, 9, 11, 16, 18);
+		dump(QReg, 2, 4, 9, 11, 16, 18);
 #endif
 	}
 
@@ -350,7 +1016,7 @@ private:
 		/* measure 9 data qubits */ 
 #ifdef DUMP
 		printf("CQ: 4/3/2 11/10/9 18/17/16\n");
-		showQState(QReg, 2, 4, 9, 11, 16, 18);
+		dump(QReg, 2, 4, 9, 11, 16, 18);
 #endif
 	}
 
@@ -445,7 +1111,7 @@ private:
 			Logical_X(3, 10, 17);
 #ifdef DUMP
 		printf("CQ: 4/3/2 11/10/9 18/17/16\n");
-		showQState(QReg, 2, 4, 9, 11, 16, 18);
+		dump(QReg, 2, 4, 9, 11, 16, 18);
 #endif
 #if 0
 		vector<int> q;
@@ -572,7 +1238,7 @@ private:
 		b = (mz_stb19 == 1 ? -1 : 1) * (mz_stb21 == 1 ? -1 : 1);
 #ifdef DUMP
 		printf("(CQ+AQ)+TQ: 4/3/2 11/10/9 18/17/16 26/25/24 29/28/27 38/37/36 41/40/39 51/50/49 54/53/52\n");
-		showQState1(QReg, 2, 4, 9, 11, 16, 18, 24, 26, 27, 29, 36, 38, 39, 41, 49, 51, 52, 54);
+		dump1(QReg, 2, 4, 9, 11, 16, 18, 24, 26, 27, 29, 36, 38, 39, 41, 49, 51, 52, 54);
 #endif
 
 		printf("\tSTEP 7-2. Mzz split \n");
@@ -666,7 +1332,7 @@ private:
 		}
 #ifdef DUMP
 	//	printf("DQ2: 4/3/2 11/10/9 18/17/16 29/28/27 41/40/39 54/53/52\n");
-	//	showQState(QReg, 2, 4, 9, 11, 16, 18, 27, 29, 39, 41, 52, 54);
+	//	dump(QReg, 2, 4, 9, 11, 16, 18, 27, 29, 39, 41, 52, 54);
 #endif
 	}
 
@@ -711,7 +1377,7 @@ private:
 		a = (mx_stb22 == 1 ? -1 : 1) * (mx_stb45 == 1 ? -1 : 1);
 #ifdef DUMP
 		printf("CQ+(AQ+TQ): 4/3/2 11/10/9 18/17/16 29/28/27/26/25/24 41/40/39/38/37/36 54/53/52/51/50/49 \n");
-		showQState(QReg, 2, 4, 9, 11, 16, 18, 24, 29, 36, 41, 49, 54);
+		dump(QReg, 2, 4, 9, 11, 16, 18, 24, 29, 36, 41, 49, 54);
 #endif
 
 		printf("\tSTEP 6-2. Mxx split \n");
@@ -787,28 +1453,28 @@ public:
 			Create_TQ();
 #ifdef DUMP
 			printf("CQ+TQ: 4/3/2 11/10/9 18/17/16 29/28/27 41/40/39 54/53/52\n");
-			showQState(QReg, 2, 4, 9, 11, 16, 18, 27, 29, 39, 41, 52, 54);
+			dump(QReg, 2, 4, 9, 11, 16, 18, 27, 29, 39, 41, 52, 54);
 #endif
 
 			printf("\nSTEP 5. Create AQ with X-LEFT in |0> state\n");
 			Create_AQ();
 #ifdef DUMP
 			printf("CQ+AQ+TQ: 4/3/2 11/10/9 18/17/16 26/25/24 29/28/27 38/37/36 41/40/39 51/50/49 54/53/52\n");
-			showQState(QReg, 2, 4, 9, 11, 16, 18, 24, 26, 27, 29, 36, 38, 39, 41, 49, 51, 52, 54);
+			dump(QReg, 2, 4, 9, 11, 16, 18, 24, 26, 27, 29, 36, 38, 39, 41, 49, 51, 52, 54);
 #endif
 
 			printf("\nSTEP 6. Mxx AQ and TQ : ESM round\n");
 			Mxx_Merge_Split();
 #ifdef DUMP
 			printf("CQ+AQ+TQ: 4/3/2 11/10/9 18/17/16 26/25/24 29/28/27 38/37/36 41/40/39 51/50/49 54/53/52\n");
-			showQState(QReg, 2, 4, 9, 11, 16, 18, 24, 26, 27, 29, 36, 38, 39, 41, 49, 51, 52, 54);
+			dump(QReg, 2, 4, 9, 11, 16, 18, 24, 26, 27, 29, 36, 38, 39, 41, 49, 51, 52, 54);
 #endif
 
 			printf("\nSTEP 7. Mzz CQ and AQ : ESM round\n");
 			Mzz_Merge_Split();
 #ifdef DUMP
 			printf("CQ+AQ+TQ: 4/3/2 11/10/9 18/17/16 26/25/24 29/28/27 38/37/36 41/40/39 51/50/49 54/53/52\n");
-			showQState(QReg, 2, 4, 9, 11, 16, 18, 24, 26, 27, 29, 36, 38, 39, 41, 49, 51, 52, 54);
+			dump(QReg, 2, 4, 9, 11, 16, 18, 24, 26, 27, 29, 36, 38, 39, 41, 49, 51, 52, 54);
 #endif
 
 			/* measure AQ in X-basis */
@@ -840,7 +1506,7 @@ public:
 
 #ifdef DUMP
 			printf("CQ+TQ: 4/3/2 11/10/9 18/17/16 29/28/27 41/40/39 54/53/52\n");
-			showQState(QReg, 2, 4, 9, 11, 16, 18, 27, 29, 39, 41, 52, 54);
+			dump(QReg, 2, 4, 9, 11, 16, 18, 27, 29, 39, 41, 52, 54);
 #endif
 
 			printf("\nSTEP 9. Measurement\n");
