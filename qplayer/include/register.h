@@ -108,7 +108,9 @@ public:
 	}
 
 	/* return qstore partition id according to state index */
-	int getPartId(qsize_t index) { return (int)(index % QSTORE_PARTITION); } 
+	int getPartId(qsize_t index) { 
+		return (int)(index % QSTORE_PARTITION); 
+	} 
 
 	/* increase operation stage */
 	short incStage(void) { return ++curStage; }
