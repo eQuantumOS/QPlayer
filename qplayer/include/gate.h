@@ -52,8 +52,8 @@ extern int MV(QRegister *QReg, int qubit);
 extern int MF(QRegister *QReg, int qubit, int collapse);
 
 /* These are experimental functions */
-extern void EstimateQState(QRegister *QReg, int qubit);
-extern void isEntangled(QRegister *QReg, int qubit, bool &entangled, int &sign);
+extern void showQubitProb(QRegister *QReg, int qubit);
+extern void showQubitRelation(QRegister *QReg);
 extern int QType(QRegister *QReg, int qubit);
 extern char *QTypeStr(QRegister *QReg, int qubit);
 

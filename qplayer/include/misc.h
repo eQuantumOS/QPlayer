@@ -40,12 +40,11 @@ typedef enum {
     KET_ONE,
     KET_PLUS,
     KET_MINUS,
-    KET_SPLUS,
-    KET_SMINUS,
     KET_LZERO,
     KET_LONE,
     KET_LPLUS,
     KET_LMINUS,
+    KET_SUPERPOSED,
     KET_UNKNOWN
 } QUBIT_TYPE_T;
 

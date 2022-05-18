@@ -990,9 +990,87 @@ int MF(QRegister *QReg, int qubit, int collapse)
 }
 
 /*
- * Perform weak-measurement without collapsing the quantum state.
+ * Estimate the quantum state int four types below.
+ * 
+ *   - KET_ZERO  : |0>
+ *   - KET_ONE   : |1>
+ *   - KET_PLUS  : |+> = 0.7|0> + 0.7|1>
+ *   - KET_MINUS : |-> = 0.7|0> - 0.7|1>
+ *   - KET_SUPERPOSED : a|0> + b|1> or a|0> - b|1>
  */
-void EstimateQState(QRegister *QReg, int qubit) 
+int QType(QRegister *QReg, int qubit) 
+{
+	QRegister *QRegMask = new QRegister(QReg->getNumQubits());
+	qsize_t mask = quantum_shiftL(1, qubit);
+	QState *Q = NULL;
+	int type = KET_UNKNOWN;
+	complex_t amp_zero;
+	complex_t amp_one;
+	bool is_zero = false;
+	bool is_one = false;
+
+	QRegMask->clear();
+	QReg->setOrderedQState();
+	while((Q = QReg->getOrderedQState()) != NULL) {
+		QState *newQ = NULL;
+		qsize_t newIdx = 0;
+
+		newIdx = Q->getIndex() & mask;
+		newQ = QRegMask->findQState(newIdx);
+		if(newQ == NULL) {
+			newQ = new QState(newIdx, Q->getAmplitude());
+			QRegMask->setQState(newIdx, newQ);
+
+			if((newIdx & mask) == 0) {
+				is_zero = true;
+				amp_zero = newQ->getAmplitude();
+			} else if((newIdx & mask) != 0) {
+				is_one = true;
+				amp_one = newQ->getAmplitude();
+			}
+		}
+	}
+
+	if(is_zero == true && is_one == true) {
+		if(norm(amp_zero) == norm(amp_one)) {
+			if((amp_zero.real() * amp_one.real()) > 0) {
+				type = KET_PLUS;
+			} else {
+				type = KET_MINUS;
+			}
+		} else {
+			type = KET_SUPERPOSED;
+		}
+	} else {
+		if(is_zero == true) {
+			type = KET_ZERO;
+		} else {
+			type = KET_ONE;
+		}
+	}
+
+	delete QRegMask;
+
+	return type;
+}
+
+char *QTypeStr(QRegister *QReg, int qubit)
+{
+	int type = QType(QReg, qubit);
+
+	if(type == KET_ZERO) return "|0>"; 
+	else if(type == KET_ONE) return "|1>"; 
+	else if(type == KET_PLUS) return "|+>"; 
+	else if(type == KET_MINUS) return "|->"; 
+	else if(type == KET_SUPERPOSED) return "|S>";
+
+	return "UNKNOWN";
+}
+
+/*
+ * show probability of the qubit 
+ */
+void showQubitProb(QRegister *QReg, int qubit) 
 {
 	if(qubit >= QReg->getNumQubits()) {
 		printf("[%s] qubit(%d) out of range!\n", __func__, qubit);
@@ -1023,128 +1101,78 @@ void EstimateQState(QRegister *QReg, int qubit)
 	length = (norm(lo) + norm(up));
 	length = std::sqrt(length);
 
-	printf("norm(lo)=%f, norm(up)=%f\n", norm(lo), norm(up));
+	// printf("norm(lo)=%f, norm(up)=%f\n", norm(lo), norm(up));
 
 	lo = lo / length;
 	up = up / length;
 
 	/* print */
-	printf("Qubit-%02d", qubit);
+	printf("Qubit-%d", qubit);
 	printf("%5s [P=%.6f] [%.6f, %.6f] |0>\n", " ", norm(lo), abs(lo.real()), abs(lo.imag()));
 	printf("%13s [P=%.6f] [%.6f, %.6f] |1>\n", " ", norm(up), abs(up.real()), abs(up.imag()));
 	printf("\n");
 }
 
-void isEntangled(QRegister *QReg, int qubit, bool &entangled, int &sign) 
-{
-	bool plus = false;
-	bool minus = false;
-	bool upper = false;
-	bool lower = false;
-
-	entangled = false;
-	sign = 1;
-
-	std::map<qsize_t, QState*>::iterator it[QSTORE_PARTITION];
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		for(it[i] = QReg->qstore[i].begin(); it[i] != QReg->qstore[i].end(); it[i]++) {
-			QState *Q = it[i]->second;
-
-			if(stripe_lower(Q->getIndex(), qubit) == true) {
-				lower = true;
-			} else if(stripe_upper(Q->getIndex(), qubit) == true) {
-				upper = true;
-			} 
-
-			if(Q->getAmplitude().real() < 0 || Q->getAmplitude().imag() < 0) {
-				minus = true;
-			} else {
-				plus = true;
-			}
-
-			if(lower==true && upper==true && plus==true && minus==true) {
-				break;
-			}
-		}
-	}
-
-	if(lower==true && upper==true) {
-		entangled = true;
-	}
-
-	if(plus==true && minus==true) {
-		sign = -1;
-	} else {
-		sign = 1;
-	}
-}
-
 /*
- * Estimate the quantum state int four types below.
- * 
- *   - KET_ZERO  : |0>
- *   - KET_ONE   : |1>
- *   - KET_PLUS  : |+> = 0.7|0> + 0.7|1>
- *   - KET_MINUS : |-> = 0.7|0> - 0.7|1>
- *   - KET_SPLUS :     = a|0> + b|1>
- *   - KET_SMINUS:     = a|0> - b|1>
+ * show relations of all qubits
  */
-int QType(QRegister *QReg, int qubit) 
+void showQubitRelation(QRegister *QReg) 
 {
-	if(qubit >= QReg->getNumQubits()) {
-		printf("qubit(%d) out of range!\n", qubit);
-		exit(0);
-	}
+	int qubits = QReg->getNumQubits();
+	QRegister *QRegMask = new QRegister(qubits);
+	QState *Q = NULL;
+	int entangleCount = 0;
 
-	int state = KET_UNKNOWN;
-	bool entangled = false;
-	int sign = 0;
-
-	isEntangled(QReg, qubit, entangled, sign);
-	if(entangled == false) {
-		int m = M(QReg, qubit);
-		if(m == 0) {
-			state = KET_ZERO;
-		} else {
-			state = KET_ONE;
-		}
-	} else {
-		int signH = 0;
-		H(QReg, qubit);
-
-		isEntangled(QReg, qubit, entangled, signH);
-		if(entangled == true) {
-			if(sign == 1) {
-				state = KET_SPLUS;
-			} else {
-				state = KET_SMINUS;
-			}
-		} else {
-			int m = M(QReg, qubit);
-			if(m == 0) {
-				state = KET_PLUS;
-			} else {
-				state = KET_MINUS;
-			}
+	for(int i=0; i<qubits; i++) {
+		if(QType(QReg, i) == KET_ZERO || QType(QReg, i) == KET_ONE) {
+			continue;
 		}
 
-		H(QReg, qubit);
+		for(int j=i+1; j<qubits; j++) {
+			if(QType(QReg, j) == KET_ZERO || QType(QReg, j) == KET_ONE) {
+				continue;
+			}
+
+			int Q1 = i;
+			int Q2 = j;
+			qsize_t maskQ1 = quantum_shiftL(1, Q1);
+			qsize_t maskQ2 = quantum_shiftL(1, Q2);
+			qsize_t mask = maskQ1 | maskQ2;
+			complex_t amp[4];
+			int ampPos = 0;
+
+			QRegMask->clear();
+			QReg->setOrderedQState();
+			while((Q = QReg->getOrderedQState()) != NULL) {
+				QState *newQ = NULL;
+				qsize_t newIdx = Q->getIndex() & mask;
+
+				newQ = QRegMask->findQState(newIdx);
+				if(newQ == NULL) {
+					newQ = new QState(newIdx, Q->getAmplitude());
+					QRegMask->setQState(newIdx, newQ);
+
+					amp[ampPos++] = Q->getAmplitude();
+				}
+			}
+
+			if(QRegMask->getNumStates() == 2) {
+				printf("Q%d - Q%d : Entangled\n", Q1, Q2);
+				entangleCount++;
+				continue;
+			}
+
+			if((amp[0]==amp[2]) && (amp[1] == amp[2])) {
+				continue;
+			}
+
+			printf("Q%d - Q%d : Entangled\n", Q1, Q2);
+			entangleCount++;
+		}
 	}
+	
+	printf("total qubits  = %d\n", qubits);
+	printf("entangle pair = %d\n", entangleCount);
 
-	return state;
+	delete QRegMask;
 }
-
-char *QTypeStr(QRegister *QReg, int qubit)
-{
-	int type = QType(QReg, qubit);
-
-	if(type == KET_ZERO) return "|0>"; 
-	else if(type == KET_ONE) return "|1>"; 
-	else if(type == KET_PLUS) return "|+> = |0>+|1>"; 
-	else if(type == KET_MINUS) return "|-> = |0>-|1>"; 
-	else if(type == KET_SPLUS) return "|S+> = |0>+|1>";
-	else if(type == KET_SMINUS) return "|S-> = |0>-|1>";
-
-	return "UNKNOWN";
-}
-

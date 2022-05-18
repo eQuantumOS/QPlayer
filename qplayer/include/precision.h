@@ -45,7 +45,7 @@ using namespace boost::multiprecision;
     #define MAX_QUBITS	64
 #endif
 
-#define QSTORE_PARTITION    1024
+#define QSTORE_PARTITION    1171
 
 typedef complex<double> complex_t;
 
