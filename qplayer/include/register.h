@@ -44,7 +44,7 @@ using namespace std;
 class QRegister {
 private:
 	int numQubit;
-	short curStage;
+	size_t curStage;
 	qsize_t maxStates;
 
 public:
@@ -111,7 +111,7 @@ public:
 	int getPartId(qsize_t index) { return (int)(index % QSTORE_PARTITION); } 
 
 	/* increase operation stage */
-	short incStage(void) { return ++curStage; }
+	size_t incStage(void) { return ++curStage; }
 
 	/* qstore lock & unlock */
 	void QLock(int index) { qlock[index].lock(); }
@@ -121,7 +121,7 @@ public:
 
 public:
 	/* set check & set operation state */
-	int checkStage(QState *s0, QState *s1, qsize_t lower_idx, short stage) {
+	int checkStage(QState *s0, QState *s1, qsize_t lower_idx, size_t stage) {
 		int ret = 0;
 
 		QLock(lower_idx);
