@@ -1,4 +1,4 @@
-large_scale=yes
+large_scale=no
 
 CXX = g++
 CXXLD = g++
