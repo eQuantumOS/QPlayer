@@ -22,22 +22,20 @@
 
 #include "qplayer.h"
 
-void run(QRegister *QReg) {
-	X(QReg, 0);
-	H(QReg, 0);
-
-	X(QReg, 1);
-	X(QReg, 3);
-
-	CX(QReg, 0, 1);
-	CX(QReg, 0, 2);
-	CX(QReg, 0, 3);
-	dump(QReg);
-};
-
 int main(int argc, char **argv)
 {
-	QRegister *QReg = new QRegister(4);
+	QRegister *QReg = new QRegister(5);
 
-	run(QReg);
+	X(QReg, 0);
+	X(QReg, 1);
+	X(QReg, 2);
+	H(QReg, 4);
+	H(QReg, 3);
+#if 1
+	CSWAP(QReg, 4, 1, 0);
+	CSWAP(QReg, 4, 2, 1);
+	CSWAP(QReg, 4, 3, 2);
+#endif
+
+	dump(QReg);
 }

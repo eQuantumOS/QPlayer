@@ -28,31 +28,42 @@ more qubits and faster quantum operations with smaller memory than before.
 # Supporting Quantum Operations
  - initZ              : initialize qubit to |0>
  - initX              : initialize qubit to |+>
- - pauliI             : pauli identity gate
- - pauliX             : pauli X gate
- - pauliZ             : pauli Z gate
- - pauliY             : pauli Y gate
+ - I                  : pauli identity gate
+ - X                  : pauli X gate
+ - Z                  : pauli Z gate
+ - Y                  : pauli Y gate
  - hadamard           : hadamard gate
- - cx                 : controlled NOT gate
- - cz                 : controlled Z gate
- - ccx                : controlled-controlled NOT gate
- - rotate-x           : rotate X-axis gate
- - rotate-y           : rotate Y-axis gate
- - rotate-z           : rotate Z-axis gate
+ - rx                 : rotate X-axis gate
+ - ry                 : rotate Y-axis gate
+ - rz                 : rotate Z-axis gate
  - S                  : S gate
  - T                  : T gate
  - S+                 : S dagger
  - T+                 : S dagger
- - U1                 : Universal gate
- - U2                 : Universal gate
- - U3                 : Universal gate
+ - P                  : phase gate
+ - u1                 : single-qubit rotation gate about the Z axis
+ - u2                 : single-qubit rotation gate about the X+Z axis
+ - u3                 : single-qubit rotation gate with 3 euler angles
  - swap               : SWAP gate
+ - cx                 : controlled x gate
+ - cy                 : controlled y gate
+ - cz                 : controlled z gate
+ - ch                 : controlled h gate
+ - ccz                : controlled rz gate
+ - ccx                : controlled-controlled x gate
+ - cu1                : controlled u1 gate
+ - cu2                : controlled u2 gate
+ - cu3                : controlled u3 gate
  - measure(z basis)   : mesure qubit
 
 # QPlayer Source Tree
 <pre>
-  + qplayer                : qplayer sources  
-  + circuit + basic.cpp    : 'hello world' for qplayer
-            + qft.cpp      : quantum fourier transform
-            + grover.cpp   : quantum search algorithm
+  + qplayer                     : qplayer sources  
+  + circuit + basic.cpp         : 'hello world' for qplayer
+            + qft.cpp           : quantum fourier transform
+            + grover.cpp        : quantum search algorithm
+            + RCS.cpp           : random circuit sampling
+            + sc17_1LQ.cpp      : surface code 17 - 1 logical qubit operations
+            + sc17_cnot.cpp     : surface code 17 - cnot with 3 logical qubits
+            + sc17_hadamard.cpp : surface code 17 - hadamard 
 </pre>

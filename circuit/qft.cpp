@@ -34,7 +34,7 @@ void qft(QRegister *QReg, int qubits) {
 		H(QReg, i);
 		for(int j=i+1; j<qubits; j++) {
 			angle /= 2;
-			CR(QReg, j, i, angle);
+			CRZ(QReg, j, i, angle);
 		}
 	}
 

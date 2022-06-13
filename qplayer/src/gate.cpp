@@ -445,25 +445,25 @@ void U1(QRegister *QReg, int qubit, double angle)
 	applyMatrix(QReg, qubit, M);
 }
 
-void U2(QRegister *QReg, int qubit, double pi, double ramda)
+void U2(QRegister *QReg, int qubit, double phi, double lambda)
 {
 	complex_t M[] = {
 		complex_t(1, 0) / std::sqrt(2), 
-		-complex_t(cos(ramda), sin(ramda)) / std::sqrt(2),
-		complex_t(cos(pi), sin(pi)) / std::sqrt(2), 
-		complex_t(cos(pi+ramda), sin(pi+ramda)) / std::sqrt(2)
+		-complex_t(cos(lambda), sin(lambda)) / std::sqrt(2),
+		complex_t(cos(phi), sin(phi)) / std::sqrt(2), 
+		complex_t(cos(phi+lambda), sin(phi+lambda)) / std::sqrt(2)
 	};
 
 	applyMatrix(QReg, qubit, M);
 }
 
-void U3(QRegister *QReg, int qubit, double theta, double pi, double ramda)
+void U3(QRegister *QReg, int qubit, double theta, double phi, double lambda)
 {
 	complex_t M[] = {
 		complex_t(cos(theta/2), 0), 
-		complex_t(-cos(ramda), -sin(ramda))*sin(theta/2),
-		complex_t(cos(pi), sin(pi))*sin(theta/2), 
-		complex_t(cos(pi+ramda), sin(pi+ramda))*cos(theta/2)
+		complex_t(-cos(lambda), -sin(lambda))*sin(theta/2),
+		complex_t(cos(phi), sin(phi))*sin(theta/2), 
+		complex_t(cos(phi+lambda), sin(phi+lambda))*cos(theta/2)
 	};
 
 	applyMatrix(QReg, qubit, M);
@@ -516,7 +516,7 @@ void TDG(QRegister *QReg, int qubit)
 {
 	complex_t M[] = {
 		complex_t(1, 0), complex_t(0, 0),
-		complex_t(0, 0), complex_t(-sin(Q_PI/4), cos(Q_PI/4))
+		complex_t(0, 0), complex_t(cos(Q_PI/4), -sin(Q_PI/4))
 	};
 
 	applyMatrix(QReg, qubit, M);
@@ -584,6 +584,78 @@ void P(QRegister *QReg, int qubit, double angle)
 }
 
 /*
+ * Apply Controlled-U1 gate
+ */
+void CU1(QRegister *QReg, int control, int target, double angle) 
+{
+	complex_t M[] = {
+		complex_t(1, 0), complex_t(0, 0),
+		complex_t(0, 0), complex_t(cos(angle), sin(angle))
+	};
+
+	if(control == target) {
+		return;
+	}
+
+	applyControlledMatrix(QReg, control, target, M);
+}
+
+/*
+ * Apply Controlled-U2 gate
+ */
+void CU2(QRegister *QReg, int control, int target, double phi, double lambda) 
+{
+	complex_t M[] = {
+		complex_t(1, 0) / std::sqrt(2), 
+		-complex_t(cos(lambda), sin(lambda)) / std::sqrt(2),
+		complex_t(cos(phi), sin(phi)) / std::sqrt(2), 
+		complex_t(cos(phi+lambda), sin(phi+lambda)) / std::sqrt(2)
+	};
+
+	if(control == target) {
+		return;
+	}
+
+	applyControlledMatrix(QReg, control, target, M);
+}
+
+/*
+ * Apply Controlled-U1 gate
+ */
+void CU3(QRegister *QReg, int control, int target, double theta, double pie, double lambda) 
+{
+	complex_t M[] = {
+		complex_t(cos(theta/2), 0), 
+		complex_t(-cos(lambda), -sin(lambda))*sin(theta/2),
+		complex_t(cos(pie), sin(pie))*sin(theta/2), 
+		complex_t(cos(pie+lambda), sin(pie+lambda))*cos(theta/2)
+	};
+
+	if(control == target) {
+		return;
+	}
+
+	applyControlledMatrix(QReg, control, target, M);
+}
+
+/*
+ * Apply controlled-H to the qubit
+ */
+void CH(QRegister *QReg, int control, int target) 
+{
+	complex_t M[] = {
+		complex_t(R_SQRT_2, 0), complex_t(R_SQRT_2, 0),
+		complex_t(R_SQRT_2, 0), complex_t(-R_SQRT_2, 0)
+	};
+
+	if(control == target) {
+		return;
+	}
+
+	applyControlledMatrix(QReg, control, target, M);
+}
+
+/*
  * Apply CNOT-gate to the qubit
  */
 void CX(QRegister *QReg, int control, int target) 
@@ -592,6 +664,24 @@ void CX(QRegister *QReg, int control, int target)
 		complex_t(0, 0), complex_t(1, 0),
 		complex_t(1, 0), complex_t(0, 0)
 	};
+
+	if(control == target) {
+		return;
+	}
+
+	applyControlledMatrix(QReg, control, target, M);
+}
+
+/*
+ * Apply controlled-Y to the qubit
+ */
+void CY(QRegister *QReg, int control, int target) 
+{
+	complex_t M[] = {
+		complex_t(0, 0), complex_t(0, -1),
+		complex_t(0, 1), complex_t(0, 0)
+	};
+
 
 	if(control == target) {
 		return;
@@ -618,9 +708,9 @@ void CZ(QRegister *QReg, int control, int target)
 }
 
 /*
- * Apply CR-gate to the qubit
+ * Apply CRZ-gate to the qubit
  */
-void CR(QRegister *QReg, int control, int target, double angle) 
+void CRZ(QRegister *QReg, int control, int target, double angle) 
 {
 	complex_t M[4];
 
@@ -788,6 +878,16 @@ void SWAP(QRegister *QReg, int qubit1, int qubit2)
 }
 
 /*
+ * Apply CSWAP-gate to the qubit
+ */
+void CSWAP(QRegister *QReg, int control, int qubit1, int qubit2) 
+{
+	CX(QReg, qubit2, qubit1);
+	CCX(QReg, control, qubit1, qubit2);
+	CX(QReg, qubit2, qubit1);
+}
+
+/*
  * The quantum state is measured on a Z basis. After measurement, 
  * the quantum state collapses to a state of |0> or |1>.
  * If you want to measure on the basis of X, you must apply 
@@ -801,13 +901,7 @@ int M(QRegister *QReg, int qubit)
 {
 	if(qubit >= QReg->getNumQubits()) {
 		printf("[%s] qubit(%d) out of range!\n", __func__, qubit);
-
-	#if 1
-		char *ptr = NULL;
-		strcpy(ptr, "hello");
-	#endif
-
-		exit(0);
+		return -1;
 	}
 
 	double f = (double)(rand() % 100) / 100.0;
@@ -957,6 +1051,97 @@ int MF(QRegister *QReg, int qubit, int collapse)
 	 * (STEP2) Determine final state according to the probability
 	 */
 	state = collapse;
+
+	/* 
+	 * (STEP3) Set zero-amplited after collapse.
+	 */
+	#pragma omp parallel for
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		std::map<qsize_t, QState*>::iterator it;
+		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
+			QState *Q = it->second;
+			qsize_t i0 = Q->getIndex();
+	
+			if(state == 0 && stripe_upper(i0, qubit) == true) {
+				Q->setAmplitude(0);
+			} else if(state == 1 && stripe_lower(i0, qubit) == true) {
+				Q->setAmplitude(0);
+			}
+		}
+	}
+
+	/* 
+	 * (STEP4) Cleanup zero amplitude states
+	 */
+	QReg->clearZeroStates();
+
+	/* 
+	 * (STEP5) Normalize amplitudes
+	 */
+	QReg->normalize();
+
+	return state;
+}
+
+int MQUVIE(QRegister *QReg, int qubit) 
+{
+	if(qubit >= QReg->getNumQubits()) {
+		printf("[%s] qubit(%d) out of range!\n", __func__, qubit);
+		return -1;
+	}
+
+	double lpm[QSTORE_PARTITION];
+	double upm[QSTORE_PARTITION];
+	double lengthm[QSTORE_PARTITION];
+	double lp = 0;
+	double up = 0;
+	double length = 0;
+	int state;
+
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		lpm[i] = upm[i] = lengthm[i] = 0;
+	}
+
+	/* 
+	 * (STEP1) Calculate the amplitude according to the |0> or |1>, respectively.
+	 */
+	#pragma omp parallel for
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		std::map<qsize_t, QState*>::iterator it;
+		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
+			QState *Q = it->second;
+			if(stripe_lower(Q->getIndex(), qubit) == true) {
+				lpm[i] += norm(Q->getAmplitude());
+			} else {
+				upm[i] += norm(Q->getAmplitude());
+			}
+		}
+	}
+
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		lp += lpm[i];
+		up += upm[i];
+	}
+
+	if(lp == 0 || up == 0) {
+		/* already measured */
+		if(lp > 0) {
+			state = 0;
+		} else {
+			state = 1;
+		}
+
+		return state;
+	}
+
+	/* 
+	 * (STEP2) Determine final state according to the probability
+	 */
+	if(lp >= up) {
+		state = 0;      // collapsed to |0>
+	} else {
+		state = 1;      // collapsed to |1>
+	}
 
 	/* 
 	 * (STEP3) Set zero-amplited after collapse.

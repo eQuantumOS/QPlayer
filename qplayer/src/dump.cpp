@@ -39,7 +39,7 @@
 #include "misc.h"
 
 // #define FLAG_QINDEX
-// #define FLAG_QPROB
+#define FLAG_QPROB
 
 void dump(QRegister *QReg, char *msg, int begin, int end, struct qubit_delimiter *qd)
 {
