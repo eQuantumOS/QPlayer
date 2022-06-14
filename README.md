@@ -7,23 +7,40 @@ increase in memory overhead and operation time are challenging issues that
 have not been solved for many years. We provide the QPlayer that provides
 more qubits and faster quantum operations with smaller memory than before.
 
+* fdaf
+-fa
++fda
 
 # Depencencies
  - gcc and g++ capable of C++11 standard
  - make 3.x or higher
- - boost library 1.61 or higher
-   (only if you want to support more than 64 qubits)
+ - boost library 1.61 or higher (only if you want to use more than 64 qubits)
 
 # OS environment
  - CentOS 7.x or higher
  - Ubuntu 15.x or higher
 
 # Installation
- (1) 1~64 qubits
-     - make
+ ### using 1~64 qubits
+<pre>
+ (1) build qplayer  
+    :> cd QPlayer  
+    :> make  
+</pre>
 
- (2) 65~1024 qubits (you must install boost library)
-     - make BOOST=yes
+ ### using 65~1024 qubits 
+<pre>
+ (1) build boost library  
+     ubuntu> apt-get install libboost-all-dev  
+     linux> yum install -y boost-devel  
+     
+     --> If you want to install boost library manually, you should modify 
+         QPlayer makefiles to include boost library path.
+  
+ (2) build qplayer  
+    :> cd QPlayer  
+    :> make boost=yes  
+</pre>
 
 # Supporting Quantum Operations
  - initZ              : initialize qubit to |0>
