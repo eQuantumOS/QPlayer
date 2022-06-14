@@ -1,5 +1,10 @@
-2022/06/13 add some quantum gates
+06/13/2022: add some quantum gates
  - controlled U1 gate
  - controlled U2 gate
  - controlled U3 gate
  - controlled CSWAP gate
+
+06/14/2022: add various measurement functions
+ - M(qubit) : The qubit collapses according to the quantum probability.
+ - MF(qubit, state) : This forces the qubit to collapse to a certain state.
+ - MNOP(qubit) : This predict probabilistic measure state without collpasing the qubit.

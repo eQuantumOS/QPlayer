@@ -1083,13 +1083,14 @@ int MF(QRegister *QReg, int qubit, int collapse)
 	return state;
 }
 
-int MQUVIE(QRegister *QReg, int qubit) 
+int MNOP(QRegister *QReg, int qubit) 
 {
 	if(qubit >= QReg->getNumQubits()) {
 		printf("[%s] qubit(%d) out of range!\n", __func__, qubit);
 		return -1;
 	}
 
+	double f = (double)(rand() % 100) / 100.0;
 	double lpm[QSTORE_PARTITION];
 	double upm[QSTORE_PARTITION];
 	double lengthm[QSTORE_PARTITION];
@@ -1137,39 +1138,11 @@ int MQUVIE(QRegister *QReg, int qubit)
 	/* 
 	 * (STEP2) Determine final state according to the probability
 	 */
-	if(lp >= up) {
+	if(f < lp) {
 		state = 0;      // collapsed to |0>
 	} else {
 		state = 1;      // collapsed to |1>
 	}
-
-	/* 
-	 * (STEP3) Set zero-amplited after collapse.
-	 */
-	#pragma omp parallel for
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		std::map<qsize_t, QState*>::iterator it;
-		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
-			QState *Q = it->second;
-			qsize_t i0 = Q->getIndex();
-	
-			if(state == 0 && stripe_upper(i0, qubit) == true) {
-				Q->setAmplitude(0);
-			} else if(state == 1 && stripe_lower(i0, qubit) == true) {
-				Q->setAmplitude(0);
-			}
-		}
-	}
-
-	/* 
-	 * (STEP4) Cleanup zero amplitude states
-	 */
-	QReg->clearZeroStates();
-
-	/* 
-	 * (STEP5) Normalize amplitudes
-	 */
-	QReg->normalize();
 
 	return state;
 }

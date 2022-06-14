@@ -56,7 +56,7 @@ extern void CSWAP(QRegister *QReg, int control, int qubit1, int qubit2);
 extern int M(QRegister *QReg, int qubit);
 extern int MV(QRegister *QReg, int qubit);
 extern int MF(QRegister *QReg, int qubit, int collapse);
-extern int MQUVIE(QRegister *QReg, int qubit);
+extern int MNOP(QRegister *QReg, int qubit);
 
 /* These are experimental functions */
 extern void showQubitProb(QRegister *QReg, int qubit);
