@@ -1,4 +1,4 @@
-large_scale=no
+boost=no
 
 CXX = g++
 CXXLD = g++
@@ -11,16 +11,14 @@ CXXFLAGS += -Wno-reorder -Wno-sign-compare -Wno-parentheses -Wno-pessimizing-mov
 CXXFLAGS += -Wno-unused-function -Wno-unused-variable -Wno-write-strings
 CXXFLAGS += -Wno-class-conversion -Wno-unused-result
 
-ifeq ($(large_scale),yes)
-    CXXFLAGS += -I/opt/boost_1.61/include
+ifeq ($(boost),yes)
     CXXFLAGS += -DLARGE_SCALE
 endif
 
 LOADLIBES = -L$(QPLAYER_RELEASE)/lib
 LOADLIBES += -lm -lpthread -lgomp -lqplayer
-ifeq ($(large_scale),yes)
-	LOADLIBES += -L/opt/boost_1.61/lib
-	LIBS += -lboost_serialization-mt -lboost_filesystem-mt -lboost_system-mt
+ifeq ($(boost),yes)
+	LIBS += -lboost_system-mt
 endif
 
 SRCS=$(wildcard *.cpp)

@@ -8,3 +8,6 @@
  - M(qubit) : The qubit collapses according to the quantum probability.
  - MF(qubit, state) : This forces the qubit to collapse to a certain state.
  - MNOP(qubit) : This predict probabilistic measure state without collpasing the qubit.
+
+06/15/2022: Update Makefiles
+ - Support the default library path for boost library (yum or apt installation)

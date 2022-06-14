@@ -20,14 +20,14 @@ all: QPLAYER CIRCUIT
 
 QPLAYER:
 ifdef BOOST
-	@ $(MAKE) -C qplayer large_scale=yes
+	@ $(MAKE) -C qplayer boost=yes
 else
 	@ $(MAKE) -C qplayer
 endif
 
 CIRCUIT:
 ifdef BOOST
-	@ $(MAKE) -C circuit large_scale=yes
+	@ $(MAKE) -C circuit boost=yes
 else
 	@ $(MAKE) -C circuit
 endif
