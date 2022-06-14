@@ -72,11 +72,11 @@ more qubits and faster quantum operations with smaller memory than before.
 # QPlayer Source Tree
 <pre>
   + qplayer                     : qplayer sources  
-  + circuit + basic.cpp         : 'hello world' for qplayer
-            + qft.cpp           : quantum fourier transform
-            + grover.cpp        : quantum search algorithm
-            + RCS.cpp           : random circuit sampling
-            + sc17_1LQ.cpp      : surface code 17 - 1 logical qubit operations
-            + sc17_cnot.cpp     : surface code 17 - cnot with 3 logical qubits
-            + sc17_hadamard.cpp : surface code 17 - hadamard 
+  + circuit - basic.cpp         : 'hello world' for qplayer
+            - qft.cpp           : quantum fourier transform
+            - grover.cpp        : quantum search algorithm
+            - RCS.cpp           : random circuit sampling
+            - sc17_1LQ.cpp      : surface code 17 - 1 logical qubit operations
+            - sc17_cnot.cpp     : surface code 17 - cnot with 3 logical qubits
+            - sc17_hadamard.cpp : surface code 17 - hadamard 
 </pre>
