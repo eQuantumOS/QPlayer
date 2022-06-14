@@ -7,10 +7,6 @@ increase in memory overhead and operation time are challenging issues that
 have not been solved for many years. We provide the QPlayer that provides
 more qubits and faster quantum operations with smaller memory than before.
 
-* fdaf
--fa
-+fda
-
 # Depencencies
  - gcc and g++ capable of C++11 standard
  - make 3.x or higher
