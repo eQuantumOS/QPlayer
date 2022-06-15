@@ -67,6 +67,7 @@ more qubits and faster quantum operations with smaller memory than before.
  - CU1                : controlled u1 gate
  - CU2                : controlled u2 gate
  - CU3                : controlled u3 gate
+ - CSWAP              : controlled swap gate
  - measure(z basis)   : mesure qubit
 
 # QPlayer Source Tree
