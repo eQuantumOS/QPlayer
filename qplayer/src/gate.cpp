@@ -26,6 +26,7 @@ using namespace std;
 /* 
  * phase factoring : copied from qx-simulator 
  */
+/*
 static void reset_gphase(complex_t M[])
 {
 	double n = norm(M[0]);
@@ -61,6 +62,7 @@ static void reset_gphase(complex_t M[])
 	printf("\n");
 	for(int i=0; i<4; i++) cout << i << " : " << M[i] << endl;
 }
+*/
 
 /*
  * Apply 1-qubit matrix operations to quantum states. 
@@ -1297,6 +1299,7 @@ void showQubitRelation(QRegister *QReg)
 			qsize_t maskQ2 = quantum_shiftL(1, Q2);
 			qsize_t mask = maskQ1 | maskQ2;
 			complex_t amp[4];
+			complex_t msign = -1.0;
 			int ampPos = 0;
 
 			QRegMask->clear();
@@ -1320,7 +1323,11 @@ void showQubitRelation(QRegister *QReg)
 				continue;
 			}
 
-			if((amp[0]==amp[2]) && (amp[1] == amp[2])) {
+			if(amp[0]==amp[2] && amp[1] == amp[3]) {
+				continue;
+			}
+
+			if(amp[0]==(amp[2]*msign) && amp[1]==(amp[3]*msign)) {
 				continue;
 			}
 

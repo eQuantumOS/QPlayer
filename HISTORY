@@ -11,3 +11,6 @@
 
 06/15/2022: Update Makefiles
  - Support the default library path for boost library (yum or apt installation)
+
+07/11/2022: bug fix
+ - update showQubitRelation() during estimating entanglement state
