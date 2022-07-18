@@ -26,16 +26,22 @@ int main(int argc, char **argv)
 {
 	QRegister *QReg = new QRegister(5);
 
-	X(QReg, 0);
-	X(QReg, 1);
-	X(QReg, 2);
-	H(QReg, 4);
-	H(QReg, 3);
-#if 1
-	CSWAP(QReg, 4, 1, 0);
-	CSWAP(QReg, 4, 2, 1);
-	CSWAP(QReg, 4, 3, 2);
+#if 0
+	H(QReg, 0);
+	CX(QReg, 0, 1);
+	CX(QReg, 0, 2);
+#else
+	RX(QReg, 0, Q_PI/4);
+	RY(QReg, 0, Q_PI/4);
+	RX(QReg, 1, Q_PI/4);
+	RY(QReg, 1, Q_PI/4);
+	RX(QReg, 2, Q_PI/4);
+	RY(QReg, 2, Q_PI/4);
+	CX(QReg, 0, 3);
+	RX(QReg, 3, Q_PI/5);
+	RY(QReg, 3, Q_PI/5);
 #endif
 
 	dump(QReg);
+	showQubitRelation(QReg);
 }

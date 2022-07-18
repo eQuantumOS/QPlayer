@@ -1299,7 +1299,6 @@ void showQubitRelation(QRegister *QReg)
 			qsize_t maskQ2 = quantum_shiftL(1, Q2);
 			qsize_t mask = maskQ1 | maskQ2;
 			complex_t amp[4];
-			complex_t msign = -1.0;
 			int ampPos = 0;
 
 			QRegMask->clear();
@@ -1323,11 +1322,12 @@ void showQubitRelation(QRegister *QReg)
 				continue;
 			}
 
-			if(amp[0]==amp[2] && amp[1] == amp[3]) {
-				continue;
-			}
-
-			if(amp[0]==(amp[2]*msign) && amp[1]==(amp[3]*msign)) {
+			complex_t M[4];
+			M[0] = amp[0];
+			M[1] = amp[1];
+			M[2] = amp[2];
+			M[3] = amp[3];
+			if(getSchmidtNumber(M) == 1) {
 				continue;
 			}
 

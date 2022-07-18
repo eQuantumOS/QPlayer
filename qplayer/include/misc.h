@@ -62,6 +62,7 @@ extern void print_binary(int size, qsize_t value, struct qubit_delimiter *qd);
 extern void to_binary(qsize_t state, qsize_t nq, char *qstring);
 extern char *modeString(int mode);
 extern char *relationString(int mode);
+extern int getSchmidtNumber(complex_t M[4]);
 extern void checkMemory(void);
 
 #endif

@@ -160,6 +160,127 @@ char *relationString(int type) {
 	return "UNKNOWN";
 }
 
+
+static void OuterProduct(complex_t S[4], complex_t **PT) 
+{
+	complex_t OM[16];
+
+	for(int i=0; i<4; i++) 
+		for(int j=0; j<4; j++) 
+			 OM[i*4+j] = S[i] * S[j];
+
+#if 0
+	printf("--> density matrix\n");
+	for(int i=0; i<16; i++) {
+		cout << OM[i] << " ";
+	}
+	cout << endl << endl;
+#endif
+
+	(*PT)[0] = OM[0] + OM[9];
+	(*PT)[1] = OM[2] + OM[11];
+	(*PT)[2] = OM[4] + OM[13];
+	(*PT)[3] = OM[6] + OM[15];
+}
+
+static int QRDecompositionMethod(complex_t M[2][2]) 
+{
+	int SchmidtNum = 0;
+	int maxIteration = 1000;
+	int iteration = 0;
+	double eps = 1E-13;
+
+	while (iteration < maxIteration) {
+		complex_t MR[2][2];
+		complex_t MQ[2][2];
+
+		for(int i=0; i<2; i++) 
+			for(int j=0; j<2; j++) 
+				MR[i][j] = MQ[i][j] = 0;
+
+		for (int j = 0; j < 2; j++) {
+			for (int i = 0; i < j; i++)
+				for (int k = 0; k < 2; k++)
+					MR[i][j] += M[k][j] * MQ[k][i];
+			
+			for (int i = 0; i < 2; i++) {
+				MQ[i][j] = M[i][j];
+
+				for (int k = 0; k < j; k++)
+					MQ[i][j] -= MR[k][j] * MQ[i][k];
+
+				MR[j][j] += MQ[i][j] * MQ[i][j];
+			}
+
+			MR[j][j] = sqrt(MR[j][j]);
+
+			for (int i = 0; i < 2; i++) {
+				MQ[i][j] /= MR[j][j];
+			}
+		}
+
+		double max = 0;
+
+		for (int i = 0; i < 2; i++)
+			for (int j = i + 1; j < 2; j++)
+				if (norm(MQ[i][j]) > max)
+					max = norm(MQ[i][j]);
+
+		if (max < eps)
+			break;
+
+		M[0][0] = (MR[0][0] * MQ[0][0]) + (MR[0][1] * MQ[1][0]);
+		M[0][1] = (MR[0][0] * MQ[0][1]) + (MR[0][1] * MQ[1][1]);
+		M[1][0] = (MR[1][0] * MQ[0][0]) + (MR[1][1] * MQ[1][0]);
+		M[1][1] = (MR[1][0] * MQ[0][1]) + (MR[1][1] * MQ[1][1]);
+		iteration++;
+	}
+
+	if (iteration != maxIteration) {
+		complex_t eigenvalues[2];
+		for (int i = 0; i < 2; i++) {
+			bool found = false;
+
+			if (norm(M[i][i]) < eps) {
+				continue;
+			}
+
+			eigenvalues[SchmidtNum++] = M[i][i];
+		}
+	}
+
+#if 0
+	cout << "SchmidtNum = " << SchmidtNum << endl;
+#endif
+
+	return SchmidtNum;
+}
+
+int getSchmidtNumber(complex_t M[4])
+{
+	complex_t *PT = (complex_t *)malloc(sizeof(complex_t) * 4);
+	complex_t MT[2][2];
+
+	OuterProduct(M, &PT);
+
+#if 0
+	printf("--> partial traces\n");
+	for(int i=0; i<4; i++) {
+		cout << PT[i] << " ";
+	}
+	cout << endl << endl;
+#endif
+
+	MT[0][0] = PT[0];
+	MT[0][1] = PT[1];
+	MT[1][0] = PT[2];
+	MT[1][1] = PT[3];
+
+	free(PT);
+
+	return QRDecompositionMethod(MT);
+}
+
 /* 
  * Returns maximum allocated physical memory size. QPlayer uses VmHWM 
  * values because the memory size changes dynamically depending on the 

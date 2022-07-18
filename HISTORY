@@ -14,3 +14,6 @@
 
 07/11/2022: bug fix
  - update showQubitRelation() during estimating entanglement state
+
+07/18/2022: add schmidt decomposition algorithm
+ - this is for estimating entanglement relation between qubits
