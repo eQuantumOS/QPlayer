@@ -1281,7 +1281,12 @@ void showQubitRelation(QRegister *QReg)
 	int qubits = QReg->getNumQubits();
 	QRegister *QRegMask = new QRegister(qubits);
 	QState *Q = NULL;
-	int entangleCount = 0;
+
+	int eid = 0;
+	int emap[qubits];
+	for(int i=0; i<qubits; i++) {
+		emap[i] = -1;
+	}
 
 	for(int i=0; i<qubits; i++) {
 		if(QType(QReg, i) == KET_ZERO || QType(QReg, i) == KET_ONE) {
@@ -1317,8 +1322,16 @@ void showQubitRelation(QRegister *QReg)
 			}
 
 			if(QRegMask->getNumStates() == 2) {
-				printf("Q%d - Q%d : Entangled\n", Q1, Q2);
-				entangleCount++;
+				if(emap[Q1] == -1 && emap[Q2] == -1) {
+					emap[Q1] = emap[Q2] = eid++;
+				} else if(emap[Q1] != -1 && emap[Q2] == -1) {
+					emap[Q2] = emap[Q1];
+				} else if(emap[Q1] == -1 && emap[Q2] != -1) {
+					emap[Q1] = emap[Q2];
+				}
+
+				// printf("Q%d - Q%d : Entangled\n", Q1, Q2);
+
 				continue;
 			}
 
@@ -1331,13 +1344,38 @@ void showQubitRelation(QRegister *QReg)
 				continue;
 			}
 
-			printf("Q%d - Q%d : Entangled\n", Q1, Q2);
-			entangleCount++;
+			if(emap[Q1] == -1 && emap[Q2] == -1) {
+				emap[Q1] = emap[Q2] = eid++;
+			} else if(emap[Q1] != -1 && emap[Q2] == -1) {
+				emap[Q2] = emap[Q1];
+			} else if(emap[Q1] == -1 && emap[Q2] != -1) {
+				emap[Q1] = emap[Q2];
+			}
+
+			// printf("Q%d - Q%d : Entangled\n", Q1, Q2);
 		}
 	}
 	
-	printf("total qubits  = %d\n", qubits);
-	printf("entangle pair = %d\n", entangleCount);
+	printf("total qubits   = %d\n", qubits);
+	printf("tensor product = ");
+	for(int i=0; i<qubits; i++) {
+		if(emap[i] == -1) {
+			printf("%d ", i);
+		}
+	}
+	cout << endl;
+
+	printf("entangle pair  = %d\n", eid);
+	for(int i=0; i<eid; i++) {
+		printf("- #%d: ", i);
+		for(int j=0; j<qubits; j++) {
+			if(emap[j] != i) {
+				continue;
+			}
+			printf("%d ", j);
+		}
+		printf("\n");
+	}
 
 	delete QRegMask;
 }
