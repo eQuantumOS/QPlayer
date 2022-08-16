@@ -98,9 +98,9 @@ void dump(QRegister *QReg, char *msg, int begin, int end, struct qubit_delimiter
 	}
 
 	if (msg != NULL) {
-		printf("======== [%s] dump quantum states(%lu) ========\n\n", msg, (uint64_t) totalStates);
+		printf("======== [%s] dump quantum states(%lu) ========\n", msg, (uint64_t) totalStates);
 	} else {
-		printf("======== dump quantum states(%lu) ========\n\n", (uint64_t) totalStates);
+		printf("======== dump quantum states(%lu) ========\n", (uint64_t) totalStates);
 	}
 }
 

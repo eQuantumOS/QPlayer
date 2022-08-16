@@ -1276,25 +1276,19 @@ void showQubitProb(QRegister *QReg, int qubit)
 /*
  * show relations of all qubits
  */
-void showQubitRelation(QRegister *QReg) 
+void __estimation_entanglement(QRegister *QReg, std::vector<int> Qubits, std::vector<pair<int, int>>& entanglePair)
 {
-	int qubits = QReg->getNumQubits();
-	QRegister *QRegMask = new QRegister(qubits);
+	QRegister *QRegMask = new QRegister(QReg->getNumQubits());
+	int target_qubits = Qubits.size();
 	QState *Q = NULL;
 
-	int eid = 0;
-	int emap[qubits];
-	for(int i=0; i<qubits; i++) {
-		emap[i] = -1;
-	}
-
-	for(int i=0; i<qubits; i++) {
-		if(QType(QReg, i) == KET_ZERO || QType(QReg, i) == KET_ONE) {
+	for(int i=0; i<target_qubits; i++) {
+		if(QType(QReg, Qubits[i]) == KET_ZERO || QType(QReg, Qubits[i]) == KET_ONE) {
 			continue;
-		}
+		}		
 
-		for(int j=i+1; j<qubits; j++) {
-			if(QType(QReg, j) == KET_ZERO || QType(QReg, j) == KET_ONE) {
+		for(int j=i+1; j<target_qubits; j++) {
+			if(QType(QReg, Qubits[j]) == KET_ZERO || QType(QReg, Qubits[j]) == KET_ONE) {
 				continue;
 			}
 
@@ -1321,41 +1315,95 @@ void showQubitRelation(QRegister *QReg)
 				}
 			}
 
-			if(QRegMask->getNumStates() == 2) {
-				if(emap[Q1] == -1 && emap[Q2] == -1) {
-					emap[Q1] = emap[Q2] = eid++;
-				} else if(emap[Q1] != -1 && emap[Q2] == -1) {
-					emap[Q2] = emap[Q1];
-				} else if(emap[Q1] == -1 && emap[Q2] != -1) {
-					emap[Q1] = emap[Q2];
+			if(QRegMask->getNumStates() != 2) {
+				complex_t M[4];
+				M[0] = amp[0];
+				M[1] = amp[1];
+				M[2] = amp[2];
+				M[3] = amp[3];
+				if(getSchmidtNumber(M) == 1) {
+					continue;
 				}
-
-				// printf("Q%d - Q%d : Entangled\n", Q1, Q2);
-
-				continue;
 			}
 
-			complex_t M[4];
-			M[0] = amp[0];
-			M[1] = amp[1];
-			M[2] = amp[2];
-			M[3] = amp[3];
-			if(getSchmidtNumber(M) == 1) {
-				continue;
-			}
-
-			if(emap[Q1] == -1 && emap[Q2] == -1) {
-				emap[Q1] = emap[Q2] = eid++;
-			} else if(emap[Q1] != -1 && emap[Q2] == -1) {
-				emap[Q2] = emap[Q1];
-			} else if(emap[Q1] == -1 && emap[Q2] != -1) {
-				emap[Q1] = emap[Q2];
-			}
-
-			// printf("Q%d - Q%d : Entangled\n", Q1, Q2);
+			entanglePair.push_back(make_pair(Q1, Q2));
 		}
 	}
-	
+
+	delete QRegMask;
+}
+
+void showQubitRelation(QRegister *QReg) 
+{
+	std::vector<int> candidateQubits;
+	std::vector<pair<int, int>> entanglePair;
+	int qubits = QReg->getNumQubits();
+	QState *Q = NULL;
+
+	/***********************************/
+	/* STEP1: initialize candidate map */
+	/***********************************/
+	for(int i=0; i<qubits; i++) {
+		if(QType(QReg, i) == KET_ZERO || QType(QReg, i) == KET_ONE) {
+			continue;
+		}
+		candidateQubits.push_back(i);
+	}
+
+	/******************************************************/
+	/* STEP2: build initial entangle map of global states */
+	/******************************************************/
+	__estimation_entanglement(QReg, candidateQubits, entanglePair);
+
+	/*****************************************************/
+	/* STEP3: re-build nested entangle of partial states */
+	/*****************************************************/
+	for(auto qubit : candidateQubits) {
+		QRegister *QRegClone = new QRegister(QReg);
+
+		M(QRegClone, qubit);
+		__estimation_entanglement(QRegClone, candidateQubits, entanglePair);
+
+		delete QRegClone;
+	}
+
+	/************************************/
+	/* STEP4: build global entangle map */
+	/************************************/
+	int eid = 0;
+	int emap[qubits];
+	for(int i=0; i<qubits; i++) {
+		emap[i] = -1;
+	}
+
+	for(auto ePair : entanglePair) {
+		int Q1 = ePair.first;
+		int Q2 = ePair.second;
+
+		// printf("Q%d - Q%d\n", Q1, Q2);
+
+		if(emap[Q1] == -1 && emap[Q2] == -1) {
+			emap[Q1] = emap[Q2] = eid++;
+		} else if(emap[Q1] != -1 && emap[Q2] == -1) {
+			emap[Q2] = emap[Q1];
+		} else if(emap[Q1] == -1 && emap[Q2] != -1) {
+			emap[Q1] = emap[Q2];
+		} else if(emap[Q1] != -1 && emap[Q2] != -1) {
+			if(emap[Q1] != emap[Q2]) {
+				int newEid = emap[Q1];
+				int oldEid = emap[Q2];
+				for(int i=0; i<qubits; i++) {
+					if(emap[i] == oldEid) {
+						emap[i] = newEid;
+					}
+				}
+			}
+		}
+	}
+
+	/*****************************************/
+	/* STEP5: print global entangle relation */
+	/*****************************************/
 	printf("total qubits   = %d\n", qubits);
 	printf("tensor product = ");
 	for(int i=0; i<qubits; i++) {
@@ -1366,8 +1414,20 @@ void showQubitRelation(QRegister *QReg)
 	cout << endl;
 
 	printf("entangle pair  = %d\n", eid);
+	int newEid = 0;
 	for(int i=0; i<eid; i++) {
-		printf("- #%d: ", i);
+		int equbits = 0;
+		for(int j=0; j<qubits; j++) {
+			if(emap[j] == i) {
+				equbits++;
+			}
+		}
+
+		if(equbits == 0) {
+			continue;
+		}
+
+		printf("- #%d [%d]: ", newEid++, equbits);
 		for(int j=0; j<qubits; j++) {
 			if(emap[j] != i) {
 				continue;
@@ -1376,6 +1436,4 @@ void showQubitRelation(QRegister *QReg)
 		}
 		printf("\n");
 	}
-
-	delete QRegMask;
 }

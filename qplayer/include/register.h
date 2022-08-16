@@ -55,6 +55,7 @@ public:
 
 public:
 	QRegister(int n);
+	QRegister(QRegister *src);
 	~QRegister(void);
 
 	/* clear all quantum states */

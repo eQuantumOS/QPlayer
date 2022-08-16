@@ -17,3 +17,6 @@
 
 07/18/2022: add schmidt decomposition algorithm
  - this is for estimating entanglement relation between qubits
+
+08/16/2022: fix entanglement estimation algorithm
+ - refactoring showQubitRelation()  

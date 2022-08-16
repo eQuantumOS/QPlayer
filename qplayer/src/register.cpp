@@ -40,6 +40,13 @@ QRegister::QRegister(int n) {
 	srand(time(NULL));
 }
 
+QRegister::QRegister(QRegister *src) {
+	numQubit = src->getNumQubits();
+	curStage = 0;
+	maxStates = quantum_shiftL(1, numQubit);
+	replace(src);
+}
+
 /* 
  * QRegister constructor 
  */
