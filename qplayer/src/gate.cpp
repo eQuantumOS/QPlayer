@@ -1333,7 +1333,7 @@ void __estimation_entanglement(QRegister *QReg, std::vector<int> Qubits, std::ve
 	delete QRegMask;
 }
 
-void showQubitRelation(QRegister *QReg) 
+void __showQubitRelation(QRegister *QReg, std::vector<std::vector<int>>& entangleList) 
 {
 	std::vector<int> candidateQubits;
 	std::vector<pair<int, int>> entanglePair;
@@ -1416,6 +1416,7 @@ void showQubitRelation(QRegister *QReg)
 	printf("entangle pair  = %d\n", eid);
 	int newEid = 0;
 	for(int i=0; i<eid; i++) {
+		std::vector<int> eList;
 		int equbits = 0;
 		for(int j=0; j<qubits; j++) {
 			if(emap[j] == i) {
@@ -1433,7 +1434,20 @@ void showQubitRelation(QRegister *QReg)
 				continue;
 			}
 			printf("%d ", j);
+			eList.push_back(j);
 		}
 		printf("\n");
+		entangleList.push_back(eList);
 	}
+}
+
+void showQubitRelation(QRegister *QReg)
+{
+    std::vector<std::vector<int>> entangleList;
+    __showQubitRelation(QReg, entangleList);
+}
+
+void showQubitRelation(QRegister *QReg, std::vector<std::vector<int>>& entangleList)
+{
+    __showQubitRelation(QReg, entangleList);
 }

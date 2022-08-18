@@ -61,6 +61,7 @@ extern int MNOP(QRegister *QReg, int qubit);
 /* These are experimental functions */
 extern void showQubitProb(QRegister *QReg, int qubit);
 extern void showQubitRelation(QRegister *QReg);
+extern void showQubitRelation(QRegister *QReg, std::vector<std::vector<int>>& entangleList);
 extern int QType(QRegister *QReg, int qubit);
 extern char *QTypeStr(QRegister *QReg, int qubit);
 
