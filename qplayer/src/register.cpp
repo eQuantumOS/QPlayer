@@ -31,9 +31,12 @@ QRegister::QRegister(int n) {
 		exit(0);
 	}
 
+	memset(&qstat, 0, sizeof(struct qregister_stat));
+
 	numQubit = n;
 	curStage = 0;
 	maxStates = quantum_shiftL(1, numQubit);
+	qstat.qubits = numQubit;
 	init();
 
 	/* set random seed */
@@ -41,9 +44,12 @@ QRegister::QRegister(int n) {
 }
 
 QRegister::QRegister(QRegister *src) {
+	memset(&qstat, 0, sizeof(struct qregister_stat));
+
 	numQubit = src->getNumQubits();
 	curStage = 0;
 	maxStates = quantum_shiftL(1, numQubit);
+	qstat.qubits = numQubit;
 	replace(src);
 }
 

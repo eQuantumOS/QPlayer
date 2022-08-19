@@ -46,6 +46,7 @@ private:
 	int numQubit;
 	size_t curStage;
 	qsize_t maxStates;
+	struct qregister_stat qstat;
 
 public:
 	std::map<qsize_t, QState*> qstore[QSTORE_PARTITION];
@@ -281,6 +282,49 @@ public:
 				}
 			}
 		}
+	}
+
+public:
+	void updateQRegStat(int gate, QTimer timer) {
+		double tm = timer.getElapsedUSec();
+
+		/* update max number of quantum states */
+		qsize_t numStates = getNumStates();
+		if(qstat.maxQStates < numStates) {
+			qstat.maxQStates = numStates;
+		}
+
+		/* increase total gate calls */
+		qstat.totalGateCalls++;
+
+		/* increase each gate calls */ 
+		qstat.gateCalls[gate]++;
+
+		/* update execution time stats */ 
+		if(qstat.totalTime == 0) {
+			qstat.totalTime = tm;
+			qstat.maxGateTime = tm;
+			qstat.minGateTime = tm;
+			qstat.avgGateTime = tm;
+		} else {
+			qstat.totalTime += tm;
+
+			if(qstat.maxGateTime < tm) {
+				qstat.maxGateTime = tm;
+			}
+
+			if(qstat.minGateTime > tm) {
+				qstat.minGateTime = tm;
+			}
+
+			qstat.avgGateTime = qstat.totalTime / qstat.totalGateCalls;
+		}
+	}
+
+	struct qregister_stat getQRegStat(void) {
+		qstat.finalQStates = getNumStates();
+
+		return qstat;
 	}
 };
 

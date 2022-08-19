@@ -53,6 +53,59 @@ typedef enum {
     ENTANGLE 
 } QUBIT_RELATION;
 
+typedef enum {
+	QGATE_ID = 0,
+	QGATE_U1,
+	QGATE_U2,
+	QGATE_U3,
+	QGATE_X,
+	QGATE_Y,
+	QGATE_Z,
+	QGATE_H,
+	QGATE_S,
+	QGATE_P,
+	QGATE_SDG,
+	QGATE_T,
+	QGATE_TDG,
+	QGATE_RX,
+	QGATE_RY,
+	QGATE_RZ,
+	QGATE_CX,
+	QGATE_CZ,
+	QGATE_CY,
+	QGATE_CH,
+	QGATE_CCX,
+	QGATE_CRZ,
+	QGATE_CU1,
+	QGATE_CU2,
+	QGATE_CU3,
+	QGATE_SWAP,
+	QGATE_CSWAP,
+	QGATE_MEASURE
+} QUANTUM_GATE;
+
+#define MAX_GATES 28 
+
+struct qregister_stat {
+	/* Quantum Circuit */
+	int qubits;
+	int totalGateCalls;
+	int gateCalls[MAX_GATES];
+
+	/* Execution Time */
+	double totalTime;
+	double maxGateTime;
+	double minGateTime;
+	double avgGateTime;
+
+	/* Quantum Circuit */
+	qsize_t maxQStates;
+	qsize_t finalQStates;
+
+	/* System Resources */
+	uint64_t usedMemory;
+};
+
 extern qsize_t quantum_shiftL(qsize_t left, qsize_t right);
 extern qsize_t quantum_shiftR(qsize_t left, qsize_t right);
 extern bool stripe_lower(qsize_t index, int qubit);
@@ -63,6 +116,8 @@ extern void to_binary(qsize_t state, qsize_t nq, char *qstring);
 extern char *modeString(int mode);
 extern char *relationString(int mode);
 extern int getSchmidtNumber(complex_t M[4]);
+extern char *gateString(int gate);
 extern void checkMemory(void);
+extern char *checkMemory(char *ptr);
 
 #endif

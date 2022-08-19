@@ -377,12 +377,16 @@ void initX(QRegister *QReg, int qubit)
  */
 void I(QRegister *QReg, int qubit) 
 {
+	QTimer timer;
 	complex_t M[] = {
 		complex_t(1, 0), complex_t(0, 0),
 		complex_t(0, 0), complex_t(1, 0)
 	};
 
+	timer.start();
 	applyMatrix(QReg, qubit, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_ID, timer);
 }
 
 /*
@@ -390,12 +394,16 @@ void I(QRegister *QReg, int qubit)
  */
 void X(QRegister *QReg, int qubit) 
 {
+	QTimer timer;
 	complex_t M[] = {
 		complex_t(0, 0), complex_t(1, 0),
 		complex_t(1, 0), complex_t(0, 0)
 	};
 
+	timer.start();
 	applyMatrix(QReg, qubit, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_X, timer);
 }
 
 /*
@@ -403,12 +411,16 @@ void X(QRegister *QReg, int qubit)
  */
 void Z(QRegister *QReg, int qubit) 
 {
+	QTimer timer;
 	complex_t M[] = {
 		complex_t(1, 0), complex_t(0, 0),
 		complex_t(0, 0), complex_t(-1, 0)
 	};
 
+	timer.start();
 	applyMatrix(QReg, qubit, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_Z, timer);
 }
 
 /*
@@ -416,12 +428,16 @@ void Z(QRegister *QReg, int qubit)
  */
 void Y(QRegister *QReg, int qubit) 
 {
+	QTimer timer;
 	complex_t M[] = {
 		complex_t(0, 0), complex_t(0, -1),
 		complex_t(0, 1), complex_t(0, 0)
 	};
 
+	timer.start();
 	applyMatrix(QReg, qubit, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_Y, timer);
 }
 
 /*
@@ -429,26 +445,35 @@ void Y(QRegister *QReg, int qubit)
  */
 void H(QRegister *QReg, int qubit) 
 {
+	QTimer timer;
 	complex_t M[] = {
 		complex_t(R_SQRT_2, 0), complex_t(R_SQRT_2, 0),
 		complex_t(R_SQRT_2, 0), complex_t(-R_SQRT_2, 0)
 	};
 
+	timer.start();
 	applyMatrix(QReg, qubit, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_H, timer);
 }
 
 void U1(QRegister *QReg, int qubit, double angle)
 {
+	QTimer timer;
 	complex_t M[] = {
 		complex_t(1, 0), complex_t(0, 0),
 		complex_t(0, 0), complex_t(cos(angle), sin(angle))
 	};
 
+	timer.start();
 	applyMatrix(QReg, qubit, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_U1, timer);
 }
 
 void U2(QRegister *QReg, int qubit, double phi, double lambda)
 {
+	QTimer timer;
 	complex_t M[] = {
 		complex_t(1, 0) / std::sqrt(2), 
 		-complex_t(cos(lambda), sin(lambda)) / std::sqrt(2),
@@ -456,11 +481,15 @@ void U2(QRegister *QReg, int qubit, double phi, double lambda)
 		complex_t(cos(phi+lambda), sin(phi+lambda)) / std::sqrt(2)
 	};
 
+	timer.start();
 	applyMatrix(QReg, qubit, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_U2, timer);
 }
 
 void U3(QRegister *QReg, int qubit, double theta, double phi, double lambda)
 {
+	QTimer timer;
 	complex_t M[] = {
 		complex_t(cos(theta/2), 0), 
 		complex_t(-cos(lambda), -sin(lambda))*sin(theta/2),
@@ -468,7 +497,10 @@ void U3(QRegister *QReg, int qubit, double theta, double phi, double lambda)
 		complex_t(cos(phi+lambda), sin(phi+lambda))*cos(theta/2)
 	};
 
+	timer.start();
 	applyMatrix(QReg, qubit, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_U3, timer);
 }
 
 
@@ -477,12 +509,16 @@ void U3(QRegister *QReg, int qubit, double theta, double phi, double lambda)
  */
 void S(QRegister *QReg, int qubit) 
 {
+	QTimer timer;
 	complex_t M[] = {
 		complex_t(1, 0), complex_t(0, 0),
 		complex_t(0, 0), complex_t(0, 1)
 	};
 
+	timer.start();
 	applyMatrix(QReg, qubit, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_S, timer);
 }
 
 /*
@@ -490,12 +526,16 @@ void S(QRegister *QReg, int qubit)
  */
 void T(QRegister *QReg, int qubit) 
 {
+	QTimer timer;
 	complex_t M[] = {
 		complex_t(1, 0), complex_t(0, 0),
 		complex_t(0, 0), complex_t(cos(Q_PI/4), sin(Q_PI/4))
 	};
 
+	timer.start();
 	applyMatrix(QReg, qubit, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_T, timer);
 }
 
 /*
@@ -503,12 +543,16 @@ void T(QRegister *QReg, int qubit)
  */
 void SDG(QRegister *QReg, int qubit)
 {
+	QTimer timer;
 	complex_t M[] = {
 		complex_t(1, 0), complex_t(0, 0),
 		complex_t(0, 0), complex_t(0, -1)
 	};
 
+	timer.start();
 	applyMatrix(QReg, qubit, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_SDG, timer);
 }
 
 /*
@@ -516,12 +560,16 @@ void SDG(QRegister *QReg, int qubit)
  */
 void TDG(QRegister *QReg, int qubit)
 {
+	QTimer timer;
 	complex_t M[] = {
 		complex_t(1, 0), complex_t(0, 0),
 		complex_t(0, 0), complex_t(cos(Q_PI/4), -sin(Q_PI/4))
 	};
 
+	timer.start();
 	applyMatrix(QReg, qubit, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_TDG, timer);
 }
 
 /*
@@ -529,6 +577,7 @@ void TDG(QRegister *QReg, int qubit)
  */
 void RX(QRegister *QReg, int qubit, double angle) 
 {
+	QTimer timer;
 	complex_t M[] = {
 		cos(angle/2), complex_t(0, -sin(angle/2)),
 		complex_t(0, -sin(angle/2)), cos(angle/2)
@@ -537,7 +586,10 @@ void RX(QRegister *QReg, int qubit, double angle)
 #if 0
 	reset_gphase(M);
 #endif
+	timer.start();
 	applyMatrix(QReg, qubit, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_RX, timer);
 }
 
 /*
@@ -545,6 +597,7 @@ void RX(QRegister *QReg, int qubit, double angle)
  */
 void RY(QRegister *QReg, int qubit, double angle) 
 {
+	QTimer timer;
 	complex_t M[] = {
 		cos(angle/2), -sin(angle/2),
 		sin(angle/2), cos(angle/2)
@@ -553,7 +606,10 @@ void RY(QRegister *QReg, int qubit, double angle)
 #if 0
 	reset_gphase(M);
 #endif
+	timer.start();
 	applyMatrix(QReg, qubit, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_RY, timer);
 }
 
 /*
@@ -561,6 +617,7 @@ void RY(QRegister *QReg, int qubit, double angle)
  */
 void RZ(QRegister *QReg, int qubit, double angle) 
 {
+	QTimer timer;
 	complex_t M[] = {
 		complex_t(cos(-angle/2), sin(-angle/2)), 0, 
 		0, complex_t(cos(angle/2), sin(angle/2))
@@ -569,7 +626,10 @@ void RZ(QRegister *QReg, int qubit, double angle)
 #if 0
 	reset_gphase(M);
 #endif
+	timer.start();
 	applyMatrix(QReg, qubit, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_RZ, timer);
 }
 
 /*
@@ -577,12 +637,16 @@ void RZ(QRegister *QReg, int qubit, double angle)
  */
 void P(QRegister *QReg, int qubit, double angle) 
 {
+	QTimer timer;
 	complex_t M[] = {
 		complex_t(1, 0), complex_t(0, 0),
 		complex_t(0, 0), complex_t(cos(angle), sin(angle))
 	};
 
+	timer.start();
 	applyMatrix(QReg, qubit, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_P, timer);
 }
 
 /*
@@ -590,6 +654,7 @@ void P(QRegister *QReg, int qubit, double angle)
  */
 void CU1(QRegister *QReg, int control, int target, double angle) 
 {
+	QTimer timer;
 	complex_t M[] = {
 		complex_t(1, 0), complex_t(0, 0),
 		complex_t(0, 0), complex_t(cos(angle), sin(angle))
@@ -599,7 +664,10 @@ void CU1(QRegister *QReg, int control, int target, double angle)
 		return;
 	}
 
+	timer.start();
 	applyControlledMatrix(QReg, control, target, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_CU1, timer);
 }
 
 /*
@@ -607,6 +675,7 @@ void CU1(QRegister *QReg, int control, int target, double angle)
  */
 void CU2(QRegister *QReg, int control, int target, double phi, double lambda) 
 {
+	QTimer timer;
 	complex_t M[] = {
 		complex_t(1, 0) / std::sqrt(2), 
 		-complex_t(cos(lambda), sin(lambda)) / std::sqrt(2),
@@ -618,7 +687,10 @@ void CU2(QRegister *QReg, int control, int target, double phi, double lambda)
 		return;
 	}
 
+	timer.start();
 	applyControlledMatrix(QReg, control, target, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_CU2, timer);
 }
 
 /*
@@ -626,6 +698,7 @@ void CU2(QRegister *QReg, int control, int target, double phi, double lambda)
  */
 void CU3(QRegister *QReg, int control, int target, double theta, double pie, double lambda) 
 {
+	QTimer timer;
 	complex_t M[] = {
 		complex_t(cos(theta/2), 0), 
 		complex_t(-cos(lambda), -sin(lambda))*sin(theta/2),
@@ -637,7 +710,10 @@ void CU3(QRegister *QReg, int control, int target, double theta, double pie, dou
 		return;
 	}
 
+	timer.start();
 	applyControlledMatrix(QReg, control, target, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_CU3, timer);
 }
 
 /*
@@ -645,6 +721,7 @@ void CU3(QRegister *QReg, int control, int target, double theta, double pie, dou
  */
 void CH(QRegister *QReg, int control, int target) 
 {
+	QTimer timer;
 	complex_t M[] = {
 		complex_t(R_SQRT_2, 0), complex_t(R_SQRT_2, 0),
 		complex_t(R_SQRT_2, 0), complex_t(-R_SQRT_2, 0)
@@ -654,7 +731,10 @@ void CH(QRegister *QReg, int control, int target)
 		return;
 	}
 
+	timer.start();
 	applyControlledMatrix(QReg, control, target, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_CH, timer);
 }
 
 /*
@@ -662,6 +742,7 @@ void CH(QRegister *QReg, int control, int target)
  */
 void CX(QRegister *QReg, int control, int target) 
 {
+	QTimer timer;
 	complex_t M[] = {
 		complex_t(0, 0), complex_t(1, 0),
 		complex_t(1, 0), complex_t(0, 0)
@@ -671,7 +752,10 @@ void CX(QRegister *QReg, int control, int target)
 		return;
 	}
 
+	timer.start();
 	applyControlledMatrix(QReg, control, target, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_CX, timer);
 }
 
 /*
@@ -679,6 +763,7 @@ void CX(QRegister *QReg, int control, int target)
  */
 void CY(QRegister *QReg, int control, int target) 
 {
+	QTimer timer;
 	complex_t M[] = {
 		complex_t(0, 0), complex_t(0, -1),
 		complex_t(0, 1), complex_t(0, 0)
@@ -689,7 +774,10 @@ void CY(QRegister *QReg, int control, int target)
 		return;
 	}
 
+	timer.start();
 	applyControlledMatrix(QReg, control, target, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_CY, timer);
 }
 
 /*
@@ -697,6 +785,7 @@ void CY(QRegister *QReg, int control, int target)
  */
 void CZ(QRegister *QReg, int control, int target) 
 {
+	QTimer timer;
 	complex_t M[] = {
 		complex_t(1, 0), complex_t(0, 0),
 		complex_t(0, 0), complex_t(-1, 0)
@@ -706,7 +795,10 @@ void CZ(QRegister *QReg, int control, int target)
 		return;
 	}
 
+	timer.start();
 	applyControlledMatrix(QReg, control, target, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_CZ, timer);
 }
 
 /*
@@ -714,6 +806,7 @@ void CZ(QRegister *QReg, int control, int target)
  */
 void CRZ(QRegister *QReg, int control, int target, double angle) 
 {
+	QTimer timer;
 	complex_t M[4];
 
 	M[0] = complex_t(cos(-angle/2), sin(-angle/2));
@@ -737,7 +830,10 @@ void CRZ(QRegister *QReg, int control, int target, double angle)
 		M[3] /= p;
 	}
 
+	timer.start();
 	applyControlledMatrix(QReg, control, target, M);
+	timer.end();
+	QReg->updateQRegStat(QGATE_CRZ, timer);
 }
 
 /* 
@@ -745,6 +841,9 @@ void CRZ(QRegister *QReg, int control, int target, double angle)
  */
 void CCX(QRegister *QReg, int control1, int control2, int target) 
 {
+	QTimer timer;
+	timer.start();
+
 	if(control1 >= QReg->getNumQubits()) {
 		printf("control1 qubit(%d) out of range!\n", control1);
 		exit(0);
@@ -852,6 +951,9 @@ void CCX(QRegister *QReg, int control1, int control2, int target)
 		}
 		newQState[i].clear();
 	}
+
+	timer.end();
+	QReg->updateQRegStat(QGATE_CCX, timer);
 }
 
 /*
@@ -859,6 +961,9 @@ void CCX(QRegister *QReg, int control1, int control2, int target)
  */
 void SWAP(QRegister *QReg, int qubit1, int qubit2) 
 {
+	QTimer timer;
+	timer.start();
+
 	if(qubit1 > QReg->getNumQubits()) {
 		printf("qubit1(%d) out of range!\n", qubit1);
 		exit(0);
@@ -877,6 +982,9 @@ void SWAP(QRegister *QReg, int qubit1, int qubit2)
 	CX(QReg, qubit1, qubit2);
 	CX(QReg, qubit2, qubit1);
 	CX(QReg, qubit1, qubit2);
+
+	timer.end();
+	QReg->updateQRegStat(QGATE_SWAP, timer);
 }
 
 /*
@@ -884,9 +992,15 @@ void SWAP(QRegister *QReg, int qubit1, int qubit2)
  */
 void CSWAP(QRegister *QReg, int control, int qubit1, int qubit2) 
 {
+	QTimer timer;
+	timer.start();
+
 	CX(QReg, qubit2, qubit1);
 	CCX(QReg, control, qubit1, qubit2);
 	CX(QReg, qubit2, qubit1);
+
+	timer.end();
+	QReg->updateQRegStat(QGATE_CSWAP, timer);
 }
 
 /*
@@ -901,6 +1015,9 @@ void CSWAP(QRegister *QReg, int control, int qubit1, int qubit2)
  */
 int M(QRegister *QReg, int qubit) 
 {
+	QTimer timer;
+	timer.start();
+
 	if(qubit >= QReg->getNumQubits()) {
 		printf("[%s] qubit(%d) out of range!\n", __func__, qubit);
 		return -1;
@@ -948,6 +1065,9 @@ int M(QRegister *QReg, int qubit)
 			state = 1;
 		}
 
+		timer.end();
+		QReg->updateQRegStat(QGATE_MEASURE, timer);
+
 		return state;
 	}
 
@@ -987,6 +1107,9 @@ int M(QRegister *QReg, int qubit)
 	 * (STEP5) Normalize amplitudes
 	 */
 	QReg->normalize();
+
+	timer.end();
+	QReg->updateQRegStat(QGATE_MEASURE, timer);
 
 	return state;
 }
@@ -1333,7 +1456,7 @@ void __estimation_entanglement(QRegister *QReg, std::vector<int> Qubits, std::ve
 	delete QRegMask;
 }
 
-void __showQubitRelation(QRegister *QReg, std::vector<std::vector<int>>& entangleList) 
+void __showQubitRelation(QRegister *QReg, std::vector<std::vector<int>>& entangleList, bool print) 
 {
 	std::vector<int> candidateQubits;
 	std::vector<pair<int, int>> entanglePair;
@@ -1404,16 +1527,20 @@ void __showQubitRelation(QRegister *QReg, std::vector<std::vector<int>>& entangl
 	/*****************************************/
 	/* STEP5: print global entangle relation */
 	/*****************************************/
-	printf("total qubits   = %d\n", qubits);
-	printf("tensor product = ");
-	for(int i=0; i<qubits; i++) {
-		if(emap[i] == -1) {
-			printf("%d ", i);
+	if(print == true) {
+		printf("total qubits   = %d\n", qubits);
+		printf("tensor product = ");
+		for(int i=0; i<qubits; i++) {
+			if(emap[i] == -1) {
+				printf("%d ", i);
+			}
 		}
+		cout << endl;
 	}
-	cout << endl;
 
-	printf("entangle pair  = %d\n", eid);
+	if(print == true) {
+		printf("entangle pair  = %d\n", eid);
+	}
 	int newEid = 0;
 	for(int i=0; i<eid; i++) {
 		std::vector<int> eList;
@@ -1428,15 +1555,21 @@ void __showQubitRelation(QRegister *QReg, std::vector<std::vector<int>>& entangl
 			continue;
 		}
 
-		printf("- #%d [%d]: ", newEid++, equbits);
+		if(print == true) {
+			printf("- #%d [%d]: ", newEid++, equbits);
+		}
 		for(int j=0; j<qubits; j++) {
 			if(emap[j] != i) {
 				continue;
 			}
-			printf("%d ", j);
+			if(print == true) {
+				printf("%d ", j);
+			}
 			eList.push_back(j);
 		}
-		printf("\n");
+		if(print == true) {
+			printf("\n");
+		}
 		entangleList.push_back(eList);
 	}
 }
@@ -1444,10 +1577,10 @@ void __showQubitRelation(QRegister *QReg, std::vector<std::vector<int>>& entangl
 void showQubitRelation(QRegister *QReg)
 {
     std::vector<std::vector<int>> entangleList;
-    __showQubitRelation(QReg, entangleList);
+    __showQubitRelation(QReg, entangleList, true);
 }
 
 void showQubitRelation(QRegister *QReg, std::vector<std::vector<int>>& entangleList)
 {
-    __showQubitRelation(QReg, entangleList);
+    __showQubitRelation(QReg, entangleList, false);
 }

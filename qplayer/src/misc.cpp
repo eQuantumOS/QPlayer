@@ -281,12 +281,48 @@ int getSchmidtNumber(complex_t M[4])
 	return QRDecompositionMethod(MT);
 }
 
+char *gateString(int gate) 
+{
+	switch(gate) {
+	case QGATE_ID: return "id";
+	case QGATE_U1: return "u1";
+	case QGATE_U2: return "u2";
+	case QGATE_U3: return "u3";
+	case QGATE_X: return "x";
+	case QGATE_Y: return "y";
+	case QGATE_Z: return "z";
+	case QGATE_H: return "h";
+	case QGATE_S: return "s";
+	case QGATE_P: return "p";
+	case QGATE_SDG: return "sdg";
+	case QGATE_T: return "t";
+	case QGATE_TDG: return "tdg";
+	case QGATE_RX: return "rx";
+	case QGATE_RY: return "ry";
+	case QGATE_RZ: return "rz";
+	case QGATE_CX: return "cx";
+	case QGATE_CZ: return "cz";
+	case QGATE_CY: return "cy";
+	case QGATE_CH: return "ch";
+	case QGATE_CCX: return "ccx";
+	case QGATE_CRZ: return "crz";
+	case QGATE_CU1: return "cu1";
+	case QGATE_CU2: return "cu2";
+	case QGATE_CU3: return "cu3";
+	case QGATE_SWAP: return "swap";
+	case QGATE_CSWAP: return "cswap";
+	case QGATE_MEASURE: return "measure";
+	}
+
+	return "UNKNOWN GATE";
+}
+
 /* 
  * Returns maximum allocated physical memory size. QPlayer uses VmHWM 
  * values because the memory size changes dynamically depending on the 
  * number of non-zero amplitude states. 
  */
-void checkMemory(void) {
+char *__checkMemory(char *ptr) {
 	FILE *fp = NULL;
 	char fname[256] = "";
 	char cmd[256] = "";
@@ -296,7 +332,7 @@ void checkMemory(void) {
 
 	fp = fopen(fname, "r");
 	if(fp == NULL) {
-		return;
+		return ptr;
 	}
 
 	while(fgets(cmd, 256, fp) != NULL) {
@@ -307,10 +343,22 @@ void checkMemory(void) {
 		}
 	}
 
+	strcpy(ptr, size);
 	printf("allocated memory = %s KB\n", size);
 
 	fclose(fp);
 
-	return;
+	return ptr;
 }
 
+void checkMemory(void) 
+{
+	char ptr[32];
+
+	__checkMemory(ptr);
+}
+
+char *checkMemory(char *ptr) 
+{
+	return __checkMemory(ptr);
+}

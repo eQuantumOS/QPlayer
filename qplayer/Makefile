@@ -7,7 +7,7 @@ CXXFLAGS = -g -Wall -O2 -std=c++11 -MMD -MP -fopenmp
 CXXFLAGS += -I. -I./include
 CXXFLAGS += -Wno-reorder -Wno-sign-compare -Wno-parentheses -Wno-pessimizing-move
 CXXFLAGS += -Wno-unused-function -Wno-unused-variable -Wno-write-strings
-CXXFLAGS += -Wno-class-conversion -Wno-unused-result
+CXXFLAGS += -Wno-class-conversion -Wno-unused-result -Wno-class-memaccess
 ifeq ($(boost),yes)
     CXXFLAGS += -DLARGE_SCALE
 endif
