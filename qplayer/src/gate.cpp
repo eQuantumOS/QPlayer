@@ -1353,7 +1353,7 @@ char *QTypeStr(QRegister *QReg, int qubit)
 /*
  * show probability of the qubit 
  */
-void showQubitProb(QRegister *QReg, int qubit) 
+double showQubitProb(QRegister *QReg, int qubit, int state) 
 {
 	if(qubit >= QReg->getNumQubits()) {
 		printf("[%s] qubit(%d) out of range!\n", __func__, qubit);
@@ -1389,11 +1389,21 @@ void showQubitProb(QRegister *QReg, int qubit)
 	lo = lo / length;
 	up = up / length;
 
+#if 0
 	/* print */
 	printf("Qubit-%d", qubit);
 	printf("%5s [P=%.6f] [%.6f, %.6f] |0>\n", " ", norm(lo), abs(lo.real()), abs(lo.imag()));
 	printf("%13s [P=%.6f] [%.6f, %.6f] |1>\n", " ", norm(up), abs(up.real()), abs(up.imag()));
 	printf("\n");
+#endif
+
+	if(state == KET_ZERO) {
+		return norm(lo);
+	} else if(state == KET_ONE) {
+		return norm(up);
+	}
+
+	return 0;
 }
 
 /*

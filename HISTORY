@@ -23,3 +23,7 @@
 
 08/18/2022: add statistic monitoring module 
  - struct qregister_stat --> QRegister class
+
+08/25/2022: fix showQubitProb()
+ - add 3rd function argument 'int state' to view probability
+ - 'state' can be KET_ONE or KET_ZERO
