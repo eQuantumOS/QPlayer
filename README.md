@@ -1,4 +1,4 @@
-# QPlayer v0.3 : Light-weight, Scalable and Fast Quantum Simulator
+# QPlayer v0.5 : Light-weight, Scalable and Fast Quantum Simulator
 
 With the rapid evolution of quantum computing, classical quantum simulations
 are considered essential for quantum algorithm verification, quantum error
