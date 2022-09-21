@@ -650,6 +650,24 @@ void P(QRegister *QReg, int qubit, double angle)
 }
 
 /*
+ * Apply SX-gate to the qubit
+ */
+void SX(QRegister *QReg, int qubit) 
+{
+	QTimer timer;
+	complex_t M[] = {
+		complex_t(1, 1)/std::sqrt(2), complex_t(1, -1)/std::sqrt(2),
+		complex_t(1, -1)/std::sqrt(2), complex_t(1, 1)/std::sqrt(2)
+	};
+
+	timer.start();
+	applyMatrix(QReg, qubit, M);
+	QReg->normalize();
+	timer.end();
+	QReg->updateQRegStat(QGATE_SX, timer);
+}
+
+/*
  * Apply Controlled-U1 gate
  */
 void CU1(QRegister *QReg, int control, int target, double angle) 

@@ -294,6 +294,7 @@ char *gateString(int gate)
 	case QGATE_H: return "h";
 	case QGATE_S: return "s";
 	case QGATE_P: return "p";
+	case QGATE_SX: return "sx";
 	case QGATE_SDG: return "sdg";
 	case QGATE_T: return "t";
 	case QGATE_TDG: return "tdg";

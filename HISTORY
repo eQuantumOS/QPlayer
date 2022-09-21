@@ -27,3 +27,5 @@
 08/25/2022: fix showQubitProb()
  - add 3rd function argument 'int state' to view probability
  - 'state' can be KET_ONE or KET_ZERO
+
+09/21/2022: add sx(square-root x) gate 

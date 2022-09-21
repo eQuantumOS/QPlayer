@@ -53,6 +53,7 @@ extern void CRZ(QRegister *QReg, int control, int target, double angle);
 extern void CCX(QRegister *QReg, int control1, int control2, int target);
 extern void SWAP(QRegister *QReg, int qubit1, int qubit2);
 extern void CSWAP(QRegister *QReg, int control, int qubit1, int qubit2);
+extern void SX(QRegister *QReg, int qubit);
 extern int M(QRegister *QReg, int qubit);
 extern int MV(QRegister *QReg, int qubit);
 extern int MF(QRegister *QReg, int qubit, int collapse);

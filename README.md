@@ -54,6 +54,7 @@ more qubits and faster quantum operations with smaller memory than before.
  - S+                 : S dagger
  - T+                 : S dagger
  - P                  : phase gate
+ - SX                 : square-root x gate
  - U1                 : single-qubit rotation gate about the Z axis
  - U2                 : single-qubit rotation gate about the X+Z axis
  - U3                 : single-qubit rotation gate with 3 euler angles
