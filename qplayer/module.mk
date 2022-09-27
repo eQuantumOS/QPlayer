@@ -3,6 +3,7 @@ QPLAYER_SRC += ./src/state.cpp
 QPLAYER_SRC += ./src/gate.cpp
 QPLAYER_SRC += ./src/timer.cpp
 QPLAYER_SRC += ./src/misc.cpp
+QPLAYER_SRC += ./src/entangle.cpp
 QPLAYER_SRC += ./src/dump.cpp
 
 QPLAYER_HDR = ./include/qplayer.h

@@ -22,6 +22,7 @@
 
 #include <iostream>
 #include <complex>
+#include <list>
 
 using namespace std;
 

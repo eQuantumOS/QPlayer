@@ -54,6 +54,7 @@ extern void CCX(QRegister *QReg, int control1, int control2, int target);
 extern void SWAP(QRegister *QReg, int qubit1, int qubit2);
 extern void CSWAP(QRegister *QReg, int control, int qubit1, int qubit2);
 extern void SX(QRegister *QReg, int qubit);
+extern void iSWAP(QRegister *QReg, int qubit1, int qubit2);
 extern int M(QRegister *QReg, int qubit);
 extern int MV(QRegister *QReg, int qubit);
 extern int MF(QRegister *QReg, int qubit, int collapse);
@@ -61,8 +62,13 @@ extern int MNOP(QRegister *QReg, int qubit);
 
 /* These are experimental functions */
 extern double showQubitProb(QRegister *QReg, int qubit, int state);
+#if 1
+extern void getEntanglements(QRegister *QReg);
+extern void getEntanglements(QRegister *QReg, std::vector<list<int>>& eGroups);
+#else
 extern void showQubitRelation(QRegister *QReg);
 extern void showQubitRelation(QRegister *QReg, std::vector<std::vector<int>>& entangleList);
+#endif
 extern int QType(QRegister *QReg, int qubit);
 extern char *QTypeStr(QRegister *QReg, int qubit);
 
