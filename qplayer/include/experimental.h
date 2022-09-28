@@ -12,20 +12,21 @@
  */
 
 /**
- * @file    qplayer.h
+ * @file    gate.h
  * @author  Kisung Jin - ksjin@etri.re.kr
  * @brief       
  */
 
-#ifndef _QPLAYER_H_
-#define _QPLAYER_H_
+#ifndef _EXPERIMENTAL_H
+#define _EXPERIMENTAL_H
 
-#include "precision.h"
 #include "register.h"
-#include "gate.h"
-#include "timer.h"
-#include "misc.h"
-#include "dump.h"
-#include "experimental.h"
 
-#endif 
+/* These are experimental functions */
+extern double getQubitProb(QRegister *QReg, int qubit, int state);
+extern int QType(QRegister *QReg, int qubit);
+extern char *QTypeStr(QRegister *QReg, int qubit);
+extern void getEntanglements(QRegister *QReg);
+extern void getEntanglements(QRegister *QReg, std::vector<list<int>>& eGroups);
+
+#endif

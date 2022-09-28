@@ -18,6 +18,8 @@
  * @brief       
  */
 
+#include "register.h"
+#include "experimental.h"
 #include "gate.h"
 #include "dump.h"
 
@@ -74,10 +76,8 @@ bool __is_samestates(QRegister *QReg1, QRegister *QReg2)
 	double imag1 = 0;
 	double imag2 = 0;
 	double delta = 0.0000000000001;
-	int limit = 0;
 
 	/* check normal phase */
-	limit = 0;
 	QReg1->setOrderedQState();
 	QReg2->setOrderedQState();
 	do {
@@ -98,14 +98,13 @@ bool __is_samestates(QRegister *QReg1, QRegister *QReg2)
 			positive_same = false;
 			break;
 		}
-	} while(limit++ < 100);
+	} while(1);
 
 	if(positive_same == true) {
 		return true;
 	}
 
 	/* check normal phase */
-	limit = 0;
 	QReg1->setOrderedQState();
 	QReg2->setOrderedQState();
 	do {
@@ -126,7 +125,7 @@ bool __is_samestates(QRegister *QReg1, QRegister *QReg2)
 			negative_same = false;
 			break;
 		}
-	} while(limit++ < 100);
+	} while(1);
 
 	if(positive_same == true || negative_same == true) {
 		return true;
@@ -182,30 +181,62 @@ void __estimation_step1(QRegister *QReg, std::vector<int> candidates, std::vecto
 {
 	int qubits = QReg->getNumQubits();
 	int candidateQubits = candidates.size();
+	int Q1 = 0;
+	int Q2 = 0;
 
 	for(int i=0; i<candidateQubits-1; i++) {
+		QRegister *QRegClone = new QRegister(QReg);
+		Q1 = candidates[i];
+
+		MF(QRegClone, Q1, 0);
+
 		for(int j=i+1; j<candidateQubits; j++) {
-			int Q1 = candidates[i];
-			int Q2 = candidates[j];
+			Q2 = candidates[j];
 
 			if(__is_entangle(eGroups, Q1, Q2) == true) {
 				continue;
 			}
 
-			QRegister *QRegClone = new QRegister(QReg);
-
-			MF(QRegClone, Q2, 0);
-
-			if (QType(QRegClone, Q1) == KET_ZERO || QType(QRegClone, Q2) == KET_ONE) {
+			if (QType(QRegClone, Q2) == KET_ZERO || QType(QRegClone, Q2) == KET_ONE) {
 				__add_entangle(eGroups, Q1, Q2);
 			}
-
-			delete QRegClone;
 		}
+
+		delete QRegClone;
 	}
 }
 
 void __estimation_step2(QRegister *QReg, std::vector<int> candidates, std::vector<list<int>>& eGroups) 
+{
+	int qubits = QReg->getNumQubits();
+	int candidateQubits = candidates.size();
+	int Q1 = 0;
+	int Q2 = 0;
+
+	for(int i=0; i<candidateQubits-1; i++) {
+		QRegister *QRegClone = new QRegister(QReg);
+		Q1 = candidates[i];
+
+		H(QRegClone, Q1);
+		MF(QRegClone, Q1, 0);
+
+		for(int j=i+1; j<candidateQubits; j++) {
+			Q2 = candidates[j];
+
+			if(__is_entangle(eGroups, Q1, Q2) == true) {
+				continue;
+			}
+
+			if (QType(QRegClone, Q2) == KET_ZERO || QType(QRegClone, Q2) == KET_ONE) {
+				__add_entangle(eGroups, Q1, Q2);
+			}
+		}
+
+		delete QRegClone;
+	}
+}
+
+void __estimation_step3(QRegister *QReg, std::vector<int> candidates, std::vector<list<int>>& eGroups) 
 {
 	int qubits = QReg->getNumQubits();
 	int candidateQubits = candidates.size();
@@ -251,13 +282,123 @@ void entangle_estimation(QRegister *QReg, std::vector<list<int>>& eGroups)
 
 	__estimation_step1(QReg, candidates, eGroups);
 	__estimation_step2(QReg, candidates, eGroups);
+	__estimation_step3(QReg, candidates, eGroups);
 }
 
+/*
+ * Estimate Entanglement States
+ */
 void getEntanglements(QRegister *QReg, std::vector<list<int>>& eGroups) {
 	entangle_estimation(QReg, eGroups);
 }
 
-void getEntanglement(QRegister *QReg) {
+void getEntanglements(QRegister *QReg) {
 	std::vector<list<int>> eGroups;
 	getEntanglements(QReg, eGroups);
+
+	printf("========== Entanglement Groups ==========\n"); 
+	for(auto group : eGroups) {
+		for(auto qubit : group) {
+			printf("%d ", qubit);
+		}
+		printf("\n");
+	}
+}
+
+/*
+ * Estimate the quantum state int four types below.
+ * 
+ *   - KET_ZERO  : |0>
+ *   - KET_ONE   : |1>
+ *   - KET_SUPERPOSED : a|0> + b|1> or a|0> - b|1>
+ */
+int QType(QRegister *QReg, int qubit) 
+{
+	qsize_t mask = quantum_shiftL(1, qubit);
+	QState *Q = NULL;
+	bool is_zero = false;
+	bool is_one = false;
+	int type = KET_UNKNOWN;
+
+	QReg->setOrderedQState();
+	while((Q = QReg->getOrderedQState()) != NULL) {
+		if((Q->getIndex() & mask) == 0) {
+			is_zero = true;
+		} else {
+			is_one = true;
+		}
+
+		if(is_zero == true && is_one == true) {
+			break;
+		}
+	}
+
+	if(is_zero == true && is_one == true) {
+		type = KET_SUPERPOSED;
+	} else {
+		if(is_zero == true) {
+			type = KET_ZERO;
+		} else {
+			type = KET_ONE;
+		}
+	}
+
+	return type;
+}
+
+char *QTypeStr(QRegister *QReg, int qubit)
+{
+	int type = QType(QReg, qubit);
+
+	if(type == KET_ZERO) return "|0>"; 
+	else if(type == KET_ONE) return "|1>"; 
+	else if(type == KET_SUPERPOSED) return "|S>";
+
+	return "UNKNOWN";
+}
+
+/*
+ * show probability of the qubit 
+ */
+double getQubitProb(QRegister *QReg, int qubit, int state) 
+{
+	if(qubit >= QReg->getNumQubits()) {
+		printf("[%s] qubit(%d) out of range!\n", __func__, qubit);
+		exit(0);
+	}
+
+	double real = 0;
+	double imag = 0;
+	double length = 0;
+	complex_t lo = 0;
+	complex_t up = 0;
+
+	std::map<qsize_t, QState*>::iterator it[QSTORE_PARTITION];
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		for(it[i] = QReg->qstore[i].begin(); it[i] != QReg->qstore[i].end(); it[i]++) {
+			QState *Q = it[i]->second;
+			real = Q->getAmplitude().real();
+			imag = Q->getAmplitude().imag();
+			if(stripe_lower(Q->getIndex(), qubit) == true) {
+				lo += complex_t(abs(real), abs(imag));
+			} else {
+				up += complex_t(abs(real), abs(imag));
+			}
+		}
+	}
+
+	/* normalize */
+	length = (norm(lo) + norm(up));
+	length = std::sqrt(length);
+
+	lo = lo / length;
+	up = up / length;
+
+	if(state == KET_ZERO) {
+		return norm(lo);
+	} else if(state == KET_ONE) {
+		return norm(up);
+	}
+
+	return 0;
 }

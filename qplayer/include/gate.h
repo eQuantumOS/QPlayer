@@ -22,8 +22,6 @@
 
 #include "register.h"
 
-using namespace std;
-
 extern void initZ(QRegister *QReg, int qubit);
 extern void initX(QRegister *QReg, int qubit);
 extern void I(QRegister *QReg, int qubit);
@@ -59,17 +57,5 @@ extern int M(QRegister *QReg, int qubit);
 extern int MV(QRegister *QReg, int qubit);
 extern int MF(QRegister *QReg, int qubit, int collapse);
 extern int MNOP(QRegister *QReg, int qubit);
-
-/* These are experimental functions */
-extern double showQubitProb(QRegister *QReg, int qubit, int state);
-#if 1
-extern void getEntanglements(QRegister *QReg);
-extern void getEntanglements(QRegister *QReg, std::vector<list<int>>& eGroups);
-#else
-extern void showQubitRelation(QRegister *QReg);
-extern void showQubitRelation(QRegister *QReg, std::vector<std::vector<int>>& entangleList);
-#endif
-extern int QType(QRegister *QReg, int qubit);
-extern char *QTypeStr(QRegister *QReg, int qubit);
 
 #endif
