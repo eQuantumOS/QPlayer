@@ -18,6 +18,10 @@
  * @brief       
  */
 
+#include <iostream>
+#include <algorithm>
+#include <vector> 
+
 #include "register.h"
 #include "experimental.h"
 #include "gate.h"
@@ -240,6 +244,36 @@ void __estimation_step3(QRegister *QReg, std::vector<int> candidates, std::vecto
 {
 	int qubits = QReg->getNumQubits();
 	int candidateQubits = candidates.size();
+	int Q1 = 0;
+	int Q2 = 0;
+
+	for(int i=0; i<candidateQubits-1; i++) {
+		for(int j=i+1; j<candidateQubits; j++) {
+			if(__is_entangle(eGroups, Q1, Q2) == true) {
+				continue;
+			}
+
+			QRegister *QRegClone = new QRegister(QReg);
+			Q1 = candidates[i];
+			Q2 = candidates[j];
+
+			H(QRegClone, Q1);
+			H(QRegClone, Q2);
+			MF(QRegClone, Q1, 0);
+
+			if (QType(QRegClone, Q2) == KET_ZERO || QType(QRegClone, Q2) == KET_ONE) {
+				__add_entangle(eGroups, Q1, Q2);
+			}
+
+			delete QRegClone;
+		}
+	}
+}
+
+void __estimation_step4(QRegister *QReg, std::vector<int> candidates, std::vector<list<int>>& eGroups) 
+{
+	int qubits = QReg->getNumQubits();
+	int candidateQubits = candidates.size();
 
 	for(int i=0; i<candidateQubits-1; i++) {
 		for(int j=i+1; j<candidateQubits; j++) {
@@ -282,7 +316,8 @@ void entangle_estimation(QRegister *QReg, std::vector<list<int>>& eGroups)
 
 	__estimation_step1(QReg, candidates, eGroups);
 	__estimation_step2(QReg, candidates, eGroups);
-	__estimation_step3(QReg, candidates, eGroups);
+//	__estimation_step3(QReg, candidates, eGroups);
+	__estimation_step4(QReg, candidates, eGroups);
 }
 
 /*
