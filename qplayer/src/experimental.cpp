@@ -35,7 +35,9 @@ std::mutex lock_add_entangle;
 
 void showEntangle(std::vector<list<int>> eGroups) 
 {
+	printf("entanglement qubits.... \n");
 	for(auto group : eGroups) {
+		printf("\t");
 		for(auto qubit : group) {
 			printf("%d ", qubit);
 		}
@@ -181,6 +183,22 @@ void __add_entangle(std::vector<list<int>>& eGroups, int q1, int q2)
 	lock_add_entangle.unlock();
 }
 
+void __updateCandidates(std::vector<int>& candidates, std::vector<list<int>>& eGroups) 
+{
+	for(auto group : eGroups) {
+		int Q1 = group.front();
+		for(auto Q2 : group) {
+			if(Q1 == Q2) {
+				continue;
+			}
+
+			/* remove Q2 from candidates */
+			std::remove(candidates.begin(), candidates.end(), Q2);
+			candidates.resize(candidates.size()-1);
+		}
+	}
+}
+
 void __estimation_step1(QRegister *QReg, std::vector<int> candidates, std::vector<list<int>>& eGroups) 
 {
 	int qubits = QReg->getNumQubits();
@@ -208,6 +226,8 @@ void __estimation_step1(QRegister *QReg, std::vector<int> candidates, std::vecto
 
 		delete QRegClone;
 	}
+
+	__updateCandidates(candidates, eGroups);
 }
 
 void __estimation_step2(QRegister *QReg, std::vector<int> candidates, std::vector<list<int>>& eGroups) 
@@ -238,70 +258,92 @@ void __estimation_step2(QRegister *QReg, std::vector<int> candidates, std::vecto
 
 		delete QRegClone;
 	}
+
+	__updateCandidates(candidates, eGroups);
 }
 
-void __estimation_step3(QRegister *QReg, std::vector<int> candidates, std::vector<list<int>>& eGroups) 
+void __estimation_step3_internal(QRegister *QReg, std::vector<int> candidates, std::vector<list<int>>& eGroups) 
 {
 	int qubits = QReg->getNumQubits();
 	int candidateQubits = candidates.size();
+	QState *Q = NULL;
+	QState *newQ = NULL;
 	int Q1 = 0;
 	int Q2 = 0;
 
 	for(int i=0; i<candidateQubits-1; i++) {
+		QRegister *QRegClone = new QRegister(QReg);
+		Q1 = candidates[i];
+		
 		for(int j=i+1; j<candidateQubits; j++) {
-			if(__is_entangle(eGroups, Q1, Q2) == true) {
-				continue;
-			}
-
-			QRegister *QRegClone = new QRegister(QReg);
-			Q1 = candidates[i];
 			Q2 = candidates[j];
 
-			H(QRegClone, Q1);
-			H(QRegClone, Q2);
-			MF(QRegClone, Q1, 0);
-
-			if (QType(QRegClone, Q2) == KET_ZERO || QType(QRegClone, Q2) == KET_ONE) {
-				__add_entangle(eGroups, Q1, Q2);
-			}
-
-			delete QRegClone;
-		}
-	}
-}
-
-void __estimation_step4(QRegister *QReg, std::vector<int> candidates, std::vector<list<int>>& eGroups) 
-{
-	int qubits = QReg->getNumQubits();
-	int candidateQubits = candidates.size();
-
-	for(int i=0; i<candidateQubits-1; i++) {
-		for(int j=i+1; j<candidateQubits; j++) {
-			int Q1 = candidates[i];
-			int Q2 = candidates[j];
-
 			if(__is_entangle(eGroups, Q1, Q2) == true) {
 				continue;
 			}
 
-			QRegister *QRegClone0 = new QRegister(QReg);
-			QRegister *QRegClone1 = new QRegister(QReg);
+			QRegister *QRegMask = new QRegister(qubits);
 
-			MF(QRegClone0, Q2, 0);
-			MF(QRegClone1, Q2, 1);
+			qsize_t maskQ1 = quantum_shiftL(1, Q1);
+			qsize_t maskQ2 = quantum_shiftL(1, Q2);
+			qsize_t mask = maskQ1 | maskQ2;
+			complex_t Matrix[4];
 
-			if(__is_samestates(QRegClone0, QRegClone1) == false) {
+			QRegMask->clear();
+			QRegClone->setOrderedQState();
+			while((Q = QRegClone->getOrderedQState()) != NULL) {
+				newQ = NULL;
+				qsize_t newIdx = Q->getIndex() & mask;
+
+				newQ = QRegMask->findQState(newIdx);
+				if(newQ == NULL) {
+					int oneQ1 = 0;
+					int oneQ2 = 0;
+
+					if(newIdx & maskQ1) { oneQ1 = 1; }
+					if(newIdx & maskQ2) { oneQ2 = 1; }
+
+					newQ = new QState(newIdx, Q->getAmplitude());
+					QRegMask->setQState(newIdx, newQ);
+
+					if(oneQ1 == 0 && oneQ2 == 0) { Matrix[0] = Q->getAmplitude(); }
+					else if(oneQ1 == 0 && oneQ2 == 1) { Matrix[1] = Q->getAmplitude(); }
+					else if(oneQ1 == 1 && oneQ2 == 0) { Matrix[2] = Q->getAmplitude(); }
+					else if(oneQ1 == 1 && oneQ2 == 1) { Matrix[3] = Q->getAmplitude(); }
+				}
+			}
+
+			if(getSchmidtNumber(Matrix) != 1) {
 				__add_entangle(eGroups, Q1, Q2);
-			} 
+			}
 
-			delete QRegClone0;
-			delete QRegClone1;
+			delete QRegMask;
 		}
+
+		delete QRegClone;
+	}
+
+	__updateCandidates(candidates, eGroups);
+}
+
+void __estimation_step3(QRegister *QReg, std::vector<int> candidates, std::vector<list<int>>& eGroups) 
+{
+	/* inspect as original quantum states */
+	__estimation_step3_internal(QReg, candidates, eGroups);
+
+	for(auto qubit : candidates) {
+		QRegister *QRegClone = new QRegister(QReg);
+
+		MF(QRegClone, qubit, 0);
+		__estimation_step3_internal(QRegClone, candidates, eGroups);
+
+		delete QRegClone;
 	}
 }
 
 void entangle_estimation(QRegister *QReg, std::vector<list<int>>& eGroups)
 {
+	QRegister *QRegClone = new QRegister(QReg);
 	QRegister *QRegs[128];
 	int qubits = QReg->getNumQubits();
 	std::vector<int> candidates;
@@ -314,10 +356,15 @@ void entangle_estimation(QRegister *QReg, std::vector<list<int>>& eGroups)
 	}
 	std::sort(candidates.begin(), candidates.end());
 
-	__estimation_step1(QReg, candidates, eGroups);
-	__estimation_step2(QReg, candidates, eGroups);
-//	__estimation_step3(QReg, candidates, eGroups);
-	__estimation_step4(QReg, candidates, eGroups);
+	__estimation_step1(QRegClone, candidates, eGroups);
+	__estimation_step2(QRegClone, candidates, eGroups);
+	__estimation_step3(QRegClone, candidates, eGroups);
+
+	for(int i=0; i<eGroups.size(); i++) {
+		eGroups[i].sort();
+	}
+
+	delete QRegClone;
 }
 
 /*
