@@ -143,3 +143,9 @@ void dump(QRegister *QReg)
 {
 	dump(QReg, NULL, 0, QReg->getNumQubits() - 1, NULL);
 }
+
+void dumpln(QRegister *QReg)
+{
+	dump(QReg, NULL, 0, QReg->getNumQubits() - 1, NULL);
+	printf("\n");
+}

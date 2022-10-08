@@ -35,5 +35,6 @@ extern void dump(QRegister *QReg, struct qubit_delimiter qd);
 extern void dump(QRegister *QReg, int begin, int end);
 extern void dump(QRegister *QReg, char *msg);
 extern void dump(QRegister *QReg);
+extern void dumpln(QRegister *QReg);
 
 #endif
