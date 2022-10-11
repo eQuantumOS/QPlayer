@@ -289,31 +289,39 @@ void __estimation_step3_internal(QRegister *QReg, std::vector<int> candidates, s
 			qsize_t mask = maskQ1 | maskQ2;
 			complex_t Matrix[4];
 
+			/* filter masked qubit states */
 			QRegMask->clear();
 			QRegClone->setOrderedQState();
 			while((Q = QRegClone->getOrderedQState()) != NULL) {
-				newQ = NULL;
 				qsize_t newIdx = Q->getIndex() & mask;
-
 				newQ = QRegMask->findQState(newIdx);
 				if(newQ == NULL) {
-					int oneQ1 = 0;
-					int oneQ2 = 0;
-
-					if(newIdx & maskQ1) { oneQ1 = 1; }
-					if(newIdx & maskQ2) { oneQ2 = 1; }
-
 					newQ = new QState(newIdx, Q->getAmplitude());
 					QRegMask->setQState(newIdx, newQ);
-
-					if(oneQ1 == 0 && oneQ2 == 0) { Matrix[0] = Q->getAmplitude(); }
-					else if(oneQ1 == 0 && oneQ2 == 1) { Matrix[1] = Q->getAmplitude(); }
-					else if(oneQ1 == 1 && oneQ2 == 0) { Matrix[2] = Q->getAmplitude(); }
-					else if(oneQ1 == 1 && oneQ2 == 1) { Matrix[3] = Q->getAmplitude(); }
 				}
 			}
 
+			
+			/* build matrix for schmit number */
+			QRegMask->normalize();
+			QRegMask->setOrderedQState();
+			while((Q = QRegMask->getOrderedQState()) != NULL) {
+				qsize_t newIdx = Q->getIndex() & mask;
+				int oneQ1 = 0;
+				int oneQ2 = 0;
+
+				if(newIdx & maskQ1) { oneQ1 = 1; }
+				if(newIdx & maskQ2) { oneQ2 = 1; }
+
+
+				if(oneQ1 == 0 && oneQ2 == 0) { Matrix[0] = Q->getAmplitude(); }
+				else if(oneQ1 == 0 && oneQ2 == 1) { Matrix[1] = Q->getAmplitude(); }
+				else if(oneQ1 == 1 && oneQ2 == 0) { Matrix[2] = Q->getAmplitude(); }
+				else if(oneQ1 == 1 && oneQ2 == 1) { Matrix[3] = Q->getAmplitude(); }
+			}
+
 			if(getSchmidtNumber(Matrix) != 1) {
+				dumpln(QRegMask);
 				__add_entangle(eGroups, Q1, Q2);
 			}
 
