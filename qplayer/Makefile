@@ -1,4 +1,4 @@
-boost=no
+boost=yes
 
 CXX = g++
 CXXLD = g++
