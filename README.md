@@ -22,9 +22,8 @@ more qubits and faster quantum operations with smaller memory than before.
      ubuntu> apt-get install libboost-all-dev  
      linux> yum install -y boost-devel  
      
- (2) build qplayer  
-    :> cd QPlayer  
-    :> make boost=yes  
+ (2) build qplayer      
+    :> make 
 </pre>
 
 # Supporting Quantum Operations
