@@ -17,22 +17,11 @@ more qubits and faster quantum operations with smaller memory than before.
  - Ubuntu 15.x or higher
 
 # Installation
- ### using 1~64 qubits
 <pre>
- (1) build qplayer  
-    :> cd QPlayer  
-    :> make  
-</pre>
-
- ### using 65~1024 qubits 
-<pre>
- (1) build boost library  
+ (1) install boost library  
      ubuntu> apt-get install libboost-all-dev  
      linux> yum install -y boost-devel  
      
-     --> If you want to install boost library manually, you should modify 
-         QPlayer makefiles to include boost library path.
-  
  (2) build qplayer  
     :> cd QPlayer  
     :> make boost=yes  

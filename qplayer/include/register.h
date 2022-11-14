@@ -121,6 +121,26 @@ public:
 	void QLock(qsize_t index) { qlock[getPartId(index)].lock(); }
 	void QUnlock(qsize_t index) { qlock[getPartId(index)].unlock(); } 
 
+	void checkMemory(void) {
+		static int memTotalKB = 0;
+		static int memAvailKB = 0;
+		int memUsedKB = 0;
+
+		if(memTotalKB == 0) {
+			getTotalMem(&memTotalKB, &memAvailKB);
+		}
+
+		memUsedKB = getUsedMem();
+
+		if((memUsedKB * 2) > memAvailKB) {
+			printf("Memory space is insufficient!!\n");
+			printf("Your quantum circuit may generate too many quantum states.\n");
+			printf(" - Memory: Total=%d, Avail=%d --> Used=%d\n", memTotalKB, memAvailKB, memUsedKB);
+			printf(" - Quantum states: %lu\n", (uint64_t)getNumStates());
+			exit(0);
+		}
+	}
+
 public:
 	/* set check & set operation state */
 	int checkStage(QState *s0, QState *s1, qsize_t lower_idx, size_t stage) {

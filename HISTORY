@@ -29,3 +29,5 @@
  - 'state' can be KET_ONE or KET_ZERO
 
 09/21/2022: add sx(square-root x) gate 
+
+11/14/2022: add exception handling for insufficient memory space 

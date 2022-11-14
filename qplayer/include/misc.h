@@ -118,7 +118,8 @@ extern char *modeString(int mode);
 extern char *relationString(int mode);
 extern int getSchmidtNumber(complex_t M[4]);
 extern char *gateString(int gate);
-extern void checkMemory(void);
-extern char *checkMemory(char *ptr);
+extern void getTotalMem(int *memTotal, int *memAvail);
+extern int getUsedMem(void);
+extern void showMemoryInfo(void);
 
 #endif

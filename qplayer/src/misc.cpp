@@ -319,47 +319,73 @@ char *gateString(int gate)
 }
 
 /* 
- * Returns maximum allocated physical memory size. QPlayer uses VmHWM 
- * values because the memory size changes dynamically depending on the 
- * number of non-zero amplitude states. 
+ * set pysical memory size for this system 
  */
-char *__checkMemory(char *ptr) {
+void getTotalMem(int *memTotal, int *memAvail) {
+	FILE *fp = NULL;
+
+	*memTotal = UINT_MAX;
+	*memAvail = UINT_MAX;
+	fp = fopen("/proc/meminfo", "rt");
+	if(fp == NULL) {
+		return;
+	}
+
+	while(!feof(fp)) {
+		char cmd[256] = "";
+		char kb[256] = "";
+		char unit[256] = "";
+
+		fscanf(fp, "%s %s %s\n", cmd, kb, unit);
+		if(strcmp(cmd, "MemTotal:") == 0) {
+			*memTotal = atoi(kb);
+		} else if(strcmp(cmd, "MemAvailable:") == 0) {
+			*memAvail = atoi(kb);
+		}
+	}
+
+	fclose(fp);
+}
+
+/* 
+ * get free memory size for this system 
+ */
+int getUsedMem(void) {
 	FILE *fp = NULL;
 	char fname[256] = "";
 	char cmd[256] = "";
 	char size[32] = "";
+	int memFree = 0;
 
 	sprintf(fname, "/proc/%d/status", getpid());
 
 	fp = fopen(fname, "r");
 	if(fp == NULL) {
-		return ptr;
+		return 0;
 	}
 
 	while(fgets(cmd, 256, fp) != NULL) {
 		if(strstr(cmd, "VmHWM")) {
 			char t[32] = "";
 			sscanf(cmd, "%s%s", t, size);
+			memFree = atoi(size);
 			break;
 		}
 	}
 
-	strcpy(ptr, size);
-	printf("allocated memory = %s KB\n", size);
-
 	fclose(fp);
 
-	return ptr;
+	return memFree;
 }
 
-void checkMemory(void) 
+void showMemoryInfo(void) 
 {
-	char ptr[32];
+	int memTotalKB = 0;
+	int memAvailKB = 0;
+	int memUsedKB = 0;
 
-	__checkMemory(ptr);
-}
+	getTotalMem(&memTotalKB, &memAvailKB);
+	memUsedKB = getUsedMem();
 
-char *checkMemory(char *ptr) 
-{
-	return __checkMemory(ptr);
+	printf("Total:%d, Avail=%d --> Used:%d\n", memTotalKB, memAvailKB, memUsedKB);
 }

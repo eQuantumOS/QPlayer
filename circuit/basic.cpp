@@ -24,44 +24,11 @@
 
 int main(int argc, char **argv)
 {
-	QRegister *QReg = new QRegister(16);
-	std::vector<list<int>> eGroups;
-	QTimer timer1;
-	QTimer timer2;
+	QRegister *QReg = new QRegister(32);
 
-	timer1.start();
-#if 1
-	H(QReg, 0);
-	CX(QReg, 0, 1);
-	CX(QReg, 0, 2);
-	CX(QReg, 0, 3);
-	H(QReg, 0);
-	H(QReg, 1);
-	RX(QReg, 2, M_PI/8);
-	RX(QReg, 3, M_PI/8);
-
-	H(QReg, 4);
-	CX(QReg, 4, 5);
-
-	int end = 10;
-	for(int i=6; i<=end; i++) 
+	for(int i=0; i<32; i++) {
 		H(QReg, i);
-	CX(QReg, end, end+1);
-#else
-	H(QReg, 0);
-	CX(QReg, 0, 1);
-	H(QReg, 0);
-
-	H(QReg, 2);
-	CX(QReg, 2, 3);
-	H(QReg, 2);
-#endif
-	timer1.end();
-
-	timer2.start();
-	getEntanglements(QReg);
-	timer2.end();
-	printf("\n\ntime1: %s\n", timer1.getTime());
-	printf("time2: %s\n", timer2.getTime());
-	printf("states = %ld\n", (uint64_t) QReg->getNumStates());
+		printf("%d'th hadamard done...\n", i);
+		showMemoryInfo();
+	}
 }

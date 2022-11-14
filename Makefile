@@ -19,18 +19,10 @@
 all: QPLAYER CIRCUIT
 
 QPLAYER:
-ifdef BOOST
 	@ $(MAKE) -C qplayer boost=yes
-else
-	@ $(MAKE) -C qplayer
-endif
 
 CIRCUIT:
-ifdef BOOST
 	@ $(MAKE) -C circuit boost=yes
-else
-	@ $(MAKE) -C circuit
-endif
 
 clean:
 	@ $(MAKE) -C circuit clean

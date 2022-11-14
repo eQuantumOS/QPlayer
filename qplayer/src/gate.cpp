@@ -69,6 +69,7 @@ static void reset_gphase(complex_t M[])
  */
 static void applyMatrix(QRegister *QReg, int qubit, complex_t M[])
 {
+	QReg->checkMemory();
 	if(qubit >= QReg->getNumQubits()) {
 		printf("[%s] qubit(%d) out of range!\n", __func__, qubit);
 		exit(0);
@@ -216,6 +217,7 @@ static void applyMatrix(QRegister *QReg, int qubit, complex_t M[])
  */
 static void applyControlledMatrix(QRegister *QReg, int control, int target, complex_t M[])
 {
+	QReg->checkMemory();
 	if(target >= QReg->getNumQubits()) {
 		printf("target(%d) out of range!\n", target);
 		exit(0);

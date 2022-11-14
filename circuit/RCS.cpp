@@ -217,7 +217,6 @@ void test(void)
 		}
 		timer.end();
 		printf("%d/%d completes.. ", i+1, depth);
-		checkMemory();
 		printf("Elapsed Time : %s\n", timer.getTime());
 	}
 }
@@ -249,5 +248,4 @@ int main(int argc, char **argv)
 	timer.end();
 
 	printf("\nElapsed Time : %s\n", timer.getTime());
-	checkMemory();
 }
