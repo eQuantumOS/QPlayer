@@ -348,7 +348,7 @@ void getTotalMem(int *memTotal, int *memAvail) {
 }
 
 /* 
- * get free memory size for this system 
+ * get free memory size(kb) for this system 
  */
 int getUsedMem(void) {
 	FILE *fp = NULL;
@@ -376,6 +376,15 @@ int getUsedMem(void) {
 	fclose(fp);
 
 	return memFree;
+}
+
+char *getUsedMemHuman(char *buf) 
+{
+	int mem = getUsedMem();
+
+	human_readable_size(mem * 1024, buf);
+
+	return buf;
 }
 
 void showMemoryInfo(void) 

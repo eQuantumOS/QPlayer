@@ -321,7 +321,7 @@ void __estimation_step3_internal(QRegister *QReg, std::vector<int> candidates, s
 			}
 
 			if(getSchmidtNumber(Matrix) != 1) {
-				dumpln(QRegMask);
+				// dumpln(QRegMask);
 				__add_entangle(eGroups, Q1, Q2);
 			}
 
