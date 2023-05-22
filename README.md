@@ -10,7 +10,7 @@ more qubits and faster quantum operations with smaller memory than before.
 # Depencencies
  - gcc and g++ capable of C++11 standard
  - make 3.x or higher
- - boost library 1.61 or higher (only if you want to use more than 64 qubits)
+ - boost library 1.61 or higher 
 
 # Publication
  - QPlayer: Lightweight, scalable, and fast quantum simulator, 2022, [ETRI Journal (SCIE)](https://doi.org/10.4218/etrij.2021-0442)
