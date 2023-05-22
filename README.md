@@ -13,8 +13,8 @@ more qubits and faster quantum operations with smaller memory than before.
  - boost library 1.61 or higher (only if you want to use more than 64 qubits)
 
 # Publication
- - QPlayer: Lightweight, scalable, and fast quantum simulator, 2022, ETRI Journal (SCIE)
- - Multilayered logical qubits and synthesized quantum bits, 2023, Quantum Science and Technology (SCIE)
+ - QPlayer: Lightweight, scalable, and fast quantum simulator, 2022, [ETRI Journal (SCIE)](https://doi.org/10.4218/etrij.2021-0442)
+ - Multilayered logical qubits and synthesized quantum bits, 2023, [Quantum Science and Technology (SCIE)](https://doi.org/10.1088/2058-9565/accec5)
 
 # OS environment
  - CentOS 7.x or higher
