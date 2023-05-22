@@ -26,9 +26,8 @@ int main(int argc, char **argv)
 {
 	QRegister *QReg = new QRegister(4);
 
-	for(int i=0; i<4; i++) {
-		H(QReg, i);
-		printf("%d'th hadamard done...\n", i);
-		showMemoryInfo();
-	}
+	H(QReg, 0);
+	CX(QReg, 0, 1);
+	
+	int mv = M(QReg, 0);
 }
