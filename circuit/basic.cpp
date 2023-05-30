@@ -26,8 +26,7 @@ int main(int argc, char **argv)
 {
 	QRegister *QReg = new QRegister(4);
 
-	H(QReg, 0);
-	CX(QReg, 0, 1);
+	X(QReg, 0);
 	
-	int mv = M(QReg, 0);
+	dump(QReg);
 }

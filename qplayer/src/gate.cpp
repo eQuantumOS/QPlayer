@@ -143,7 +143,7 @@ static void applyMatrix(QRegister *QReg, int qubit, complex_t M[])
 			amp1 = m10*in0+m11*in1;
 
 			if(lower) {
-			#if 0
+			#if 1
 				if(norm(amp0) > AMPLITUDE_EPS) {
 			#else
 				if(norm(amp0) > 0) {
@@ -153,7 +153,7 @@ static void applyMatrix(QRegister *QReg, int qubit, complex_t M[])
 					delQState[i].push_back(lower);
 				}
 			} else {
-			#if 0
+			#if 1
 				if(norm(amp0) > AMPLITUDE_EPS) {
 			#else
 				if(norm(amp0) > 0) {
@@ -165,7 +165,7 @@ static void applyMatrix(QRegister *QReg, int qubit, complex_t M[])
 			}
 
 			if(upper) {
-			#if 0
+			#if 1
 				if(norm(amp1) > AMPLITUDE_EPS) {
 			#else
 				if(norm(amp1) > 0) {
@@ -175,7 +175,7 @@ static void applyMatrix(QRegister *QReg, int qubit, complex_t M[])
 					delQState[i].push_back(upper);
 				}
 			} else {
-			#if 0
+			#if 1
 				if(norm(amp1) > AMPLITUDE_EPS) {
 			#else
 				if(norm(amp1) > 0) {
