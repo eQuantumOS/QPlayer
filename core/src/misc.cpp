@@ -28,20 +28,12 @@ using namespace std;
 
 qsize_t quantum_shiftL(qsize_t left, qsize_t right)
 {
-#ifdef LARGE_SCALE
     return left << right.convert_to<size_t>();
-#else
-    return left << right;
-#endif
 }
 
 qsize_t quantum_shiftR(qsize_t left, qsize_t right)
 {
-#ifdef LARGE_SCALE
     return left >> right.convert_to<size_t>();
-#else
-    return left >> right;
-#endif
 }
 
 /*

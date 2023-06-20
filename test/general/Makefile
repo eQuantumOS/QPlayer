@@ -1,25 +1,18 @@
-boost=yes
+QPLAYER_RELEASE=../../release
 
 CXX = g++
 CXXLD = g++
-
-QPLAYER_RELEASE=../build
 
 CXXFLAGS = -g -Wall -O2 -std=c++11 -fopenmp
 CXXFLAGS += -I. -I$(QPLAYER_RELEASE)/include
 CXXFLAGS += -Wno-reorder -Wno-sign-compare -Wno-parentheses -Wno-pessimizing-move
 CXXFLAGS += -Wno-unused-function -Wno-unused-variable -Wno-write-strings
 CXXFLAGS += -Wno-class-conversion -Wno-unused-result
-
-ifeq ($(boost),yes)
-    CXXFLAGS += -DLARGE_SCALE
-endif
+CXXFLAGS += -DLARGE_SCALE
 
 LOADLIBES = -L$(QPLAYER_RELEASE)/lib
 LOADLIBES += -lm -lpthread -lgomp -lqplayer
-ifeq ($(boost),yes)
-	LIBS += -lboost_system-mt
-endif
+LIBS += -lboost_system-mt
 
 SRCS=$(wildcard *.cpp)
 TARGETS=$(patsubst %.cpp,%,$(SRCS))

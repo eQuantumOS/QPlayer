@@ -1,0 +1,14 @@
+2023-06-20 todo 
+    - todo
+
+2023-06-20 support OpenQASM 2.0 
+    - add qasm directory
+    - change -o option from mandatory to optional
+    - release 'qplayer' CLI to ~release/bin
+
+2023-06-19 refactoring code directories
+    - rename qplayer(D) --> core(D)
+    - rename circuit(D) --> test(D)
+    - breakdown test directories by role
+    - add docs(D)
+    - update Makefiles

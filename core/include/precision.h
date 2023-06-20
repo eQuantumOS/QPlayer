@@ -33,19 +33,11 @@ using namespace std;
 
 #define AMPLITUDE_EPS 1e-13
 
-#ifdef LARGE_SCALE
 #include <boost/multiprecision/cpp_int.hpp>
 using namespace boost::multiprecision;
-#endif
 
-#ifdef LARGE_SCALE
-    typedef uint1024_t qsize_t;
-    #define MAX_QUBITS	1024
-#else
-    typedef uint64_t qsize_t;
-    #define MAX_QUBITS	64
-#endif
-
+typedef uint1024_t qsize_t;
+#define MAX_QUBITS	1024
 #define QSTORE_PARTITION    1171
 
 typedef complex<double> complex_t;
