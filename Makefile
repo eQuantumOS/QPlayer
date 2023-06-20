@@ -16,16 +16,23 @@
 #
 #*******************************************************************************
 
-all: QPLAYER CIRCUIT
+all: CORE QASM
 
-QPLAYER:
-	@ $(MAKE) -C qplayer boost=yes
+CORE:
+	@ $(MAKE) -C core 
 
-CIRCUIT:
-	@ $(MAKE) -C circuit boost=yes
+QASM:
+	@ $(MAKE) -C qasm 
+
+TEST:
+	@ $(MAKE) -C test/general 
+	@ $(MAKE) -C test/surfacecode 
+	@ $(MAKE) -C test/MLQ 
 
 clean:
-	@ $(MAKE) -C circuit clean
-	@ $(MAKE) -C qplayer clean
-	@ $(RM) build/include/*
-	@ $(RM) build/lib/*
+	@ $(MAKE) -C core clean
+	@ $(MAKE) -C qasm clean
+	@ $(MAKE) -C test/general clean
+	@ $(MAKE) -C test/surfacecode clean
+	@ $(MAKE) -C test/MLQ clean
+	@ $(RM) -rf release
