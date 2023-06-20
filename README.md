@@ -18,7 +18,7 @@ more qubits and faster quantum operations with smaller memory than before.
 
 # OS environment
  - CentOS 7.x or higher
- - Ubuntu 15.x or higher
+ - Ubuntu 20.x or higher
 
 # Installation
 <pre>

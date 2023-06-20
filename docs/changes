@@ -1,3 +1,7 @@
+2023-06-20 Integrated test directory compilation
+	- add ~/test/Makefile
+	- link ~/Makefile and ~/test/Makefile
+
 2023-06-20 speficied the ownership of the OpenQASM compilier
     - add AUTHOR into ~/qasm directory
     - add LICENSE into ~/qasm directory
