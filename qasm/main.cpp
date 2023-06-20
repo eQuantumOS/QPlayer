@@ -22,6 +22,7 @@ static char *prog;
 static char *f_qasm = "/tmp/xyz";
 static char f_in[MAX_LENG];
 static char f_out[MAX_LENG];
+static int is_log;
 static int shots;
 static int verbose;
 
@@ -99,19 +100,30 @@ void runQASM(void)
 	/* STEP2: generate output */
 
 	/* make output directory */
-	char *dirc = strdup(f_out);
-	char *dname = dirname(dirc);
-	char cmd[256] = "";
-	sprintf(cmd, "mkdir -p %s", dname);
-	system(cmd);
+	if(is_log) {
+		char *dirc = strdup(f_out);
+		char *dname = dirname(dirc);
+		char cmd[256] = "";
+		sprintf(cmd, "mkdir -p %s", dname);
+		system(cmd);
+	
+		FILE *fp = fopen(f_out, "wt");
+		if(fp == NULL) {
+			printf("error: cannot open '%s'\n", f_out);
+		}
+	
+		fprintf(fp, "Total Shots: %d\n", shots);
+		fprintf(fp, "Measured States: %ld\n", cregMap.size());
+	
+		if(cregMap.size() > 0) {
+			fprintf(fp, "\n");
+			for(auto entry : cregMap) {
+				fprintf(fp, "%d%%, %d/%d, |%s>\n", (int)(entry.second*100/shots), entry.second, shots, entry.first.c_str());
+			}
+		}
 
-	FILE *fp = fopen(f_out, "wt");
-	if(fp == NULL) {
-		printf("error: cannot open '%s'\n", f_out);
+		fclose(fp);
 	}
-
-	fprintf(fp, "Total Shots: %d\n", shots);
-	fprintf(fp, "Measured States: %ld\n", cregMap.size());
 
 	if(verbose) {
 		printf("\n");
@@ -120,19 +132,13 @@ void runQASM(void)
 		printf("***************************************************\n");
 		printf("Total Shots: %d\n", shots);
 		printf("Measured States: %ld\n", cregMap.size());
-	}
-
-	if(cregMap.size() > 0) {
-		fprintf(fp, "\n");
-		for(auto entry : cregMap) {
-			fprintf(fp, "%d%%, %d/%d, |%s>\n", (int)(entry.second*100/shots), entry.second, shots, entry.first.c_str());
-			if(verbose) {
+	
+		if(cregMap.size() > 0) {
+			for(auto entry : cregMap) {
 				printf("%d%%, %d/%d, |%s>\n", (int)(entry.second*100/shots), entry.second, shots, entry.first.c_str());
 			}
 		}
 	}
-
-	fclose(fp);
 }
 
 int main(int argc, char **argv)
@@ -150,8 +156,9 @@ int main(int argc, char **argv)
 	sigaction(SIGABRT, &sa, NULL);
 
 	strcpy(f_in, "");
-	strcpy(f_out, "./log/result.res");
+	strcpy(f_out, "");
 	shots = 1;	/* default number of shot */
+	is_log = 1;
 	verbose = 0;
 
 	while ((c = getopt_long(argc, argv, "f:o:s:vh", NULL, NULL)) != -1) {
@@ -180,8 +187,13 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if(strlen(f_in) == 0 | strlen(f_out) == 0) {
+	if(strlen(f_in) == 0) {
 		usage();
+	}
+
+	if(strlen(f_out) == 0) {
+		verbose = 1;
+		is_log = 0;
 	}
 
 	convertQASM();
