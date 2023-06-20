@@ -110,41 +110,41 @@ struct qregister_stat {
 #define NUM_SIZES   8
 static inline char big_size_map(int idx)
 {
-    char big_size_map[NUM_SIZES] = { 'B', 'K', 'M', 'G', 'T', 'P', 'E', 'Z' };
+	char big_size_map[NUM_SIZES] = { 'B', 'K', 'M', 'G', 'T', 'P', 'E', 'Z' };
 
-    return big_size_map[idx];
+	return big_size_map[idx];
 }
 
 static inline char small_size_map(int idx)
 {
-    char small_size_map[NUM_SIZES] = { 'b', 'k', 'm', 'g', 't', 'p', 'e', 'z' };
+	char small_size_map[NUM_SIZES] = { 'b', 'k', 'm', 'g', 't', 'p', 'e', 'z' };
 
-    return small_size_map[idx];
+	return small_size_map[idx];
 }
 
 static inline char *human_readable_size(unsigned long long size, char *buf)
 {
-    int i;
-    float remain_ratio = size;
+	int i;
+	float remain_ratio = size;
 
-    for (i = 0; i < NUM_SIZES; i++) {
-        if ((remain_ratio / 1024) < 1) {
-            break;
-        }
-        remain_ratio = remain_ratio / 1024;
-    }
+	for (i = 0; i < NUM_SIZES; i++) {
+		if ((remain_ratio / 1024) < 1) {
+			break;
+		}
+		remain_ratio = remain_ratio / 1024;
+	}
 
-    if (i >= NUM_SIZES) {
-        sprintf(buf, "-");
-    } else {
+	if (i >= NUM_SIZES) {
+		sprintf(buf, "-");
+	} else {
 		if(big_size_map(i) == 'B') {
-	        sprintf(buf, "%4.1f %c", remain_ratio, big_size_map(i));
+			sprintf(buf, "%4.1f %c", remain_ratio, big_size_map(i));
 		} else {
-	        sprintf(buf, "%4.1f %cB", remain_ratio, big_size_map(i));
+			sprintf(buf, "%4.1f %cB", remain_ratio, big_size_map(i));
 		}
 	}
 
-    return buf;
+	return buf;
 }
 
 extern qsize_t quantum_shiftL(qsize_t left, qsize_t right);

@@ -45,7 +45,7 @@ QASMparser::QASMparser(std::string filename) {
 QASMparser::~QASMparser() {
 	delete scanner;
 	delete in;
-    delete[] last_layer;
+	delete[] last_layer;
 
 	for(auto it = compoundGates.begin(); it != compoundGates.end(); it++) {
 		for(auto it2 = it->second.gates.begin(); it2 != it->second.gates.end(); it2++) {
@@ -313,35 +313,35 @@ void QASMparser::QASMargsList(std::vector<std::pair<int, int> >& arguments) {
 }
 
 void QASMparser::addUgate(int target, double theta, double phi, double lambda) {
-    gate g;
-    unsigned int layer;
+	gate g;
+	unsigned int layer;
 
-    g.target = target;
-    g.control = -1;
-    snprintf ( g.type, 127, "U(%f, %f, %f)", theta, phi, lambda);
+	g.target = target;
+	g.control = -1;
+	snprintf ( g.type, 127, "U(%f, %f, %f)", theta, phi, lambda);
 
-    layer = last_layer[g.target] + 1;
-    last_layer[g.target] = layer;
+	layer = last_layer[g.target] + 1;
+	last_layer[g.target] = layer;
 
 	gates.push_back(g);
-    ngates++;
+	ngates++;
 
 	U3(QReg, g.target, theta, phi, lambda);
 }
 
 void QASMparser::addCXgate(int target, int control) {
-    gate g;
-    unsigned int layer;
+	gate g;
+	unsigned int layer;
 
-    g.target = target;
-    g.control = control;
-    snprintf ( g.type, 127, "CX");
+	g.target = target;
+	g.control = control;
+	snprintf ( g.type, 127, "CX");
 
-    layer = std::max(last_layer[g.target], last_layer[g.control]) + 1;
-    last_layer[g.target] = last_layer[g.control] = layer;
+	layer = std::max(last_layer[g.target], last_layer[g.control]) + 1;
+	last_layer[g.target] = last_layer[g.control] = layer;
 
 	gates.push_back(g);
-    ngates++;
+	ngates++;
 
 	CX(QReg, g.control, g.target);
 }
@@ -442,7 +442,7 @@ void QASMparser::QASMgate(bool execute) {
 						Expr* lambda = RewriteExpr(u->lambda, paramsMap);
 
 						for(int i = 0; i < argsMap[u->target].second; i++) {
-                            addUgate(argsMap[u->target].first+i, theta->num, phi->num, lambda->num);
+							addUgate(argsMap[u->target].first+i, theta->num, phi->num, lambda->num);
 						}
 						delete theta;
 						delete phi;
@@ -450,15 +450,15 @@ void QASMparser::QASMgate(bool execute) {
 					} else if(CXgate* cx = dynamic_cast<CXgate*>(*it)) {
 						if(argsMap[cx->control].second == argsMap[cx->target].second) {
 							for(int i = 0; i < argsMap[cx->target].second; i++) {
-                                addCXgate(argsMap[cx->target].first+i, argsMap[cx->control].first+i);
+								addCXgate(argsMap[cx->target].first+i, argsMap[cx->control].first+i);
                             }
 						} else if(argsMap[cx->control].second == 1) {
 							for(int i = 0; i < argsMap[cx->target].second; i++) {
-                                addCXgate(argsMap[cx->target].first+i, argsMap[cx->control].first);
+								addCXgate(argsMap[cx->target].first+i, argsMap[cx->control].first);
 							}
 						} else if(argsMap[cx->target].second == 1) {
 							for(int i = 0; i < argsMap[cx->target].second; i++) {
-                                addCXgate(argsMap[cx->target].first, argsMap[cx->control].first+i);
+								addCXgate(argsMap[cx->target].first, argsMap[cx->control].first+i);
 							}
 						} else {
 							std::cerr << "Register size does not match for CX gate!" << std::endl;
@@ -800,13 +800,12 @@ void QASMparser::QASMqop(bool execute) {
 		scan();
 		std::pair<int, int> qreg = QASMargumentQreg();
 
-        check(Token::Kind::semicolon);
+		check(Token::Kind::semicolon);
 		if(execute) {
 			for(int i = 0; i < qreg.second; i++) {
 				initZ(QReg, nqubits-1-(qreg.first+i));
 			}
 		}
-
 	}
 }
 

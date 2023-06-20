@@ -25,7 +25,7 @@ QASM_OBJS=$(patsubst %.cpp,%.o,$(QASM_SRC))
 QASM_HDRS=$(patsubst %.h,%.h,$(QASM_HDR))
 
 QASM_EXEC=qplayer
-QASM_DEPS=src/*.d
+QASM_DEPS=src/*.d ./*.d
 
 .PHONY: all clean
 

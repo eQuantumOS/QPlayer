@@ -43,23 +43,23 @@ public:
 	void resetQReg(void);
 	void dumpQReg(void);
 
-    struct gate {
-        int target;
-        int control;
-        char type[128];
-    };
+	struct gate {
+		int target;
+		int control;
+		char type[128];
+	};
 
-    int getNqubits() {
-        return nqubits;
-    }
+	int getNqubits() {
+		return nqubits;
+	}
 
-    int getNgates() {
-        return ngates;
-    }
+	int getNgates() {
+		return ngates;
+	}
 
 	std::vector<gate> getGates() {
-		return gates;
-	}
+	return gates;
+}
 
 	void clear();
 
@@ -206,11 +206,11 @@ private:
 	std::vector<gate> gates;
 
 	unsigned int nqubits = 0;
-    int* last_layer;
-    unsigned int ngates = 0;
+	int* last_layer;
+	unsigned int ngates = 0;
 
-    void addUgate(int target, double theta, double phi, double lambda);
-    void addCXgate(int target, int control);
+	void addUgate(int target, double theta, double phi, double lambda);
+	void addCXgate(int target, int control);
 };
 
 #endif /* QASM_SIMULATOR_H_ */
