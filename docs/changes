@@ -1,14 +1,18 @@
+2023-06-21 disable state pool quota control
+    - if the number of states in queue is greater than MAX_POOL_SIZE,
+      delete QState memory directly instead of storing it into queue
+
 2023-06-21 update README.md
-	- update version 
-	- update some style
+    - update version 
+    - update some style
 
 2023-06-21 add QState memory pool
-	- add spool.h, spool.cpp
-	- alloc/dealloc QState memory from state pool
+    - add spool.h, spool.cpp
+    - alloc/dealloc QState memory from state pool
 
 2023-06-20 Integrated test directory compilation
-	- add ~/test/Makefile
-	- link ~/Makefile and ~/test/Makefile
+    - add ~/test/Makefile
+    - link ~/Makefile and ~/test/Makefile
 
 2023-06-20 speficied the ownership of the OpenQASM compilier
     - add AUTHOR into ~/qasm directory

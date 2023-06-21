@@ -93,10 +93,14 @@ void SPool::enque(QState *Q)
 	int sidx = (int)(Q->getIndex() % (qsize_t)MAX_POOLS);
 
 	lock(sidx);
+#if 0
 	if(pool[sidx].size() < MAX_POOL_SIZE) {
 		pool[sidx].push(Q);
 	} else {
 		delete Q;
 	}
+#else
+	pool[sidx].push(Q);
+#endif
 	unlock(sidx);
 }
