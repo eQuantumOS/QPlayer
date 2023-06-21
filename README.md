@@ -1,5 +1,6 @@
-# QPlayer v0.5 : Light-weight, Scalable and Fast Quantum Simulator
-
+# QPlayer v1.0-Leopard 
+### Light-weight, Scalable and Fast Quantum Simulator
+  
 With the rapid evolution of quantum computing, classical quantum simulations
 are considered essential for quantum algorithm verification, quantum error
 analysis, and development of new quantum applications. However, the exponential
@@ -10,7 +11,7 @@ more qubits and faster quantum operations with smaller memory than before.
 # Depencencies
  - gcc and g++ capable of C++11 standard
  - make 3.x or higher
- - boost library 1.61 or higher 
+ - boost library 1.61 or higher
 
 # Publication
  - QPlayer: Lightweight, scalable, and fast quantum simulator, 2022, [ETRI Journal (SCIE)](https://doi.org/10.4218/etrij.2021-0442)
@@ -22,15 +23,16 @@ more qubits and faster quantum operations with smaller memory than before.
 
 # Installation
 <pre>
- (1) install boost library  
-     ubuntu> apt-get install libboost-all-dev  
-     linux> yum install -y boost-devel  
-     
- (2) build qplayer      
-    :> make 
+ (1) install boost library
+     ubuntu> apt-get install libboost-all-dev
+     linux> yum install -y boost-devel
+
+ (2) build qplayer
+     >> make
 </pre>
 
 # Supporting Quantum Operations
+<pre>
  - initZ              : initialize qubit to |0>
  - initX              : initialize qubit to |+>
  - I                  : pauli identity gate
@@ -62,6 +64,7 @@ more qubits and faster quantum operations with smaller memory than before.
  - CU3                : controlled u3 gate
  - CSWAP              : controlled swap gate
  - measure(z basis)   : mesure qubit
+</pre>
 
 # QPlayer Source Tree
 <pre>

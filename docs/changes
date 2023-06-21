@@ -1,3 +1,7 @@
+2023-06-21 update README.md
+	- update version 
+	- update some style
+
 2023-06-21 add QState memory pool
 	- add spool.h, spool.cpp
 	- alloc/dealloc QState memory from state pool
