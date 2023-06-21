@@ -47,6 +47,7 @@ private:
 	size_t stage;
 
 public:
+	QState(void);
 	QState(qsize_t i, complex_t a);
 	QState(QState *Q);
 	~QState(void);
@@ -60,5 +61,9 @@ public:
 	void setStage(size_t s) { stage = s; }
 	size_t getStage(void) { return stage; }
 };
+
+extern QState *getQState(void);
+extern QState *getQState(qsize_t qidx, complex_t amp);
+extern void putQState(QState *Q);
 
 #endif

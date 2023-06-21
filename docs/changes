@@ -1,3 +1,7 @@
+2023-06-21 add QState memory pool
+	- add spool.h, spool.cpp
+	- alloc/dealloc QState memory from state pool
+
 2023-06-20 Integrated test directory compilation
 	- add ~/test/Makefile
 	- link ~/Makefile and ~/test/Makefile

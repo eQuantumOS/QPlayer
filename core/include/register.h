@@ -63,7 +63,7 @@ public:
 	void clear(void) {
 		for(int i=0; i<QSTORE_PARTITION; i++) {
 			for(auto entry : qstore[i]) {
-				delete entry.second;
+				putQState(entry.second);
 			}
 			qstore[i].erase(qstore[i].begin(), qstore[i].end());
 		}
@@ -71,7 +71,7 @@ public:
 
 	/* initialize quantum state to |00...00> */
 	void init(void) {
-		QState *q = new QState(0, 1.0);
+		QState *q = getQState(0, complex_t(1, 0));
 		qstore[0][0] = q;
 		curStage = 0;
 	}
@@ -90,7 +90,7 @@ public:
 
 		qreg->setOrderedQState();
 		while((Q = qreg->getOrderedQState()) != NULL) {
-			QState *newQ = new QState(Q->getIndex(), Q->getAmplitude());
+			QState *newQ = getQState(Q->getIndex(), Q->getAmplitude());
 			setQState(newQ->getIndex(), newQ);
 		}
 	}
@@ -197,7 +197,7 @@ public:
 
 		it = part->find(index);
 		if(it != part->end()) {
-			delete it->second;
+			putQState(it->second);
 			part->erase(it);
 		}
 
@@ -295,7 +295,7 @@ public:
 			while(it != qstore[i].end()) {
 				QState *Q = it->second;
 				if(abs(Q->getAmplitude()) == 0) {
-					delete Q;
+					putQState(Q);
 					qstore[i].erase(it++);
 				} else {
 					++it;
