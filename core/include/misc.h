@@ -64,7 +64,6 @@ typedef enum {
 	QGATE_H,
 	QGATE_S,
 	QGATE_P,
-	QGATE_SX,
 	QGATE_SDG,
 	QGATE_T,
 	QGATE_TDG,
@@ -82,10 +81,12 @@ typedef enum {
 	QGATE_CU3,
 	QGATE_SWAP,
 	QGATE_CSWAP,
+	QGATE_SX,
+	QGATE_ISWAP,
 	QGATE_MEASURE
 } QUANTUM_GATE;
 
-#define MAX_GATES 29 
+#define MAX_GATES 30 
 
 struct qregister_stat {
 	/* Quantum Circuit */
@@ -94,17 +95,22 @@ struct qregister_stat {
 	int gateCalls[MAX_GATES];
 
 	/* Execution Time */
-	double totalTime;
-	double maxGateTime;
-	double minGateTime;
-	double avgGateTime;
+	double tm_total;					/* micro seconds */
+	double tm_gate_max;					/* micro seconds */
+	double tm_gate_min;					/* micro seconds */
+	double tm_gate_avg;					/* micro seconds */
+
+	double tm_gates_total[MAX_GATES];	/* micro seconds */
+	double tm_gates_max[MAX_GATES];		/* micro seconds */
+	double tm_gates_min[MAX_GATES];		/* micro seconds */
+	double tm_gates_avg[MAX_GATES];		/* micro seconds */
 
 	/* Quantum Circuit */
 	qsize_t maxQStates;
 	qsize_t finalQStates;
 
 	/* System Resources */
-	uint64_t usedMemory;
+	uint64_t usedMemory;				/* bytes */
 };
 
 #define NUM_SIZES   8
@@ -122,7 +128,7 @@ static inline char small_size_map(int idx)
 	return small_size_map[idx];
 }
 
-static inline char *human_readable_size(unsigned long long size, char *buf)
+static inline char *human_readable_size(uint64_t size, char *buf)
 {
 	int i;
 	float remain_ratio = size;
@@ -138,9 +144,9 @@ static inline char *human_readable_size(unsigned long long size, char *buf)
 		sprintf(buf, "-");
 	} else {
 		if(big_size_map(i) == 'B') {
-			sprintf(buf, "%4.1f %c", remain_ratio, big_size_map(i));
+			sprintf(buf, "%.1f %c", remain_ratio, big_size_map(i));
 		} else {
-			sprintf(buf, "%4.1f %cB", remain_ratio, big_size_map(i));
+			sprintf(buf, "%.1f %cB", remain_ratio, big_size_map(i));
 		}
 	}
 
@@ -158,8 +164,10 @@ extern char *modeString(int mode);
 extern char *relationString(int mode);
 extern int getSchmidtNumber(complex_t M[4]);
 extern char *gateString(int gate);
-extern void getTotalMem(int *memTotal, int *memAvail);
-extern int getUsedMem(void);
+extern void getTotalMem(uint64_t *memTotal, uint64_t *memAvail);
+extern uint64_t getUsedMem(void);
+extern void getCPU(char *cpu, int *cores, char *herz);
+extern void getOS(char *name, char *version);
 extern char *getUsedMemHuman(char *buf);
 extern void showMemoryInfo(void);
 

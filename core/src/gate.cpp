@@ -1012,12 +1012,18 @@ void SWAP(QRegister *QReg, int qubit1, int qubit2)
  */
 void iSWAP(QRegister *QReg, int qubit1, int qubit2) 
 {
+	QTimer timer;
+	timer.start();
+
 	S(QReg, qubit1);
 	S(QReg, qubit2);
 	H(QReg, qubit1);
 	CX(QReg, qubit1, qubit2);
 	CX(QReg, qubit2, qubit1);
 	H(QReg, qubit2);
+
+	timer.end();
+	QReg->updateQRegStat(QGATE_ISWAP, timer);
 }
 
 /*

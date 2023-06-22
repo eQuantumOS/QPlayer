@@ -122,20 +122,28 @@ public:
 	void QUnlock(qsize_t index) { qlock[getPartId(index)].unlock(); } 
 
 	void checkMemory(void) {
-		static int memTotalKB = 0;
-		static int memAvailKB = 0;
-		int memUsedKB = 0;
+		static uint64_t memTotal = 0;
+		static uint64_t memAvail = 0;
+		uint64_t memUsed = 0;
 
-		if(memTotalKB == 0) {
-			getTotalMem(&memTotalKB, &memAvailKB);
+		if(memTotal == 0) {
+			getTotalMem(&memTotal, &memAvail);
 		}
 
-		memUsedKB = getUsedMem();
+		memUsed = getUsedMem();
 
-		if((memUsedKB * 2) > memAvailKB) {
+		if((memUsed * 2) > memAvail) {
+			char memTotalStr[32] = "";
+			char memAvailStr[32] = "";
+			char memUsedStr[32] = "";
+
+			human_readable_size(memTotal, memTotalStr);
+			human_readable_size(memAvail, memAvailStr);
+			human_readable_size(memUsed, memAvailStr);
+
 			printf("Memory space is insufficient!!\n");
 			printf("Your quantum circuit may generate too many quantum states.\n");
-			printf(" - Memory: Total=%d, Avail=%d --> Used=%d\n", memTotalKB, memAvailKB, memUsedKB);
+			printf(" - Memory: Total=%s, Avail=%s --> Used=%s\n", memTotalStr, memAvailStr, memUsedStr);
 			printf(" - Quantum states: %lu\n", (uint64_t)getNumStates());
 			exit(0);
 		}
@@ -321,30 +329,139 @@ public:
 		qstat.gateCalls[gate]++;
 
 		/* update execution time stats */ 
-		if(qstat.totalTime == 0) {
-			qstat.totalTime = tm;
-			qstat.maxGateTime = tm;
-			qstat.minGateTime = tm;
-			qstat.avgGateTime = tm;
+		if(qstat.tm_total == 0) {
+			qstat.tm_total = tm;
 		} else {
-			qstat.totalTime += tm;
+			qstat.tm_total += tm;
+		}
 
-			if(qstat.maxGateTime < tm) {
-				qstat.maxGateTime = tm;
+		/* update execution time stats for each gate */ 
+		if(qstat.tm_gates_total[gate] == 0) {
+			qstat.tm_gates_total[gate] = tm;
+			qstat.tm_gates_max[gate] = tm;
+			qstat.tm_gates_min[gate] = tm;
+			qstat.tm_gates_avg[gate] = tm;
+		} else {
+			qstat.tm_gates_total[gate] += tm;
+
+			if(qstat.tm_gates_max[gate] < tm) {
+				qstat.tm_gates_max[gate] = tm;
 			}
 
-			if(qstat.minGateTime > tm) {
-				qstat.minGateTime = tm;
+			if(qstat.tm_gates_min[gate] > tm) {
+				qstat.tm_gates_min[gate] = tm;
 			}
 
-			qstat.avgGateTime = qstat.totalTime / qstat.totalGateCalls;
+			qstat.tm_gates_avg[gate] = qstat.tm_gates_total[gate] / (double)qstat.gateCalls[gate];
 		}
 	}
 
 	struct qregister_stat getQRegStat(void) {
 		qstat.finalQStates = getNumStates();
+		qstat.usedMemory = getUsedMem();
 
 		return qstat;
+	}
+
+	void showQRegStat(void) {
+		struct qregister_stat stat = getQRegStat();
+		char os_name[1024] = "";
+		char os_version[1024] = "";
+
+		char cpu[1024] = "";
+		char herz[1024] = "";
+		int cores = 0;
+
+		uint64_t memTotal = 0;
+		uint64_t memAvail = 0;
+
+		char memTotalStr[32] = "";
+		char memAvailStr[32] = "";
+		char memUsedStr[32] = "";
+
+		getOS(os_name, os_version);
+		getTotalMem(&memTotal, &memAvail);
+		getCPU(cpu, &cores, herz);
+
+		human_readable_size(memTotal, memTotalStr);
+		human_readable_size(memAvail, memAvailStr);
+		human_readable_size(stat.usedMemory, memUsedStr);
+
+		printf("\033[1;32m=======================================================\033[0;39m\n");
+		printf("\033[1;32m                        Circuit                        \033[0;39m\n");
+		printf("\033[1;32m=======================================================\033[0;39m\n");
+		printf("  * used qubits          : %d\n", stat.qubits);
+		printf("  * number of gate calls : %d\n", stat.totalGateCalls);
+		printf("    [GATES]\n");
+		for(int i=0; i<MAX_GATES; i++) {
+			if(stat.gateCalls[i] != 0) {
+				printf("      - %-10s : %5d (%d %%)\n", 
+						gateString(i), stat.gateCalls[i], 
+						(stat.gateCalls[i] * 100) / stat.totalGateCalls);
+			}
+		}
+	
+		printf("\n");
+		printf("\033[1;32m=======================================================\033[0;39m\n");
+		printf("\033[1;32m                 Runtime(micro seconds)                \033[0;39m\n");
+		printf("\033[1;32m=======================================================\033[0;39m\n");
+		printf("  * total simulation time : %.f\n", stat.tm_total);
+		printf("  * run time per each gate\n");
+		printf("    [total]\n");
+		for(int i=0; i<MAX_GATES; i++) {
+			if(stat.gateCalls[i] != 0) {
+				printf("     - %-10s : %6.0f (%d %%)\n", 
+					gateString(i), stat.tm_gates_total[i],
+					(int)((stat.tm_gates_total[i] * 100ULL) / stat.tm_total));
+			}
+		}
+
+		printf("\n");
+		printf("    [max]\n");
+		for(int i=0; i<MAX_GATES; i++) {
+			if(stat.gateCalls[i] != 0) {
+				printf("     - %-10s : %6.0f\n", gateString(i), stat.tm_gates_max[i]);
+			}
+		}
+
+		printf("\n");
+		printf("    [min]\n");
+		for(int i=0; i<MAX_GATES; i++) {
+			if(stat.gateCalls[i] != 0) {
+				printf("     - %-10s : %6.0f\n", gateString(i), stat.tm_gates_min[i]);
+			}
+		}
+
+		printf("\n");
+		printf("    [avg]\n");
+		for(int i=0; i<MAX_GATES; i++) {
+			if(stat.gateCalls[i] != 0) {
+				printf("     - %-10s : %6.0f\n", gateString(i), stat.tm_gates_avg[i]);
+			}
+		}
+
+		printf("\n");
+		printf("\033[1;32m=======================================================\033[0;39m\n");
+		printf("\033[1;32m                     Simulation Jobs                   \033[0;39m\n");
+		printf("\033[1;32m=======================================================\033[0;39m\n");
+		printf("  * max number of quantum states   : %ld\n", (uint64_t)stat.maxQStates);
+		printf("  * final number of quantum states : %ld\n", (uint64_t)stat.finalQStates);
+		printf("  * used memory                    : %s\n", memUsedStr);
+
+		printf("\n");
+		printf("\033[1;32m=======================================================\033[0;39m\n");
+		printf("\033[1;32m                    System Information                 \033[0;39m\n");
+		printf("\033[1;32m=======================================================\033[0;39m\n");
+		printf("  * OS\n");
+		printf("    - name      : %s\n", os_name);
+		printf("    - version   : %s\n", os_version);
+		printf("  * CPU\n");
+		printf("    - model     : %s\n", cpu);
+		printf("    - cores     : %d\n", cores);
+		printf("    - MHz       : %s\n", herz);
+		printf("  * Memory\n");
+		printf("    - total     : %s\n", memTotalStr);
+		printf("    - available : %s\n", memAvailStr);
 	}
 };
 

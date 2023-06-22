@@ -1,3 +1,7 @@
+2023-06-22 add monitoring function for simulation jobs
+    - there are 4 categories (Circuit, Runtime, Simulation Jobs, System Information)
+    - add --verbose option for qplayer CLI
+
 2023-06-21 disable state pool quota control
     - if the number of states in queue is greater than MAX_POOL_SIZE,
       delete QState memory directly instead of storing it into queue

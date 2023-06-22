@@ -945,9 +945,15 @@ void QASMparser::clear() {
 }
 
 void QASMparser::resetQReg(void) {
-	QReg->reset();
+	if(QReg != NULL) {
+		QReg->reset();
+	}
 }
 
 void QASMparser::dumpQReg(void) {
 	dump(QReg);
+}
+
+void QASMparser::dumpQRegStat(void) {
+	QReg->showQRegStat();
 }

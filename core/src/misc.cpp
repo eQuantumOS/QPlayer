@@ -276,35 +276,35 @@ int getSchmidtNumber(complex_t M[4])
 char *gateString(int gate) 
 {
 	switch(gate) {
-	case QGATE_ID: return "id";
-	case QGATE_U1: return "u1";
-	case QGATE_U2: return "u2";
-	case QGATE_U3: return "u3";
-	case QGATE_X: return "x";
-	case QGATE_Y: return "y";
-	case QGATE_Z: return "z";
-	case QGATE_H: return "h";
-	case QGATE_S: return "s";
-	case QGATE_P: return "p";
-	case QGATE_SX: return "sx";
-	case QGATE_SDG: return "sdg";
-	case QGATE_T: return "t";
-	case QGATE_TDG: return "tdg";
-	case QGATE_RX: return "rx";
-	case QGATE_RY: return "ry";
-	case QGATE_RZ: return "rz";
-	case QGATE_CX: return "cx";
-	case QGATE_CZ: return "cz";
-	case QGATE_CY: return "cy";
-	case QGATE_CH: return "ch";
-	case QGATE_CCX: return "ccx";
-	case QGATE_CRZ: return "crz";
-	case QGATE_CU1: return "cu1";
-	case QGATE_CU2: return "cu2";
-	case QGATE_CU3: return "cu3";
-	case QGATE_SWAP: return "swap";
-	case QGATE_CSWAP: return "cswap";
-	case QGATE_MEASURE: return "measure";
+	case QGATE_ID: return "ID";
+	case QGATE_U1: return "U1";
+	case QGATE_U2: return "U2";
+	case QGATE_U3: return "U3";
+	case QGATE_X: return "Pauli-X";
+	case QGATE_Y: return "Pauli-Y";
+	case QGATE_Z: return "Pauli-Z";
+	case QGATE_H: return "H";
+	case QGATE_S: return "S";
+	case QGATE_P: return "P";
+	case QGATE_SX: return "SX";
+	case QGATE_SDG: return "SDT";
+	case QGATE_T: return "T";
+	case QGATE_TDG: return "TDG";
+	case QGATE_RX: return "RX";
+	case QGATE_RY: return "RY";
+	case QGATE_RZ: return "RZ";
+	case QGATE_CX: return "CX";
+	case QGATE_CZ: return "CZ";
+	case QGATE_CY: return "CY";
+	case QGATE_CH: return "CH";
+	case QGATE_CCX: return "CCX";
+	case QGATE_CRZ: return "CRZ";
+	case QGATE_CU1: return "CU1";
+	case QGATE_CU2: return "CU2";
+	case QGATE_CU3: return "CU3";
+	case QGATE_SWAP: return "SWAP";
+	case QGATE_CSWAP: return "CSWAP";
+	case QGATE_MEASURE: return "MEASURE";
 	}
 
 	return "UNKNOWN GATE";
@@ -313,11 +313,11 @@ char *gateString(int gate)
 /* 
  * set pysical memory size for this system 
  */
-void getTotalMem(int *memTotal, int *memAvail) {
+void getTotalMem(uint64_t *memTotal, uint64_t *memAvail) {
 	FILE *fp = NULL;
 
-	*memTotal = UINT_MAX;
-	*memAvail = UINT_MAX;
+	*memTotal = 0;
+	*memAvail = 0;
 	fp = fopen("/proc/meminfo", "rt");
 	if(fp == NULL) {
 		return;
@@ -330,9 +330,9 @@ void getTotalMem(int *memTotal, int *memAvail) {
 
 		fscanf(fp, "%s %s %s\n", cmd, kb, unit);
 		if(strcmp(cmd, "MemTotal:") == 0) {
-			*memTotal = atoi(kb);
+			*memTotal = (uint64_t)atoi(kb) * 1024ULL;
 		} else if(strcmp(cmd, "MemAvailable:") == 0) {
-			*memAvail = atoi(kb);
+			*memAvail = (uint64_t)atoi(kb) * 1024ULL;
 		}
 	}
 
@@ -342,12 +342,12 @@ void getTotalMem(int *memTotal, int *memAvail) {
 /* 
  * get free memory size(kb) for this system 
  */
-int getUsedMem(void) {
+uint64_t getUsedMem(void) {
 	FILE *fp = NULL;
 	char fname[256] = "";
 	char cmd[256] = "";
 	char size[32] = "";
-	int memFree = 0;
+	uint64_t memFree = 0;
 
 	sprintf(fname, "/proc/%d/status", getpid());
 
@@ -360,7 +360,7 @@ int getUsedMem(void) {
 		if(strstr(cmd, "VmHWM")) {
 			char t[32] = "";
 			sscanf(cmd, "%s%s", t, size);
-			memFree = atoi(size);
+			memFree = (uint64_t)atoi(size) * 1024ULL;
 			break;
 		}
 	}
@@ -370,23 +370,101 @@ int getUsedMem(void) {
 	return memFree;
 }
 
+void getCPU(char *cpu, int *cores, char *herz)
+{
+	FILE* cpuinfo = fopen("/proc/cpuinfo", "r");
+	char line[256];
+
+	if(cpuinfo == NULL) {
+		return;
+	}
+
+	*cores = *herz = 0;
+
+	while(fgets(line, sizeof(line), cpuinfo)) {
+		if(strncmp(line, "model name", 10) == 0) {
+			char *str = strchr(line, ':');
+			if(str != NULL) {
+				str++;
+				while(*str == ' ') {
+					++str;
+				}
+				strcpy(cpu, str);
+				cpu[strlen(cpu)-1] = '\0';
+			}
+		} else if(strncmp(line, "cpu MHz", 7) == 0) {
+			char *str = strchr(line, ':');
+			if(str != NULL) {
+				str++;
+				while(*str == ' ') {
+					++str;
+				}
+				strcpy(herz, str);
+				herz[strlen(herz)-1] = '\0';
+			}
+		} else if(strncmp(line, "processor", 9) == 0) {
+			(*cores)++;
+		}
+	}
+
+	fclose(cpuinfo);
+}
+
+void getOS(char *name, char *version)
+{
+	FILE* osinfo = fopen("/etc/os-release", "r");
+	char line[256];
+
+	if(osinfo == NULL) {
+		return;
+	}
+
+	while(fgets(line, sizeof(line), osinfo)) {
+		if(strncmp(line, "NAME=", 5) == 0) {
+			char *str = strchr(line, '"');
+			if(str != NULL) {
+				str++;
+				strcpy(name, str);
+				name[strlen(name)-2] = '\0';
+			}
+		} else if(strncmp(line, "VERSION=", 8) == 0) {
+			char *str = strchr(line, '"');
+			if(str != NULL) {
+				str++;
+				strcpy(version, str);
+				version[strlen(version)-2] = '\0';
+			}
+		}
+	}
+
+	fclose(osinfo);
+}
+
 char *getUsedMemHuman(char *buf) 
 {
-	int mem = getUsedMem();
+	uint64_t mem = getUsedMem();
 
-	human_readable_size(mem * 1024, buf);
+	human_readable_size(mem, buf);
 
 	return buf;
 }
 
 void showMemoryInfo(void) 
 {
-	int memTotalKB = 0;
-	int memAvailKB = 0;
-	int memUsedKB = 0;
+	uint64_t memTotal = 0;
+	uint64_t memAvail = 0;
+	uint64_t memUsed = 0;
 
-	getTotalMem(&memTotalKB, &memAvailKB);
-	memUsedKB = getUsedMem();
+	char memTotalStr[32] = "";
+	char memAvailStr[32] = "";
+	char memUsedStr[32] = "";
 
-	printf("Total:%d, Avail=%d --> Used:%d\n", memTotalKB, memAvailKB, memUsedKB);
+	getTotalMem(&memTotal, &memAvail);
+	memUsed = getUsedMem();
+
+	human_readable_size(memTotal, memTotalStr);
+	human_readable_size(memAvail, memAvailStr);
+	human_readable_size(memUsed, memUsedStr);
+
+	printf("Total:%s, Avail=%s --> Used:%s\n", memTotalStr, memAvailStr, memUsedStr);
 }

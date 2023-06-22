@@ -22,18 +22,20 @@ static char *prog;
 static char *f_qasm = "/tmp/xyz";
 static char f_in[MAX_LENG];
 static char f_out[MAX_LENG];
-static int is_log;
 static int shots;
 static int verbose;
+static char *version = "QPlayer v-1.0-Leopard";
 
 static void usage(void) 
 {
 	printf("%s <options>\n", prog);
 	printf("options:\n" );
-	printf("  -f <input file>  : input QASM file\n");
-	printf("  -o <output file> : output result file\n");
+	printf("  -f <string>      : input QASM file\n");
+	printf("  -o <string>      : output result file(default: ./log/run.res)\n");
 	printf("  -s <number>      : number of shots\n");
-	printf("  -h\n");
+	printf("  -v               : QPlayer version\n");
+	printf("  -h               : print help\n");
+	printf("  --verbose        : print detailed simulation tasks\n");
 
 	exit(0);
 }
@@ -67,12 +69,14 @@ void convertQASM(void)
 void runQASM(void)
 {
 	map<string, int> cregMap;
+	QASMparser* parser = NULL;
 
 	/* STEP1: execute QASM file for shot-round */
 	for(int i=0; i<shots; i++) {
-		QASMparser* parser = new QASMparser(f_qasm);
+		parser = new QASMparser(f_qasm);
 		vector<string> cregStr;
 
+		parser->resetQReg();	
 		parser->Parse();
 		parser->get_cregStr(cregStr);
 
@@ -84,52 +88,45 @@ void runQASM(void)
 				it->second++;
 			}
 		}
-
-		if(verbose) {
-			printf("************************************************\n");
-			printf("Dump #1: show quantum states in quantum register\n");
-			printf("************************************************\n");
-			parser->dumpQReg();
-		}
-
-		parser->resetQReg();	
-
-		delete parser;
 	}
 
 	/* STEP2: generate output */
 
 	/* make output directory */
-	if(is_log) {
-		char *dirc = strdup(f_out);
-		char *dname = dirname(dirc);
-		char cmd[256] = "";
-		sprintf(cmd, "mkdir -p %s", dname);
-		system(cmd);
+	char *dirc = strdup(f_out);
+	char *dname = dirname(dirc);
+	char cmd[256] = "";
+	sprintf(cmd, "mkdir -p %s", dname);
+	system(cmd);
 	
-		FILE *fp = fopen(f_out, "wt");
-		if(fp == NULL) {
-			printf("error: cannot open '%s'\n", f_out);
+	FILE *fp = fopen(f_out, "wt");
+	if(fp == NULL) {
+		printf("error: cannot open '%s'\n", f_out);
+	}
+	
+	fprintf(fp, "Total Shots: %d\n", shots);
+	fprintf(fp, "Measured States: %ld\n", cregMap.size());
+	
+	if(cregMap.size() > 0) {
+		fprintf(fp, "\n");
+		for(auto entry : cregMap) {
+			fprintf(fp, "%d%%, %d/%d, |%s>\n", (int)(entry.second*100/shots), entry.second, shots, entry.first.c_str());
 		}
-	
-		fprintf(fp, "Total Shots: %d\n", shots);
-		fprintf(fp, "Measured States: %ld\n", cregMap.size());
-	
-		if(cregMap.size() > 0) {
-			fprintf(fp, "\n");
-			for(auto entry : cregMap) {
-				fprintf(fp, "%d%%, %d/%d, |%s>\n", (int)(entry.second*100/shots), entry.second, shots, entry.first.c_str());
-			}
-		}
-
-		fclose(fp);
 	}
 
-	if(verbose) {
+	fclose(fp);
+
+#if 0
+	if(!is_log) {
+		printf("\033[1;32m*************************************************************\033[0;39m\n");
+		printf("\033[1;32m             quantum states in quantum register              \033[0;39m\n");
+		printf("\033[1;32m*************************************************************\033[0;39m\n");
+		parser->dumpQReg();
+
 		printf("\n");
-		printf("***************************************************\n");
-		printf("Dump #2: show measured states of classical register\n");
-		printf("***************************************************\n");
+		printf("\033[1;32m*************************************************************\033[0;39m\n");
+		printf("\033[1;32m            measured states of classical register            \033[0;39m\n");
+		printf("\033[1;32m*************************************************************\033[0;39m\n");
 		printf("Total Shots: %d\n", shots);
 		printf("Measured States: %ld\n", cregMap.size());
 	
@@ -139,6 +136,13 @@ void runQASM(void)
 			}
 		}
 	}
+#endif
+
+	if(verbose) {
+		parser->dumpQRegStat();
+	}
+
+	delete parser;
 }
 
 int main(int argc, char **argv)
@@ -156,12 +160,15 @@ int main(int argc, char **argv)
 	sigaction(SIGABRT, &sa, NULL);
 
 	strcpy(f_in, "");
-	strcpy(f_out, "");
+	strcpy(f_out, "./log/run.res");
 	shots = 1;	/* default number of shot */
-	is_log = 1;
 	verbose = 0;
 
-	while ((c = getopt_long(argc, argv, "f:o:s:vh", NULL, NULL)) != -1) {
+	static const struct option options[] = {
+		{"verbose", 0, 0, '1'}
+	};
+
+	while ((c = getopt_long(argc, argv, "f:o:s:vh", options, NULL)) != -1) {
 		switch(c) {
 		case 'f':
 			if(!optarg) 
@@ -179,6 +186,10 @@ int main(int argc, char **argv)
 			shots = atoi(optarg);
 			break;
 		case 'v':
+			printf("%s\n", version);
+			exit(0);
+			break;
+		case '1':
 			verbose = 1;
 			break;
 		case 'h':
@@ -187,13 +198,8 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if(strlen(f_in) == 0) {
+	if(strlen(f_in) == 0 || strlen(f_out) == 0) {
 		usage();
-	}
-
-	if(strlen(f_out) == 0) {
-		verbose = 1;
-		is_log = 0;
 	}
 
 	convertQASM();
