@@ -1,3 +1,7 @@
+2023-06-23 generate monitoring statistics to json file
+    - update qregister->stat data structure
+	- add -j option for qplayer CLI
+
 2023-06-22 add monitoring function for simulation jobs
     - there are 4 categories (Circuit, Runtime, Simulation Jobs, System Information)
     - add --verbose option for qplayer CLI

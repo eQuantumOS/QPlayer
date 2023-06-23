@@ -91,6 +91,7 @@ typedef enum {
 struct qregister_stat {
 	/* Quantum Circuit */
 	int qubits;
+	int usedGates;
 	int totalGateCalls;
 	int gateCalls[MAX_GATES];
 
@@ -110,7 +111,16 @@ struct qregister_stat {
 	qsize_t finalQStates;
 
 	/* System Resources */
-	uint64_t usedMemory;				/* bytes */
+	char os_name[64];
+	char os_version[64];
+
+	char cpu_model[64];
+	char cpu_herz[64];
+	int cpu_cores;
+
+	uint64_t memTotal;					/* bytes */
+	uint64_t memUsed;					/* bytes */
+	uint64_t memAvail;					/* bytes */
 };
 
 #define NUM_SIZES   8

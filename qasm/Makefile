@@ -43,7 +43,7 @@ QPlayerQASM: $(QASM_OBJS)
 install:
 	@mkdir -p $(QPLAYER_RELEASE)/bin
 	@cp -f $(QASM_EXEC) $(QPLAYER_RELEASE)/bin
-	@cp -rf ./qasms $(QPLAYER_RELEASE)/bin
+	@cp -rf ./examples $(QPLAYER_RELEASE)/bin
 	@cp -f ./qelib1.inc $(QPLAYER_RELEASE)/bin
 
 clean:

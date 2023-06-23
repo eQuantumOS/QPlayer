@@ -358,110 +358,99 @@ public:
 
 	struct qregister_stat getQRegStat(void) {
 		qstat.finalQStates = getNumStates();
-		qstat.usedMemory = getUsedMem();
+
+		getTotalMem(&qstat.memTotal, &qstat.memAvail);
+		qstat.memUsed = getUsedMem();
+
+		getOS(qstat.os_name, qstat.os_version);
+		getCPU(qstat.cpu_model, &qstat.cpu_cores, qstat.cpu_herz);
+
+		qstat.usedGates = 0;
+		for(int i=0; i<MAX_GATES; i++) {
+			if(qstat.gateCalls[i] != 0) {
+				qstat.usedGates++;
+			}
+		}
 
 		return qstat;
 	}
 
 	void showQRegStat(void) {
 		struct qregister_stat stat = getQRegStat();
-		char os_name[1024] = "";
-		char os_version[1024] = "";
-
-		char cpu[1024] = "";
-		char herz[1024] = "";
-		int cores = 0;
-
-		uint64_t memTotal = 0;
-		uint64_t memAvail = 0;
 
 		char memTotalStr[32] = "";
 		char memAvailStr[32] = "";
 		char memUsedStr[32] = "";
 
-		getOS(os_name, os_version);
-		getTotalMem(&memTotal, &memAvail);
-		getCPU(cpu, &cores, herz);
+		human_readable_size(stat.memTotal, memTotalStr);
+		human_readable_size(stat.memAvail, memAvailStr);
+		human_readable_size(stat.memUsed, memUsedStr);
 
-		human_readable_size(memTotal, memTotalStr);
-		human_readable_size(memAvail, memAvailStr);
-		human_readable_size(stat.usedMemory, memUsedStr);
-
-		printf("\033[1;32m=======================================================\033[0;39m\n");
-		printf("\033[1;32m                        Circuit                        \033[0;39m\n");
-		printf("\033[1;32m=======================================================\033[0;39m\n");
-		printf("  * used qubits          : %d\n", stat.qubits);
-		printf("  * number of gate calls : %d\n", stat.totalGateCalls);
-		printf("    [GATES]\n");
+		printf("\n");
+		printf("\033[1;34m1. Circuit Information\033[0;39m\n");
+		printf("+--------------------------+-----------------+\n");
+		printf("| 1. used qubits           |  %7d        |\n", stat.qubits);
+		printf("+--------------------------+-----------------+\n");
+		printf("| 2. used gates            |  %7d        |\n", stat.usedGates);
+		printf("+--------------------------+-----------------+\n");
+		printf("| 3. total gate calls      |  %7d        |\n", stat.totalGateCalls);
+		printf("+--------------------------+-----------------+\n");
+		printf("| 4. indivisual gate calls |                 |\n");
+		printf("+--------------------------+                 |\n");
 		for(int i=0; i<MAX_GATES; i++) {
 			if(stat.gateCalls[i] != 0) {
-				printf("      - %-10s : %5d (%d %%)\n", 
+				printf("|              %10s  |  %7d (%2d %%) |\n", 
 						gateString(i), stat.gateCalls[i], 
 						(stat.gateCalls[i] * 100) / stat.totalGateCalls);
 			}
 		}
-	
+		printf("+--------------------------+-----------------+\n");
+
 		printf("\n");
-		printf("\033[1;32m=======================================================\033[0;39m\n");
-		printf("\033[1;32m                 Runtime(micro seconds)                \033[0;39m\n");
-		printf("\033[1;32m=======================================================\033[0;39m\n");
-		printf("  * total simulation time : %.f\n", stat.tm_total);
-		printf("  * run time per each gate\n");
-		printf("    [total]\n");
+		printf("\033[1;34m2. Runtime (micro seconds)\033[0;39m\n");
+		printf("+-----------------------------+-----------------------------------------+\n");
+		printf("| 1. total simulation time    |   %-20.f                  |\n", stat.tm_total);
+		printf("+-----------------------------+-----------+---------+---------+---------+\n");
+		printf("| 2. each gate execution time |   total   |   max   |   min   |   avg   |\n");
+		printf("+-----------------------------+-----------+---------+---------+---------+\n");
 		for(int i=0; i<MAX_GATES; i++) {
 			if(stat.gateCalls[i] != 0) {
-				printf("     - %-10s : %6.0f (%d %%)\n", 
-					gateString(i), stat.tm_gates_total[i],
-					(int)((stat.tm_gates_total[i] * 100ULL) / stat.tm_total));
+				printf("| %27s | %9.0f | %7.0f | %7.0f | %7.0f |\n", gateString(i), 
+					stat.tm_gates_total[i],
+					stat.tm_gates_max[i],
+					stat.tm_gates_min[i],
+					stat.tm_gates_avg[i]);
 			}
 		}
+		printf("+-----------------------------+-----------+---------+---------+---------+\n");
 
 		printf("\n");
-		printf("    [max]\n");
-		for(int i=0; i<MAX_GATES; i++) {
-			if(stat.gateCalls[i] != 0) {
-				printf("     - %-10s : %6.0f\n", gateString(i), stat.tm_gates_max[i]);
-			}
-		}
+		printf("\033[1;34m3. Simulation Jobs\033[0;39m\n");
+		printf("+-----------------------------------+----------+\n");
+		printf("| 1. max number of quantum states   | %8ld |\n", (uint64_t)stat.maxQStates);
+		printf("+-----------------------------------+----------+\n");
+		printf("| 2. final number of quantum states | %8ld |\n", (uint64_t)stat.finalQStates);
+		printf("+-----------------------------------+----------+\n");
+		printf("| 3. used memory                    | %8s |\n", memUsedStr);
+		printf("+-----------------------------------+----------+\n");
 
 		printf("\n");
-		printf("    [min]\n");
-		for(int i=0; i<MAX_GATES; i++) {
-			if(stat.gateCalls[i] != 0) {
-				printf("     - %-10s : %6.0f\n", gateString(i), stat.tm_gates_min[i]);
-			}
-		}
-
-		printf("\n");
-		printf("    [avg]\n");
-		for(int i=0; i<MAX_GATES; i++) {
-			if(stat.gateCalls[i] != 0) {
-				printf("     - %-10s : %6.0f\n", gateString(i), stat.tm_gates_avg[i]);
-			}
-		}
-
-		printf("\n");
-		printf("\033[1;32m=======================================================\033[0;39m\n");
-		printf("\033[1;32m                     Simulation Jobs                   \033[0;39m\n");
-		printf("\033[1;32m=======================================================\033[0;39m\n");
-		printf("  * max number of quantum states   : %ld\n", (uint64_t)stat.maxQStates);
-		printf("  * final number of quantum states : %ld\n", (uint64_t)stat.finalQStates);
-		printf("  * used memory                    : %s\n", memUsedStr);
-
-		printf("\n");
-		printf("\033[1;32m=======================================================\033[0;39m\n");
-		printf("\033[1;32m                    System Information                 \033[0;39m\n");
-		printf("\033[1;32m=======================================================\033[0;39m\n");
-		printf("  * OS\n");
-		printf("    - name      : %s\n", os_name);
-		printf("    - version   : %s\n", os_version);
-		printf("  * CPU\n");
-		printf("    - model     : %s\n", cpu);
-		printf("    - cores     : %d\n", cores);
-		printf("    - MHz       : %s\n", herz);
-		printf("  * Memory\n");
-		printf("    - total     : %s\n", memTotalStr);
-		printf("    - available : %s\n", memAvailStr);
+		printf("\033[1;34m4. System Information\033[0;39m\n");
+		printf("+-----------+---------+-------------------------------------------------+\n");
+		printf("|           | name    | %47s | \n", stat.os_name);
+		printf("|    OS     |---------+-------------------------------------------------+\n");
+		printf("|           | version | %47s | \n", stat.os_version);
+		printf("+-----------+---------+-------------------------------------------------+\n");
+		printf("|           | model   | %47s | \n", stat.cpu_model);
+		printf("|           |---------+-------------------------------------------------+\n");
+		printf("|    CPU    | cores   | %47d | \n", stat.cpu_cores);
+		printf("|           |---------+-------------------------------------------------+\n");
+		printf("|           | herz    | %47s | \n", stat.cpu_herz);
+		printf("+-----------+---------+-------------------------------------------------+\n");
+		printf("|           | total   | %47s | \n", memTotalStr);
+		printf("|    MEM    |---------+-------------------------------------------------+\n");
+		printf("|           | avail   | %47s | \n", memAvailStr);
+		printf("+-----------+---------+-------------------------------------------------+\n");
 	}
 };
 

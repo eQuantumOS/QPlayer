@@ -42,7 +42,7 @@ public:
 	void get_cregStr(vector<string> &cregStr);
 	void resetQReg(void);
 	void dumpQReg(void);
-	void dumpQRegStat(void);
+	struct qregister_stat getQRegStat(void);
 
 	struct gate {
 		int target;

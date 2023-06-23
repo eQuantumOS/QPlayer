@@ -442,7 +442,31 @@ void QASMparser::QASMgate(bool execute) {
 						Expr* lambda = RewriteExpr(u->lambda, paramsMap);
 
 						for(int i = 0; i < argsMap[u->target].second; i++) {
-							addUgate(argsMap[u->target].first+i, theta->num, phi->num, lambda->num);
+							if(gate_name == "h") {
+								H(QReg, argsMap[u->target].first+i);
+							} else if(gate_name == "x") {
+								X(QReg, argsMap[u->target].first+i);
+							} else if(gate_name == "y") {
+								Y(QReg, argsMap[u->target].first+i);
+							} else if(gate_name == "z") {
+								Z(QReg, argsMap[u->target].first+i);
+							} else if(gate_name == "s") {
+								S(QReg, argsMap[u->target].first+i);
+							} else if(gate_name == "t") {
+								T(QReg, argsMap[u->target].first+i);
+							} else if(gate_name == "tdg") {
+								TDG(QReg, argsMap[u->target].first+i);
+							} else if(gate_name == "sdg") {
+								SDG(QReg, argsMap[u->target].first+i);
+							} else if(gate_name == "rx") {
+								RX(QReg, argsMap[u->target].first+i, parameters[i]->num);
+							} else if(gate_name == "ry") {
+								RY(QReg, argsMap[u->target].first+i, parameters[i]->num);
+							} else if(gate_name == "rz") {
+								RZ(QReg, argsMap[u->target].first+i, parameters[i]->num);
+							} else {
+								addUgate(argsMap[u->target].first+i, theta->num, phi->num, lambda->num);
+							}
 						}
 						delete theta;
 						delete phi;
@@ -916,6 +940,10 @@ void QASMparser::Parse()
             exit(1);
 		}
 	} while (sym != Token::Kind::eof);
+
+#if 0
+	dump(QReg);
+#endif
 }
 
 void QASMparser::get_cregStr(vector<string> &cregStr) {
@@ -954,6 +982,6 @@ void QASMparser::dumpQReg(void) {
 	dump(QReg);
 }
 
-void QASMparser::dumpQRegStat(void) {
-	QReg->showQRegStat();
+struct qregister_stat QASMparser::getQRegStat(void) {
+	return QReg->getQRegStat();
 }
