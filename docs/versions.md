@@ -17,7 +17,7 @@
   - OpenQASM v2.0 /w a simple grammar check
   - Support for 32 quantum gate operations
  
-# v0.2-birth
+# v0.2-Cat
 + release date : June 24, 2021
 + features
   - Schrödinger style state vector simulator  
