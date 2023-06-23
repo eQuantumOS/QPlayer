@@ -1,5 +1,3 @@
-boost=yes
-
 CXX = g++
 CXXLD = g++
 
@@ -8,19 +6,15 @@ CXXFLAGS += -I. -I./include
 CXXFLAGS += -Wno-reorder -Wno-sign-compare -Wno-parentheses -Wno-pessimizing-move
 CXXFLAGS += -Wno-unused-function -Wno-unused-variable -Wno-write-strings
 CXXFLAGS += -Wno-class-conversion -Wno-unused-result -Wno-class-memaccess
-ifeq ($(boost),yes)
-    CXXFLAGS += -DLARGE_SCALE
-endif
+CXXFLAGS += -DLARGE_SCALE
 
 LIBS = -lm -lpthread -lgomp
-ifeq ($(boost),yes)
-	LIBS += -lboost_system-mt
-endif
+LIBS += -lboost_system-mt
 
 Q=@echo
 E=@
 
-BUILD_DIR = ../build
+BUILD_DIR = ../release
 
 QPLAYER_SRC :=
 QPLAYER_HDR :=
@@ -50,6 +44,7 @@ install:
 	$(Q) "$(@)"
 	@mkdir -p $(BUILD_DIR)/include
 	@mkdir -p $(BUILD_DIR)/lib
+	@mkdir -p $(BUILD_DIR)/bin
 	@cp -f include/* $(BUILD_DIR)/include
 	@mv -f $(QPLAYER_LIB) $(BUILD_DIR)/lib
 

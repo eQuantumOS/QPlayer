@@ -16,19 +16,18 @@
 #
 #*******************************************************************************
 
-all: CORE QASM
+all: GENERAL SURFACECODE MLQ
 
-CORE:
-	@ $(MAKE) -C core 
+GENERAL:
+	@ $(MAKE) -C general 
 
-QASM:
-	@ $(MAKE) -C qasm 
+SURFACECODE:
+	@ $(MAKE) -C surfacecode 
 
-TEST:
-	@ $(MAKE) -C test
+MLQ:
+	@ $(MAKE) -C MLQ 
 
 clean:
-	@ $(MAKE) -C core clean
-	@ $(MAKE) -C qasm clean
-	@ $(MAKE) -C test clean
-	@ $(RM) -rf release
+	@ $(MAKE) -C general clean
+	@ $(MAKE) -C surfacecode clean
+	@ $(MAKE) -C MLQ clean

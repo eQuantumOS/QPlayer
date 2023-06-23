@@ -158,7 +158,7 @@ static void applyMatrix(QRegister *QReg, int qubit, complex_t M[])
 			#else
 				if(norm(amp0) > 0) {
 			#endif
-					lower = new QState(i0, amp0);
+					lower = getQState(i0, amp0);
 			
 					newQState[i].push_back(lower);
 				}
@@ -180,7 +180,7 @@ static void applyMatrix(QRegister *QReg, int qubit, complex_t M[])
 			#else
 				if(norm(amp1) > 0) {
 			#endif
-					upper = new QState(i1, amp1);
+					upper = getQState(i1, amp1);
 					newQState[i].push_back(upper);
 				}
 			}
@@ -308,7 +308,7 @@ static void applyControlledMatrix(QRegister *QReg, int control, int target, comp
 				}
 			} else {
 				if(norm(amp0) > AMPLITUDE_EPS) {
-					lower = new QState(i0, amp0);
+					lower = getQState(i0, amp0);
 					newQState[i].push_back(lower);
 				}
 			}
@@ -321,7 +321,7 @@ static void applyControlledMatrix(QRegister *QReg, int control, int target, comp
 				}
 			} else {
 				if(norm(amp1) > AMPLITUDE_EPS) {
-					upper = new QState(i1, amp1);
+					upper = getQState(i1, amp1);
 					newQState[i].push_back(upper);
 				}
 			}
@@ -928,7 +928,7 @@ void CCX(QRegister *QReg, int control1, int control2, int target)
 				 *  |00|  -->  |01|
 				 *  +--+       +--+
 				 */
-				upper = new QState(i1, Q->getAmplitude());
+				upper = getQState(i1, Q->getAmplitude());
 				delQState[i].push_back(lower);
 				newQState[i].push_back(upper);
 			} else {
@@ -1012,12 +1012,18 @@ void SWAP(QRegister *QReg, int qubit1, int qubit2)
  */
 void iSWAP(QRegister *QReg, int qubit1, int qubit2) 
 {
+	QTimer timer;
+	timer.start();
+
 	S(QReg, qubit1);
 	S(QReg, qubit2);
 	H(QReg, qubit1);
 	CX(QReg, qubit1, qubit2);
 	CX(QReg, qubit2, qubit1);
 	H(QReg, qubit2);
+
+	timer.end();
+	QReg->updateQRegStat(QGATE_ISWAP, timer);
 }
 
 /*
@@ -1124,9 +1130,9 @@ int M(QRegister *QReg, int qubit)
 			qsize_t i0 = Q->getIndex();
 	
 			if(state == 0 && stripe_upper(i0, qubit) == true) {
-				Q->setAmplitude(0);
+				Q->setAmplitude(complex_t(0, 0));
 			} else if(state == 1 && stripe_lower(i0, qubit) == true) {
-				Q->setAmplitude(0);
+				Q->setAmplitude(complex_t(0, 0));
 			}
 		}
 	}

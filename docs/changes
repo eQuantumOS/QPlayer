@@ -1,0 +1,42 @@
+2023-06-23 generate monitoring statistics to json file
+    - update qregister->stat data structure
+	- add -j option for qplayer CLI
+
+2023-06-22 add monitoring function for simulation jobs
+    - there are 4 categories (Circuit, Runtime, Simulation Jobs, System Information)
+    - add --verbose option for qplayer CLI
+
+2023-06-21 disable state pool quota control
+    - if the number of states in queue is greater than MAX_POOL_SIZE,
+      delete QState memory directly instead of storing it into queue
+
+2023-06-21 update README.md
+    - update version 
+    - update some style
+
+2023-06-21 add QState memory pool
+    - add spool.h, spool.cpp
+    - alloc/dealloc QState memory from state pool
+
+2023-06-20 Integrated test directory compilation
+    - add ~/test/Makefile
+    - link ~/Makefile and ~/test/Makefile
+
+2023-06-20 speficied the ownership of the OpenQASM compilier
+    - add AUTHOR into ~/qasm directory
+    - add LICENSE into ~/qasm directory
+
+2023-06-20 source code indentation 
+    - fix the consistency of the indentations of all source codes
+
+2023-06-20 support OpenQASM 2.0 
+    - add qasm directory
+    - change -o option from mandatory to optional
+    - release 'qplayer' CLI to ~release/bin
+
+2023-06-19 refactoring code directories
+    - rename qplayer(D) --> core(D)
+    - rename circuit(D) --> test(D)
+    - breakdown test directories by role
+    - add docs(D)
+    - update Makefiles
