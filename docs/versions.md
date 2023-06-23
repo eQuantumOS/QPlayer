@@ -1,8 +1,26 @@
 ![image](https://github.com/eQuantumOS/QPlayer/assets/17871602/3e9517cf-bed6-45b9-8cea-255bf1b84935)
+  
+# v1.0-Leopard
++ release date : June 23, 2023
++ features
+  - re-organize whole directory trees & sources
+  - OpenQASM v2.0 /w a complete grammar check
+  - add state memory pool for handling dynamical state memory
+  - provide simulation statistics through the json file
 
-# v0.5-Jaguar
-* release date : June 14, 2023
-* Schrödinger style state vector simulator
-* Fast operation in the reduced Hilbert space
-* User-friendly interfaces: native-C
-* Support for 32 quantum gate operations
+# v0.5-Jaguar 
++ release date : March 30, 2023
++ features
+  - optimize matrix calculation logic
+  - fix memory overflow in log-run testing
+  - enhance gate operation performance
+  - OpenQASM v2.0 /w a simple grammar check
+  - Support for 32 quantum gate operations
+ 
+# v0.2-birth
++ release date : June 24, 2021
++ features
+  - Schrödinger style state vector simulator  
+  - Fast operation in the reduced Hilbert space
+  - User-friendly interfaces: native-C
+  - Support for 21 quantum gate operations
