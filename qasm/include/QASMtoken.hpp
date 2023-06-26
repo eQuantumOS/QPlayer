@@ -26,6 +26,7 @@ by citing the following publication:
 #ifndef TOKEN_H_
 #define TOKEN_H_
 
+#include <string>
 #include <map>
 
 class Token {
