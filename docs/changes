@@ -1,3 +1,7 @@
+2023-07-07 minor revision of qplayer CLI options 
+	- change -f to -i 
+	- change -j option to have argument
+
 2023-07-06 add test file for verifying installtion
 	- add ~/test/general/install_test.cpp
 

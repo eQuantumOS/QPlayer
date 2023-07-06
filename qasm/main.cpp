@@ -22,6 +22,7 @@ static char *prog;
 static char *f_qasm = "/tmp/xyz";
 static char f_in[MAX_LENG];
 static char f_out[MAX_LENG];
+static char j_out[MAX_LENG];
 static int shots;
 static int is_verbose;
 static int is_json;
@@ -33,8 +34,9 @@ static void usage(void)
 {
 	printf("%s <options>\n", prog);
 	printf("options:\n" );
-	printf("  -f <string>      : input QASM file\n");
-	printf("  -o <string>      : output result file(default: ./log/simulation.res)\n");
+	printf("  -i <string>      : input QASM file (mandatory)\n");
+	printf("  -o <string>      : output result file (mandatory)\n");
+	printf("  -j <string>      : output simulation statistics to json file\n");
 	printf("  -s <number>      : number of shots\n");
 	printf("  -h               : help\n");
 	printf("  --version        : version\n");
@@ -128,10 +130,14 @@ void showStat(struct qregister_stat *stat)
 
 void genStatJson(struct qregister_stat *stat)
 {
-	char fname[32] = "";
+	char cmd[256] = "";
 
-	sprintf(fname, "%s/qplayer.json", dname);
-	FILE *fp = fopen(fname, "wt");
+	dirc = strdup(j_out);
+	dname = dirname(dirc);
+	sprintf(cmd, "mkdir -p %s", dname);
+	system(cmd);
+
+	FILE *fp = fopen(j_out, "wt");
 
 	char memTotalStr[32] = "";
 	char memAvailStr[32] = "";
@@ -257,6 +263,8 @@ void runQASM(void)
 
 	/* STEP2: generate measured output */
 	char cmd[256] = "";
+	dirc = strdup(f_out);
+	dname = dirname(dirc);
 	sprintf(cmd, "mkdir -p %s", dname);
 	system(cmd);
 	
@@ -306,7 +314,8 @@ int main(int argc, char **argv)
 	sigaction(SIGABRT, &sa, NULL);
 
 	strcpy(f_in, "");
-	strcpy(f_out, "./log/simulation.res");
+	strcpy(f_out, "");
+	strcpy(j_out, "");
 	shots = 1;	/* default number of shot */
 	is_verbose = 0;
 	is_json = 0;
@@ -316,9 +325,9 @@ int main(int argc, char **argv)
 		{"version", 0, 0, '2'}
 	};
 
-	while ((c = getopt_long(argc, argv, "f:o:s:jh", options, NULL)) != -1) {
+	while ((c = getopt_long(argc, argv, "i:o:s:j:h", options, NULL)) != -1) {
 		switch(c) {
-		case 'f':
+		case 'i':
 			if(!optarg) 
 				usage();
 			strcpy(f_in, optarg);
@@ -334,6 +343,9 @@ int main(int argc, char **argv)
 			shots = atoi(optarg);
 			break;
 		case 'j':
+			if(!optarg) 
+				usage();
+			strcpy(j_out, optarg);
 			is_json = 1;
 			break;
 		case '1':
@@ -353,9 +365,6 @@ int main(int argc, char **argv)
 	if(strlen(f_in) == 0 || strlen(f_out) == 0) {
 		usage();
 	}
-
-	dirc = strdup(f_out);
-	dname = dirname(dirc);
 
 	convertQASM();
 	runQASM();
