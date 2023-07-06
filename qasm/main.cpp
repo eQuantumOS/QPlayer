@@ -70,7 +70,7 @@ void showStat(struct qregister_stat *stat)
 	printf("+--------------------------+-----------------+\n");
 	printf("| 3. total gate calls      |  %7d        |\n", stat->totalGateCalls);
 	printf("+--------------------------+-----------------+\n");
-	printf("| 4. indivisual gate calls |                 |\n");
+	printf("| 4. individual gate calls |                 |\n");
 	printf("+--------------------------+                 |\n");
 	for(int i=0; i<MAX_GATES; i++) {
 		if(stat->gateCalls[i] != 0) {
@@ -168,7 +168,7 @@ void genStatJson(struct qregister_stat *stat)
 
 	fprintf(fp, " \"runtime\" : {\n");
 	fprintf(fp, "  \"total simulation time\" : %.f,\n", stat->tm_total);
-	fprintf(fp, "  \"indivisual gate time\" : {\n");
+	fprintf(fp, "  \"individual gate time\" : {\n");
 	pos = 0;
 	for(int i=0; i<MAX_GATES; i++) {
 		if(stat->gateCalls[i] != 0) {
