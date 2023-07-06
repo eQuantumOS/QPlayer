@@ -1,3 +1,6 @@
+2023-07-06 add test file for verifying installtion
+	- add ~/test/general/install_test.cpp
+
 2023-06-23 generate monitoring statistics to json file
     - update qregister->stat data structure
 	- add -j option for qplayer CLI
