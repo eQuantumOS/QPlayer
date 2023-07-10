@@ -26,112 +26,113 @@
 using namespace std;
 
 void grover(QRegister *QReg, int qubits) {
-	int mid = qubits / 2;
+	int target = qubits / 2;
+	int repeat = (int)(sqrt(pow(4, qubits)));
 
-	/* 
-	 * Initialize 
-	 */
-	X(QReg, mid);
-	for(int i=0; i<mid; i++) {
+	/* prepare grover algorithm */
+	X(QReg, target);
+	for(int i=0; i<target; i++) 
 		H(QReg, i);
-	}
-	H(QReg, mid);
+	H(QReg, target);
 
-	/* 
-	 * Repeat 
-	 */
-	for(int repeat=0; repeat<(qubits*2); repeat++) {
-		/*
-		 * Oracle
-		 */
-		for(int i=0; i<mid; i++) {
-			X(QReg, i);
+	/* run iteration */
+	for(int i=0; i<repeat; i++) {
+		/********************************/
+		/* STEP1 : oracle               */ 
+		/********************************/
+		for(int j=0; j<target; j++) {
+			X(QReg, j);
 		}
 
-		CCX(QReg, 0, 1, mid+1);
-		for(int i=1; i<mid; i++) {
-			if((mid+i+1) >= qubits) {
+		CCX(QReg, 0, 1, target+1);
+		for(int j=1; j<target; j++) {
+			if((target+j+1) >= qubits) {
 				break;
 			}
-			CCX(QReg, i, mid+i, mid+i+1);
+			CCX(QReg, j, target+j, target+j+1);
 		}
 
-		CX(QReg, qubits-1, mid);
+		CX(QReg, qubits-1, target);
 
-		for(int i=0; i<mid-1; i++) {
-			CCX(QReg, mid-i-1, qubits-2-i, qubits-1-i);
+		for(int j=0; j<target-1; j++) {
+			CCX(QReg, target-j-1, qubits-2-j, qubits-1-j);
 		}
-		CCX(QReg, 0, 1, mid+1);
+		CCX(QReg, 0, 1, target+1);
 
-		for(int i=0; i<mid; i++) {
-			X(QReg, i);
-		}
-
-		for(int i=0; i<mid; i++) {
-			H(QReg, i);
+		for(int j=0; j<target; j++) {
+			X(QReg, j);
 		}
 
-		/*
-		 * Inversion
-		 */
-		for(int i=0; i<mid; i++) {
-			X(QReg, i);
+		for(int j=0; j<target; j++) {
+			H(QReg, j);
 		}
 
-		H(QReg, mid-1);
-
-		CCX(QReg, 0, 1, mid+1);
-		for(int i=1; i<mid-1; i++) {
-			CCX(QReg, i, mid+i, mid+i+1);
+		/********************************/
+		/* STEP2: inversion             */
+		/********************************/
+		for(int j=0; j<target; j++) {
+			X(QReg, j);
 		}
 
-		CX(QReg, qubits-2, mid-1);
+		H(QReg, target-1);
 
-		for(int i=1; i<mid-1; i++) {
-			CCX(QReg, mid-1-i, qubits-2-i, qubits-1-i);
-		}
-		CCX(QReg, 0, 1, mid+1);
-
-		H(QReg, mid-1);
-
-		for(int i=0; i<mid; i++) {
-			X(QReg, i);
+		CCX(QReg, 0, 1, target+1);
+		for(int j=1; j<target-1; j++) {
+			CCX(QReg, j, target+j, target+j+1);
 		}
 
-		for(int i=0; i<mid; i++) {
-			H(QReg, i);
+		CX(QReg, qubits-2, target-1);
+
+		for(int j=1; j<target-1; j++) {
+			CCX(QReg, target-1-j, qubits-2-j, qubits-1-j);
+		}
+		CCX(QReg, 0, 1, target+1);
+
+		H(QReg, target-1);
+
+		for(int j=0; j<target; j++) {
+			X(QReg, j);
+		}
+
+		for(int j=0; j<target; j++) {
+			H(QReg, j);
 		}
 	}
 
-	/*
-	 * Measurement
- 	 */
-	H(QReg, mid);
-	M(QReg, mid);
+	/* measure target qubit */
+	printf("measure target qubit(%d)\n", target);
+	H(QReg, target);
+	M(QReg, target);
 	dump(QReg);
 
+	/* measure all qubits */
+	printf("\nmeasure remaining qubits=%d\n", target);
 	for(int i=0; i<qubits; i++) {
 		M(QReg, i);
 	}
 	dump(QReg);
-	printf("States: %ld\n", (size_t)QReg->getNumStates());
 }
 
 int main(int argc, char **argv)
 {
-	int qubits = 9;
+	int qubits = 0;
 	int c;
 
 	while ((c = getopt_long(argc, argv, "q:", NULL, NULL)) != -1) {
 		switch(c) {
 		case 'q':
 			qubits = atoi(optarg);
-			if(qubits < 9) {
-				qubits = 9;
-			}
 		default:
 			break;
 		}
+	}
+
+	if(qubits == 0) {
+		printf("<USAGE> : %s -q <qubits>\n", argv[0]);
+		exit(0);
+	} else if(qubits < 3) {
+		printf("we recommend that the qubia number is 7 or more.\n");
+		exit(0);
 	}
 
 	QRegister *QReg = new QRegister(qubits);

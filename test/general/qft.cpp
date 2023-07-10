@@ -43,21 +43,26 @@ void qft(QRegister *QReg, int qubits) {
 	}
 
 	dump(QReg);
-	printf("States: %ld\n", (size_t)QReg->getNumStates());
 }
 
 int main(int argc, char **argv)
 {
-	int qubits = 7;
+	int qubits = 0;
 	int c;
 
 	while ((c = getopt_long(argc, argv, "q:", NULL, NULL)) != -1) {
 		switch(c) {
 		case 'q':
 			qubits = atoi(optarg);
+			break;
 		default:
 			break;
 		}
+	}
+
+	if(qubits == 0) {
+		printf("<USAGE> : %s -q <qubits>\n", argv[0]);
+		exit(0);
 	}
 
 	QRegister *QReg = new QRegister(qubits);

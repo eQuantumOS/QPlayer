@@ -28,12 +28,12 @@ int main(int argc, char **argv)
 	QTimer timer;
 
 	timer.start();
-for(int i=0; i<1000; i++) {
-	X(QReg, 0);
-	H(QReg, 1);
-	CX(QReg, 1, 2);
-	M(QReg, 2);
-};
+	for(int i=0; i<1000; i++) {
+		X(QReg, 0);
+		H(QReg, 1);
+		CX(QReg, 1, 2);
+		M(QReg, 2);
+	};
 	timer.end();
 	
 	// dump(QReg);
