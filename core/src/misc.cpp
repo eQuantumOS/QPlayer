@@ -311,7 +311,7 @@ char *gateString(int gate)
 }
 
 /* 
- * set pysical memory size for this system 
+ * get pysical memory size(bytes) for this system 
  */
 void getTotalMem(uint64_t *memTotal, uint64_t *memAvail) {
 	FILE *fp = NULL;
@@ -340,7 +340,7 @@ void getTotalMem(uint64_t *memTotal, uint64_t *memAvail) {
 }
 
 /* 
- * get free memory size(kb) for this system 
+ * get free memory size(bytes) for this system 
  */
 uint64_t getUsedMem(void) {
 	FILE *fp = NULL;
@@ -369,6 +369,16 @@ uint64_t getUsedMem(void) {
 
 	return memFree;
 }
+
+/* 
+ * get pysical memory size(bytes) for this system 
+ */
+void getMemory(uint64_t *memTotal, uint64_t *memAvail, uint64_t *memUsed)
+{
+	getTotalMem(memTotal, memAvail);
+	*memUsed = getUsedMem();
+}
+
 
 void getCPU(char *cpu, int *cores, char *herz)
 {

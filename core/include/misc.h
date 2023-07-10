@@ -174,6 +174,7 @@ extern char *modeString(int mode);
 extern char *relationString(int mode);
 extern int getSchmidtNumber(complex_t M[4]);
 extern char *gateString(int gate);
+extern void getMemory(uint64_t *memTotal, uint64_t *memAvail, uint64_t *memUsed);
 extern void getTotalMem(uint64_t *memTotal, uint64_t *memAvail);
 extern uint64_t getUsedMem(void);
 extern void getCPU(char *cpu, int *cores, char *herz);
