@@ -1,3 +1,8 @@
+2023-08-29 update testing directory
+	- move general/install_test.cpp --> verification/install_test.cpp
+    - add benchmark/longrun_test.cpp
+    - add benchmark/rcs.cpp
+
 2023-07-10 add memory utility function
     - add getMemory(uint64_t *memTotal, uint64_t *memAvail, uint64_t *memUsed)
 

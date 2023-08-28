@@ -16,7 +16,7 @@
 #
 #*******************************************************************************
 
-all: GENERAL SURFACECODE MLQ
+all: GENERAL SURFACECODE MLQ VERIFICATION BENCHMARK
 
 GENERAL:
 	@ $(MAKE) -C general 
@@ -26,6 +26,12 @@ SURFACECODE:
 
 MLQ:
 	@ $(MAKE) -C MLQ 
+
+VERIFICATION:
+	@ $(MAKE) -C verification 
+
+BENCHMARK:
+	@ $(MAKE) -C benchmark 
 
 clean:
 	@ $(MAKE) -C general clean
