@@ -26,6 +26,9 @@ using namespace std;
  * QRegister constructor 
  */
 QRegister::QRegister(int n) {
+	char cpu[64] = "";
+	char herz[64] = "";
+
 	if(n > MAX_QUBITS) {
 		printf("the number of allowed qubit is %d\n", MAX_QUBITS);
 		exit(0);
@@ -33,10 +36,17 @@ QRegister::QRegister(int n) {
 
 	memset(&qstat, 0, sizeof(struct qregister_stat));
 
+	for(int i=0; i<MAX_QUBITS; i++) {
+		qubitTypes[i] = KET_ZERO;
+	}
+
 	numQubit = n;
+#ifndef ENABLE_NMC
 	curStage = 0;
+#endif
 	maxStates = quantum_shiftL(1, numQubit);
 	qstat.qubits = numQubit;
+	getCPU(cpu, &cpuCores, herz);
 	init();
 
 	/* set random seed */
@@ -46,10 +56,17 @@ QRegister::QRegister(int n) {
 QRegister::QRegister(QRegister *src) {
 	memset(&qstat, 0, sizeof(struct qregister_stat));
 
+	for(int i=0; i<MAX_QUBITS; i++) {
+		qubitTypes[i] = src->qubitTypes[i];
+	}
+
 	numQubit = src->getNumQubits();
+#ifndef ENABLE_NMC
 	curStage = 0;
+#endif
 	maxStates = quantum_shiftL(1, numQubit);
 	qstat.qubits = numQubit;
+	cpuCores = src->getCPUCores();
 	replace(src);
 }
 

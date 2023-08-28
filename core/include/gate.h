@@ -56,6 +56,16 @@ extern void iSWAP(QRegister *QReg, int qubit1, int qubit2);
 extern int M(QRegister *QReg, int qubit);
 extern int MV(QRegister *QReg, int qubit);
 extern int MF(QRegister *QReg, int qubit, int collapse);
-extern int MNOP(QRegister *QReg, int qubit);
+
+/*******************************************************
+ *    Gate-Aware Non-Operational State Evolution
+ *******************************************************/
+extern void NMC_DiagonalGates(QRegister *QReg, int qubit, int gtype, complex_t M[]);
+extern void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex_t M[]);
+extern void NMC_ToggleGates(QRegister *QReg, int qubit, int gtype, complex_t M[]);
+extern void NMC_DiagonalControlGates(QRegister *QReg, int control, int target, int gtype, complex_t M[]);
+extern void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int target, int gtype, complex_t M[]);
+extern int NMC_Measure(QRegister *QReg, int qubit);
+extern int NMC_MeasureF(QRegister *QReg, int qubit, int collapse);
 
 #endif

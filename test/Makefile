@@ -37,3 +37,5 @@ clean:
 	@ $(MAKE) -C general clean
 	@ $(MAKE) -C surfacecode clean
 	@ $(MAKE) -C MLQ clean
+	@ $(MAKE) -C verification clean
+	@ $(MAKE) -C benchmark clean

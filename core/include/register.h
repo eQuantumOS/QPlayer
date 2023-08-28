@@ -44,7 +44,10 @@ using namespace std;
 class QRegister {
 private:
 	int numQubit;
+#ifndef ENABLE_NMC
 	size_t curStage;
+#endif
+	int cpuCores;
 	qsize_t maxStates;
 	struct qregister_stat qstat;
 
@@ -53,6 +56,11 @@ public:
 	std::map<qsize_t, QState*>::iterator qiter[QSTORE_PARTITION];
 	std::mutex qlock[QSTORE_PARTITION];
 	std::mutex slock;
+
+public:
+	std::vector<QState*> addQList[QSTORE_PARTITION][MAX_CORES];
+	std::vector<QState*> delQList[QSTORE_PARTITION][MAX_CORES];
+	int qubitTypes[MAX_QUBITS];
 
 public:
 	QRegister(int n);
@@ -73,7 +81,10 @@ public:
 	void init(void) {
 		QState *q = getQState(0, complex_t(1, 0));
 		qstore[0][0] = q;
+	#ifndef ENABLE_NMC
 		curStage = 0;
+	#endif
+		init_strides();
 	}
 
 	/* reset quantum state to |00...00> */
@@ -98,6 +109,9 @@ public:
 	/* return the number of qubits for this Q-register */
 	int getNumQubits(void) { return numQubit; }
 
+	/* return the number of CPU cores */
+	int getCPUCores(void) { return cpuCores; }
+
 	/* return the total number of non-zero amplitude states */
 	qsize_t getNumStates() { 
 		qsize_t states = 0;
@@ -113,7 +127,9 @@ public:
 	int getPartId(qsize_t index) { return (int)(index % QSTORE_PARTITION); } 
 
 	/* increase operation stage */
+#ifndef ENABLE_NMC
 	size_t incStage(void) { return ++curStage; }
+#endif
 
 	/* qstore lock & unlock */
 	void QLock(int index) { qlock[index].lock(); }
@@ -150,6 +166,7 @@ public:
 	}
 
 public:
+#ifndef ENABLE_NMC
 	/* set check & set operation state */
 	int checkStage(QState *s0, QState *s1, qsize_t lower_idx, size_t stage) {
 		int ret = 0;
@@ -176,18 +193,21 @@ public:
 
 		return ret;
 	}
+#endif
 	
 
 	/* add new state to the quantum register */
-	void setQState(qsize_t index, QState *state) {
+	void __setQState(qsize_t index, QState *state, bool lck) {
 		std::map<qsize_t, QState*> *part = &qstore[getPartId(index)];
 
-		QLock(index);
+		if(lck == true) QLock(index);
 
+	#ifndef ENABLE_NMC
 		state->setStage(curStage);
+	#endif
 		(*part)[index] = state;
 
-		QUnlock(index);
+		if(lck == true) QUnlock(index);
 	}
 
 	/*
@@ -197,11 +217,11 @@ public:
 	 * (1) Remove one of the superposed states after the measurement
 	 * (2) Remove zero state after Gate operations
 	 */
-	void eraseQState(qsize_t index) {
+	void __eraseQState(qsize_t index, bool lck) {
 		std::map<qsize_t, QState*>::iterator it;
 		std::map<qsize_t, QState*> *part = &qstore[getPartId(index)];
 
-		QLock(index);
+		if(lck == true) QLock(index);
 
 		it = part->find(index);
 		if(it != part->end()) {
@@ -209,24 +229,50 @@ public:
 			part->erase(it);
 		}
 
-		QUnlock(index);
+		if(lck == true) QUnlock(index);
 	}
 
 	/* search the quantum state corresponding to state index */
-	QState *findQState(qsize_t index) {
+	QState *__findQState(qsize_t index, bool lck) {
 		std::map<qsize_t, QState*>::iterator it;
 		std::map<qsize_t, QState*> *part = &qstore[getPartId(index)];
 		QState *Q = NULL;
 
-		QLock(index);
+		if(lck == true) QLock(index);
 
 		it = part->find(index);
 		if(it != part->end()) {
 			Q = it->second;
 		}
 
-		QUnlock(index);
+		if(lck == true) QUnlock(index);
 
+		return Q;
+	}
+
+	void setQState(qsize_t index, QState *state) {
+		return __setQState(index, state, true);
+	}
+
+	void setQState_nolock(qsize_t index, QState *state) {
+		return __setQState(index, state, false);
+	}
+
+	void eraseQState(qsize_t index) {
+		return __eraseQState(index, true);
+	}
+
+	void eraseQState_nolock(qsize_t index) {
+		return __eraseQState(index, false);
+	}
+
+	QState *findQState(qsize_t index) {
+		QState *Q = __findQState(index, true);
+		return Q;
+	}
+	
+	QState *findQState_nolock(qsize_t index) {
+		QState *Q = __findQState(index, false);
 		return Q;
 	}
 
@@ -381,10 +427,12 @@ public:
 		char memTotalStr[32] = "";
 		char memAvailStr[32] = "";
 		char memUsedStr[32] = "";
+		char totalTimeStr[32] = "";
 
 		human_readable_size(stat.memTotal, memTotalStr);
 		human_readable_size(stat.memAvail, memAvailStr);
 		human_readable_size(stat.memUsed, memUsedStr);
+		usec2str(stat.tm_total, totalTimeStr);
 
 		printf("\n");
 		printf("\033[1;34m1. Circuit Information\033[0;39m\n");
@@ -395,7 +443,7 @@ public:
 		printf("+--------------------------+-----------------+\n");
 		printf("| 3. total gate calls      |  %7d        |\n", stat.totalGateCalls);
 		printf("+--------------------------+-----------------+\n");
-		printf("| 4. indivisual gate calls |                 |\n");
+		printf("| 4. individual gate calls |                 |\n");
 		printf("+--------------------------+                 |\n");
 		for(int i=0; i<MAX_GATES; i++) {
 			if(stat.gateCalls[i] != 0) {
@@ -408,31 +456,31 @@ public:
 
 		printf("\n");
 		printf("\033[1;34m2. Runtime (micro seconds)\033[0;39m\n");
-		printf("+-----------------------------+-----------------------------------------+\n");
-		printf("| 1. total simulation time    |   %-20.f                  |\n", stat.tm_total);
-		printf("+-----------------------------+-----------+---------+---------+---------+\n");
-		printf("| 2. each gate execution time |   total   |   max   |   min   |   avg   |\n");
-		printf("+-----------------------------+-----------+---------+---------+---------+\n");
+		printf("+-----------------------------+---------------------------------------------+\n");
+		printf("| 1. total simulation time    |   %11.f %29s |\n", stat.tm_total, totalTimeStr);
+		printf("+-----------------------------+---------------+---------+---------+---------+\n");
+		printf("| 2. each gate execution time |     total     |   max   |   min   |   avg   |\n");
+		printf("+-----------------------------+---------------+---------+---------+---------+\n");
 		for(int i=0; i<MAX_GATES; i++) {
 			if(stat.gateCalls[i] != 0) {
-				printf("| %27s | %9.0f | %7.0f | %7.0f | %7.0f |\n", gateString(i), 
+				printf("| %27s | %13.0f | %7.0f | %7.0f | %7.0f |\n", gateString(i), 
 					stat.tm_gates_total[i],
 					stat.tm_gates_max[i],
 					stat.tm_gates_min[i],
 					stat.tm_gates_avg[i]);
 			}
 		}
-		printf("+-----------------------------+-----------+---------+---------+---------+\n");
+		printf("+-----------------------------+---------------+---------+---------+---------+\n");
 
 		printf("\n");
 		printf("\033[1;34m3. Simulation Jobs\033[0;39m\n");
-		printf("+-----------------------------------+----------+\n");
-		printf("| 1. max number of quantum states   | %8ld |\n", (uint64_t)stat.maxQStates);
-		printf("+-----------------------------------+----------+\n");
-		printf("| 2. final number of quantum states | %8ld |\n", (uint64_t)stat.finalQStates);
-		printf("+-----------------------------------+----------+\n");
-		printf("| 3. used memory                    | %8s |\n", memUsedStr);
-		printf("+-----------------------------------+----------+\n");
+		printf("+-----------------------------------+---------------+\n");
+		printf("| 1. max number of quantum states   | %13ld |\n", (uint64_t)stat.maxQStates);
+		printf("+-----------------------------------+---------------+\n");
+		printf("| 2. final number of quantum states | %13ld |\n", (uint64_t)stat.finalQStates);
+		printf("+-----------------------------------+---------------+\n");
+		printf("| 3. used memory                    | %13s |\n", memUsedStr);
+		printf("+-----------------------------------+---------------+\n");
 
 		printf("\n");
 		printf("\033[1;34m4. System Information\033[0;39m\n");

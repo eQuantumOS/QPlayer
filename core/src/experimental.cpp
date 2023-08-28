@@ -404,33 +404,43 @@ void getEntanglements(QRegister *QReg) {
  */
 int QType(QRegister *QReg, int qubit) 
 {
-	qsize_t mask = quantum_shiftL(1, qubit);
 	QState *Q = NULL;
-	bool is_zero = false;
-	bool is_one = false;
+	qsize_t qidx = 0;
+	bool isLower = false;
+	bool isUpper = false;
 	int type = KET_UNKNOWN;
 
-	QReg->setOrderedQState();
-	while((Q = QReg->getOrderedQState()) != NULL) {
-		if((Q->getIndex() & mask) == 0) {
-			is_zero = true;
-		} else {
-			is_one = true;
+	#pragma omp parallel for
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		bool isLowerLocal = false;
+		bool isUpperLocal = false;
+
+		std::map<qsize_t, QState*>::iterator it;
+		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
+			Q = it->second;
+			qidx = Q->getIndex();
+
+			if(stripe_lower(qidx, qubit) == true) {
+				isLowerLocal = true;
+			} else {
+				isUpperLocal = true;
+			}
+
+			if(isLowerLocal == true && isUpperLocal == true) {
+				break;
+			}
 		}
 
-		if(is_zero == true && is_one == true) {
-			break;
-		}
+		if(isLowerLocal == true) isLower = true;
+		if(isUpperLocal == true) isUpper = true;
 	}
 
-	if(is_zero == true && is_one == true) {
+	if(isLower == true && isUpper == true) {
 		type = KET_SUPERPOSED;
-	} else {
-		if(is_zero == true) {
-			type = KET_ZERO;
-		} else {
-			type = KET_ONE;
-		}
+	} else if(isLower == true) {
+		type = KET_ZERO;
+	} else if(isUpper == true) {
+		type = KET_ONE;
 	}
 
 	return type;

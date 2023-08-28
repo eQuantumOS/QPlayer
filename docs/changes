@@ -1,3 +1,8 @@
+2023-08-29 support gate-aware matrix calculation
+	- add core/src/gate_nmc.cpp
+	- update core/src/gate.cpp 
+	- add benchmard codes : ~/test/benchmark/gate_perf.cpp
+
 2023-08-29 update testing directory
 	- move general/install_test.cpp --> verification/install_test.cpp
     - add benchmark/longrun_test.cpp

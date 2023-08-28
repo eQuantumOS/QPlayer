@@ -75,7 +75,9 @@ static void applyMatrix(QRegister *QReg, int qubit, complex_t M[])
 		exit(0);
 	}
 
+#ifndef ENABLE_NMC
 	size_t stage = QReg->incStage();
+#endif
 
 	qsize_t stride = quantum_shiftL(1, (qsize_t)qubit);
 
@@ -121,11 +123,13 @@ static void applyMatrix(QRegister *QReg, int qubit, complex_t M[])
 				upper = Q;
 			}
 
+		#ifndef ENABLE_NMC
 			/* check if already applied by other thread */
 			if(QReg->checkStage(lower, upper, i0, stage) < 0) {
 				/* just skip previously applied states */
 				continue;
 			}
+		#endif
 
 			if(lower == NULL) {
 				in0 = 0.0;
@@ -228,7 +232,9 @@ static void applyControlledMatrix(QRegister *QReg, int control, int target, comp
 		exit(0);
 	}
 
+#ifndef ENABLE_NMC
 	size_t stage = QReg->incStage();
+#endif
 
 	qsize_t stride = quantum_shiftL(1, (qsize_t)target);
 
@@ -279,11 +285,13 @@ static void applyControlledMatrix(QRegister *QReg, int control, int target, comp
 				upper = Q;
 			}
 
+		#ifndef ENABLE_NMC
 			/* check if already applied by other thread */
 			if(QReg->checkStage(lower, upper, i0, stage) < 0) {
 				/* just skip previously applied states */
 				continue;
 			}
+		#endif
 
 			if(lower == NULL) {
 				in0 = 0.0;
@@ -403,7 +411,11 @@ void X(QRegister *QReg, int qubit)
 	};
 
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_ToggleGates(QReg, qubit, QGATE_X, M);
+#else
 	applyMatrix(QReg, qubit, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_X, timer);
 }
@@ -420,7 +432,11 @@ void Z(QRegister *QReg, int qubit)
 	};
 
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_DiagonalGates(QReg, qubit, QGATE_Z, M);
+#else
 	applyMatrix(QReg, qubit, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_Z, timer);
 }
@@ -437,7 +453,11 @@ void Y(QRegister *QReg, int qubit)
 	};
 
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_ToggleGates(QReg, qubit, QGATE_Y, M);
+#else
 	applyMatrix(QReg, qubit, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_Y, timer);
 }
@@ -454,7 +474,11 @@ void H(QRegister *QReg, int qubit)
 	};
 
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_NoneDiagonalGates(QReg, qubit, QGATE_H, M);
+#else
 	applyMatrix(QReg, qubit, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_H, timer);
 }
@@ -468,7 +492,11 @@ void U1(QRegister *QReg, int qubit, double angle)
 	};
 
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_DiagonalGates(QReg, qubit, QGATE_U1, M);
+#else
 	applyMatrix(QReg, qubit, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_U1, timer);
 }
@@ -484,7 +512,11 @@ void U2(QRegister *QReg, int qubit, double phi, double lambda)
 	};
 
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_NoneDiagonalGates(QReg, qubit, QGATE_U2, M);
+#else
 	applyMatrix(QReg, qubit, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_U2, timer);
 }
@@ -500,7 +532,11 @@ void U3(QRegister *QReg, int qubit, double theta, double phi, double lambda)
 	};
 
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_NoneDiagonalGates(QReg, qubit, QGATE_U3, M);
+#else
 	applyMatrix(QReg, qubit, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_U3, timer);
 }
@@ -518,7 +554,11 @@ void S(QRegister *QReg, int qubit)
 	};
 
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_DiagonalGates(QReg, qubit, QGATE_S, M);
+#else
 	applyMatrix(QReg, qubit, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_S, timer);
 }
@@ -535,7 +575,11 @@ void T(QRegister *QReg, int qubit)
 	};
 
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_DiagonalGates(QReg, qubit, QGATE_T, M);
+#else
 	applyMatrix(QReg, qubit, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_T, timer);
 }
@@ -552,7 +596,11 @@ void SDG(QRegister *QReg, int qubit)
 	};
 
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_DiagonalGates(QReg, qubit, QGATE_SDG, M);
+#else
 	applyMatrix(QReg, qubit, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_SDG, timer);
 }
@@ -569,7 +617,11 @@ void TDG(QRegister *QReg, int qubit)
 	};
 
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_DiagonalGates(QReg, qubit, QGATE_TDG, M);
+#else
 	applyMatrix(QReg, qubit, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_TDG, timer);
 }
@@ -589,7 +641,11 @@ void RX(QRegister *QReg, int qubit, double angle)
 	reset_gphase(M);
 #endif
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_NoneDiagonalGates(QReg, qubit, QGATE_RX, M);
+#else
 	applyMatrix(QReg, qubit, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_RX, timer);
 }
@@ -609,7 +665,11 @@ void RY(QRegister *QReg, int qubit, double angle)
 	reset_gphase(M);
 #endif
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_NoneDiagonalGates(QReg, qubit, QGATE_RY, M);
+#else
 	applyMatrix(QReg, qubit, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_RY, timer);
 }
@@ -629,7 +689,11 @@ void RZ(QRegister *QReg, int qubit, double angle)
 	reset_gphase(M);
 #endif
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_DiagonalGates(QReg, qubit, QGATE_RZ, M);
+#else
 	applyMatrix(QReg, qubit, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_RZ, timer);
 }
@@ -646,7 +710,11 @@ void P(QRegister *QReg, int qubit, double angle)
 	};
 
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_DiagonalGates(QReg, qubit, QGATE_P, M);
+#else
 	applyMatrix(QReg, qubit, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_P, timer);
 }
@@ -663,7 +731,11 @@ void SX(QRegister *QReg, int qubit)
 	};
 
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_NoneDiagonalGates(QReg, qubit, QGATE_SX, M);
+#else
 	applyMatrix(QReg, qubit, M);
+#endif
 	QReg->normalize();
 	timer.end();
 	QReg->updateQRegStat(QGATE_SX, timer);
@@ -685,7 +757,11 @@ void CU1(QRegister *QReg, int control, int target, double angle)
 	}
 
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_DiagonalControlGates(QReg, control, target, QGATE_CU1, M);
+#else
 	applyControlledMatrix(QReg, control, target, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_CU1, timer);
 }
@@ -708,7 +784,11 @@ void CU2(QRegister *QReg, int control, int target, double phi, double lambda)
 	}
 
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_NoneDiagonalControlGates(QReg, control, target, QGATE_CU2, M);
+#else
 	applyControlledMatrix(QReg, control, target, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_CU2, timer);
 }
@@ -731,7 +811,11 @@ void CU3(QRegister *QReg, int control, int target, double theta, double pie, dou
 	}
 
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_NoneDiagonalControlGates(QReg, control, target, QGATE_CU3, M);
+#else
 	applyControlledMatrix(QReg, control, target, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_CU3, timer);
 }
@@ -752,7 +836,11 @@ void CH(QRegister *QReg, int control, int target)
 	}
 
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_NoneDiagonalControlGates(QReg, control, target, QGATE_CH, M);
+#else
 	applyControlledMatrix(QReg, control, target, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_CH, timer);
 }
@@ -773,7 +861,11 @@ void CX(QRegister *QReg, int control, int target)
 	}
 
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_NoneDiagonalControlGates(QReg, control, target, QGATE_CX, M);
+#else
 	applyControlledMatrix(QReg, control, target, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_CX, timer);
 }
@@ -795,7 +887,11 @@ void CY(QRegister *QReg, int control, int target)
 	}
 
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_NoneDiagonalControlGates(QReg, control, target, QGATE_CY, M);
+#else
 	applyControlledMatrix(QReg, control, target, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_CY, timer);
 }
@@ -816,7 +912,11 @@ void CZ(QRegister *QReg, int control, int target)
 	}
 
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_DiagonalControlGates(QReg, control, target, QGATE_CZ, M);
+#else
 	applyControlledMatrix(QReg, control, target, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_CZ, timer);
 }
@@ -851,7 +951,11 @@ void CRZ(QRegister *QReg, int control, int target, double angle)
 	}
 
 	timer.start();
+#ifdef ENABLE_NMC
+	NMC_DiagonalControlGates(QReg, control, target, QGATE_CRZ, M);
+#else
 	applyControlledMatrix(QReg, control, target, M);
+#endif
 	timer.end();
 	QReg->updateQRegStat(QGATE_CRZ, timer);
 }
@@ -1052,7 +1156,7 @@ void CSWAP(QRegister *QReg, int control, int qubit1, int qubit2)
  * collapses with |0>, it returns 0, and if it collapses with |1>, 
  * it returns 1.
  */
-int M(QRegister *QReg, int qubit) 
+static int Measure(QRegister *QReg, int qubit) 
 {
 	QTimer timer;
 	timer.start();
@@ -1153,13 +1257,7 @@ int M(QRegister *QReg, int qubit)
 	return state;
 }
 
-int MV(QRegister *QReg, int qubit) {
-	int mv = M(QReg, qubit);
-
-	return mv == 0 ? 1 : -1;
-}
-
-int MF(QRegister *QReg, int qubit, int collapse) 
+static int MeasureF(QRegister *QReg, int qubit, int collapse) 
 {
 	if(qubit >= QReg->getNumQubits()) {
 		printf("[%s] qubit(%d) out of range!\n", __func__, qubit);
@@ -1247,67 +1345,65 @@ int MF(QRegister *QReg, int qubit, int collapse)
 	return state;
 }
 
-int MNOP(QRegister *QReg, int qubit) 
+int M(QRegister *QReg, int qubit)
 {
-	if(qubit >= QReg->getNumQubits()) {
-		printf("[%s] qubit(%d) out of range!\n", __func__, qubit);
-		return -1;
+#ifdef GATE_DEBUG
+	printf("M(%d)\n", qubit);
+#endif
+
+	QTimer timer;
+	int val = 0;
+
+	timer.start();
+#ifdef ENABLE_NMC
+	val = NMC_Measure(QReg, qubit);
+#else
+	val = Measure(QReg, qubit);
+#endif
+	timer.end();
+	QReg->updateQRegStat(QGATE_MEASURE, timer);
+
+#ifdef STATE_DEBUG
+	if(checkQType(QReg) < 0) {
+		printf("M(%d) may be causing malfunction..\n", qubit);
+		exit(0);
 	}
+#endif
 
-	double f = (double)(rand() % 100) / 100.0;
-	double lpm[QSTORE_PARTITION];
-	double upm[QSTORE_PARTITION];
-	double lengthm[QSTORE_PARTITION];
-	double lp = 0;
-	double up = 0;
-	double length = 0;
-	int state;
+	return val;
+}
 
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		lpm[i] = upm[i] = lengthm[i] = 0;
+int MF(QRegister *QReg, int qubit, int collapse)
+{
+#ifdef GATE_DEBUG
+	printf("M(%d)\n", qubit);
+#endif
+
+	QTimer timer;
+	int val = 0;
+
+	timer.start();
+#ifdef ENABLE_NMC
+	val = NMC_MeasureF(QReg, qubit, collapse);
+#else
+	val = MeasureF(QReg, qubit, collapse);
+#endif
+	timer.end();
+	QReg->updateQRegStat(QGATE_MEASURE, timer);
+
+#ifdef STATE_DEBUG
+	if(checkQType(QReg) < 0) {
+		printf("MF(%d) may be causing malfunction..\n", qubit);
+		exit(0);
 	}
+#endif
 
-	/* 
-	 * (STEP1) Calculate the amplitude according to the |0> or |1>, respectively.
-	 */
-	#pragma omp parallel for
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		std::map<qsize_t, QState*>::iterator it;
-		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
-			QState *Q = it->second;
-			if(stripe_lower(Q->getIndex(), qubit) == true) {
-				lpm[i] += norm(Q->getAmplitude());
-			} else {
-				upm[i] += norm(Q->getAmplitude());
-			}
-		}
-	}
+	return val;
+}
 
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		lp += lpm[i];
-		up += upm[i];
-	}
+int MV(QRegister *QReg, int qubit) {
+	int mv = M(QReg, qubit);
 
-	if(lp == 0 || up == 0) {
-		/* already measured */
-		if(lp > 0) {
-			state = 0;
-		} else {
-			state = 1;
-		}
-
-		return state;
-	}
-
-	/* 
-	 * (STEP2) Determine final state according to the probability
-	 */
-	if(f < lp) {
-		state = 0;      // collapsed to |0>
-	} else {
-		state = 1;      // collapsed to |1>
-	}
-
-	return state;
+	return mv == 0 ? 1 : -1;
 }
 

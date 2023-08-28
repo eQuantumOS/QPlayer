@@ -26,6 +26,15 @@
 
 using namespace std;
 
+static qsize_t strides[MAX_QUBITS];
+
+void init_strides(void)
+{
+	for(int i=0; i<MAX_QUBITS; i++) {
+		strides[i] = quantum_shiftL(1, (qsize_t)i);
+	}
+}
+
 qsize_t quantum_shiftL(qsize_t left, qsize_t right)
 {
     return left << right.convert_to<size_t>();
@@ -48,7 +57,11 @@ qsize_t quantum_shiftR(qsize_t left, qsize_t right)
  */
 bool stripe_lower(qsize_t index, int qubit)
 {
+#ifdef ENABLE_NMC
+	qsize_t stride = strides[qubit];
+#else
 	qsize_t stride = quantum_shiftL(1, (qsize_t)qubit);
+#endif
 	qsize_t stripe_width = stride * 2ULL;
 
 	if((index % stripe_width) < stride) {
@@ -63,7 +76,11 @@ bool stripe_lower(qsize_t index, int qubit)
  */
 bool stripe_upper(qsize_t index, int qubit)
 {
+#ifdef ENABLE_NMC
+	qsize_t stride = strides[qubit];
+#else
 	qsize_t stride = quantum_shiftL(1, (qsize_t)qubit);
+#endif
 	qsize_t stripe_width = stride * 2ULL;
 
 	if((index % stripe_width) < stride) {
@@ -287,7 +304,7 @@ char *gateString(int gate)
 	case QGATE_S: return "S";
 	case QGATE_P: return "P";
 	case QGATE_SX: return "SX";
-	case QGATE_SDG: return "SDT";
+	case QGATE_SDG: return "SDG";
 	case QGATE_T: return "T";
 	case QGATE_TDG: return "TDG";
 	case QGATE_RX: return "RX";
@@ -477,4 +494,42 @@ void showMemoryInfo(void)
 	human_readable_size(memUsed, memUsedStr);
 
 	printf("Total:%s, Avail=%s --> Used:%s\n", memTotalStr, memAvailStr, memUsedStr);
+}
+
+void sec2str(double tm, char *str)
+{
+	return nsec2str(tm * 1000000000LL, str);
+}
+
+void msec2str(double tm, char *str)
+{
+	return nsec2str(tm * 1000000LL, str);
+}
+
+void usec2str(double tm, char *str)
+{
+	return nsec2str(tm * 1000LL, str);
+}
+
+void nsec2str(double tm, char *str)
+{
+	double elapsedNSec = tm;
+	double elapsedUSec = elapsedNSec / 1000LL;
+	double elapsedMSec = elapsedNSec / 1000000LL;
+	double elapsedSec  = elapsedNSec / 1000000000LL;
+
+	int h = (int)elapsedSec / 3600;
+	int m = (int)(((long)elapsedSec / 60) % 60);
+	int s = (int)((long)elapsedSec % 60);
+
+	if(s > 0) {
+		double remainingMSec = elapsedMSec - ((uint64_t)elapsedSec * 1000LL);
+		sprintf(str, "%02d:%02d:%02d + %dms", h, m, s, (uint32_t)remainingMSec);
+	} else if(elapsedMSec >= 1) {
+		sprintf(str, "%f ms", elapsedMSec);
+	} else if(elapsedUSec >= 1 ) {
+		sprintf(str, "%f us", elapsedUSec);
+	} else if(elapsedNSec > 0) {
+		sprintf(str, "%f ns", elapsedNSec);
+	}
 }
