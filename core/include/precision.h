@@ -43,6 +43,4 @@ typedef uint512_t qsize_t;
 
 typedef complex<double> complex_t;
 
-#define ENABLE_NMC
-
 #endif

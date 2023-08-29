@@ -44,9 +44,6 @@ using namespace std;
 class QRegister {
 private:
 	int numQubit;
-#ifndef ENABLE_NMC
-	size_t curStage;
-#endif
 	int cpuCores;
 	qsize_t maxStates;
 	struct qregister_stat qstat;
@@ -81,9 +78,6 @@ public:
 	void init(void) {
 		QState *q = getQState(0, complex_t(1, 0));
 		qstore[0][0] = q;
-	#ifndef ENABLE_NMC
-		curStage = 0;
-	#endif
 		init_strides();
 	}
 
@@ -126,11 +120,6 @@ public:
 	/* return qstore partition id according to state index */
 	int getPartId(qsize_t index) { return (int)(index % QSTORE_PARTITION); } 
 
-	/* increase operation stage */
-#ifndef ENABLE_NMC
-	size_t incStage(void) { return ++curStage; }
-#endif
-
 	/* qstore lock & unlock */
 	void QLock(int index) { qlock[index].lock(); }
 	void QUnlock(int index) { qlock[index].unlock(); } 
@@ -166,45 +155,12 @@ public:
 	}
 
 public:
-#ifndef ENABLE_NMC
-	/* set check & set operation state */
-	int checkStage(QState *s0, QState *s1, qsize_t lower_idx, size_t stage) {
-		int ret = 0;
-
-		QLock(lower_idx);
-
-		if(s0 != NULL) {
-			if(s0->getStage() >= stage) {
-				ret = -1;
-			} else {
-				s0->setStage(stage);
-			}
-		}
-
-		if(s1 != NULL) {
-			if(s1->getStage() >= stage) {
-				ret = -1;
-			} else {
-				s1->setStage(stage);
-			}
-		}
-
-		QUnlock(lower_idx);
-
-		return ret;
-	}
-#endif
-	
-
 	/* add new state to the quantum register */
 	void __setQState(qsize_t index, QState *state, bool lck) {
 		std::map<qsize_t, QState*> *part = &qstore[getPartId(index)];
 
 		if(lck == true) QLock(index);
 
-	#ifndef ENABLE_NMC
-		state->setStage(curStage);
-	#endif
 		(*part)[index] = state;
 
 		if(lck == true) QUnlock(index);

@@ -33,27 +33,18 @@ QState::QState(void)
 {
 	index = 0;
 	amplitude = complex_t(0, 0);
-#ifndef ENABLE_NMC
-	stage = 0;
-#endif
 }	
 
 QState::QState(qsize_t i, complex_t a) 
 {
 	index = i;
 	amplitude = a;
-#ifndef ENABLE_NMC
-	stage = 0;
-#endif
 }	
 
 QState::QState(QState *Q) 
 {
 	index = Q->getIndex();
 	amplitude = Q->getAmplitude();
-#ifndef ENABLE_NMC
-	stage = 0;
-#endif
 }	
 
 QState::~QState(void) 

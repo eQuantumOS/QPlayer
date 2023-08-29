@@ -41,9 +41,6 @@ QRegister::QRegister(int n) {
 	}
 
 	numQubit = n;
-#ifndef ENABLE_NMC
-	curStage = 0;
-#endif
 	maxStates = quantum_shiftL(1, numQubit);
 	qstat.qubits = numQubit;
 	getCPU(cpu, &cpuCores, herz);
@@ -61,9 +58,6 @@ QRegister::QRegister(QRegister *src) {
 	}
 
 	numQubit = src->getNumQubits();
-#ifndef ENABLE_NMC
-	curStage = 0;
-#endif
 	maxStates = quantum_shiftL(1, numQubit);
 	qstat.qubits = numQubit;
 	cpuCores = src->getCPUCores();

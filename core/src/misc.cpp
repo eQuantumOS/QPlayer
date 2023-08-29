@@ -57,11 +57,7 @@ qsize_t quantum_shiftR(qsize_t left, qsize_t right)
  */
 bool stripe_lower(qsize_t index, int qubit)
 {
-#ifdef ENABLE_NMC
 	qsize_t stride = strides[qubit];
-#else
-	qsize_t stride = quantum_shiftL(1, (qsize_t)qubit);
-#endif
 	qsize_t stripe_width = stride * 2ULL;
 
 	if((index % stripe_width) < stride) {
@@ -76,11 +72,7 @@ bool stripe_lower(qsize_t index, int qubit)
  */
 bool stripe_upper(qsize_t index, int qubit)
 {
-#ifdef ENABLE_NMC
 	qsize_t stride = strides[qubit];
-#else
-	qsize_t stride = quantum_shiftL(1, (qsize_t)qubit);
-#endif
 	qsize_t stripe_width = stride * 2ULL;
 
 	if((index % stripe_width) < stride) {
@@ -532,4 +524,21 @@ void nsec2str(double tm, char *str)
 	} else if(elapsedNSec > 0) {
 		sprintf(str, "%f ns", elapsedNSec);
 	}
+}
+
+bool isRealizedState(complex_t amp)
+{
+#if 1
+	if(norm(amp) > AMPLITUDE_EPS) {
+		return true;
+	} else {
+		return false;
+	}
+#else
+	if(abs(amp.real()) > AMPLITUDE_EPS || abs(amp.imag()) > AMPLITUDE_EPS) {
+		return true;
+	} else {
+		return false;
+	}
+#endif
 }
