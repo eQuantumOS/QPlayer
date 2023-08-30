@@ -415,7 +415,7 @@ int QType(QRegister *QReg, int qubit)
 		bool isLowerLocal = false;
 		bool isUpperLocal = false;
 
-		std::map<qsize_t, QState*>::iterator it;
+		QMAPITER it;
 		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
 			Q = it->second;
 			qidx = Q->getIndex();
@@ -473,7 +473,7 @@ double getQubitProb(QRegister *QReg, int qubit, int state)
 	complex_t lo = 0;
 	complex_t up = 0;
 
-	std::map<qsize_t, QState*>::iterator it[QSTORE_PARTITION];
+	QMAPITER it[QSTORE_PARTITION];
 	for(int i=0; i<QSTORE_PARTITION; i++) {
 		for(it[i] = QReg->qstore[i].begin(); it[i] != QReg->qstore[i].end(); it[i]++) {
 			QState *Q = it[i]->second;

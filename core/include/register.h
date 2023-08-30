@@ -41,6 +41,9 @@
 
 using namespace std;
 
+#define QMAP 		std::map<qsize_t, QState*>
+#define QMAPITER 	std::map<qsize_t, QState*>::iterator
+
 class QRegister {
 private:
 	int numQubit;
@@ -49,8 +52,8 @@ private:
 	struct qregister_stat qstat;
 
 public:
-	std::map<qsize_t, QState*> qstore[QSTORE_PARTITION];
-	std::map<qsize_t, QState*>::iterator qiter[QSTORE_PARTITION];
+	QMAP qstore[QSTORE_PARTITION];
+	QMAPITER qiter[QSTORE_PARTITION];
 	std::mutex qlock[QSTORE_PARTITION];
 	std::mutex slock;
 
@@ -157,7 +160,7 @@ public:
 public:
 	/* add new state to the quantum register */
 	void __setQState(qsize_t index, QState *state, bool lck) {
-		std::map<qsize_t, QState*> *part = &qstore[getPartId(index)];
+		QMAP *part = &qstore[getPartId(index)];
 
 		if(lck == true) QLock(index);
 
@@ -174,8 +177,8 @@ public:
 	 * (2) Remove zero state after Gate operations
 	 */
 	void __eraseQState(qsize_t index, bool lck) {
-		std::map<qsize_t, QState*>::iterator it;
-		std::map<qsize_t, QState*> *part = &qstore[getPartId(index)];
+		QMAP *part = &qstore[getPartId(index)];
+		QMAPITER it;
 
 		if(lck == true) QLock(index);
 
@@ -190,8 +193,8 @@ public:
 
 	/* search the quantum state corresponding to state index */
 	QState *__findQState(qsize_t index, bool lck) {
-		std::map<qsize_t, QState*>::iterator it;
-		std::map<qsize_t, QState*> *part = &qstore[getPartId(index)];
+		QMAP *part = &qstore[getPartId(index)];
+		QMAPITER it;
 		QState *Q = NULL;
 
 		if(lck == true) QLock(index);
@@ -243,7 +246,7 @@ public:
 
 		#pragma omp parallel for
 		for(int i=0; i<QSTORE_PARTITION; i++) {
-			std::map<qsize_t, QState*>::iterator it;
+			QMAPITER it;
 			for(it = qstore[i].begin(); it != qstore[i].end(); it++) {
 				QState *Q = it->second;
 				lengthm[i] += norm(Q->getAmplitude());
@@ -257,7 +260,7 @@ public:
 
 		#pragma omp parallel for
 		for(int i=0; i<QSTORE_PARTITION; i++) {
-			std::map<qsize_t, QState*>::iterator it;
+			QMAPITER it;
 			for(it = qstore[i].begin(); it != qstore[i].end(); it++) {
 				QState *Q = it->second;
 				Q->resizeAmplitude(length);
@@ -301,7 +304,7 @@ public:
 	void clearZeroStates() {
 		#pragma omp parallel for
 		for(int i=0; i<QSTORE_PARTITION; i++) {
-			std::map<qsize_t, QState*>::iterator it = qstore[i].begin();
+			QMAPITER it = qstore[i].begin();
 			while(it != qstore[i].end()) {
 				QState *Q = it->second;
 				if(abs(Q->getAmplitude()) == 0) {

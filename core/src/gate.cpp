@@ -698,7 +698,7 @@ static void NMC_DiagonalGates(QRegister *QReg, int qubit, int gtype, complex_t M
 		complex_t newAmp;
 		qsize_t qidx;
 
-		std::map<qsize_t, QState*>::iterator it;
+		QMAPITER it;
 		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
 			Q = it->second;
 			qidx = Q->getIndex();
@@ -770,7 +770,7 @@ static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex
 		qsize_t i1 = 0;
 		int hashid = 0;
 
-		std::map<qsize_t, QState*>::iterator it;
+		QMAPITER it;
 		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
 			Q = it->second;
 			qidx = Q->getIndex();
@@ -1048,7 +1048,7 @@ static void NMC_DiagonalControlGates(QRegister *QReg, int control, int target, i
 		complex_t oldAmp;
 		complex_t newAmp;
 
-		std::map<qsize_t, QState*>::iterator it;
+		QMAPITER it;
 		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
 			Q = it->second;
 			qidx = Q->getIndex();
@@ -1140,7 +1140,7 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 		complex_t newAmp1;
 		int hashid;
 
-		std::map<qsize_t, QState*>::iterator it;
+		QMAPITER it;
 		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
 			Q = it->second;
 			qidx = Q->getIndex();
@@ -1444,7 +1444,7 @@ static int NMC_Measure(QRegister *QReg, int qubit)
 		int tid = thread_id % QReg->getCPUCores();
 		QState *Q = NULL;
 
-		std::map<qsize_t, QState*>::iterator it;
+		QMAPITER it;
 		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
 			Q = it->second;
 			if(stripe_lower(Q->getIndex(), qubit) == true) {
@@ -1489,7 +1489,7 @@ static int NMC_Measure(QRegister *QReg, int qubit)
 		int tid = thread_id % QReg->getCPUCores();
 		QState *Q = NULL;
 
-		std::map<qsize_t, QState*>::iterator it;
+		QMAPITER it;
 		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
 			Q = it->second;
 			qsize_t qidx = Q->getIndex();
@@ -1552,7 +1552,7 @@ static int NMC_MeasureF(QRegister *QReg, int qubit, int collapse)
 		int tid = thread_id % QReg->getCPUCores();
 		QState *Q = NULL;
 
-		std::map<qsize_t, QState*>::iterator it;
+		QMAPITER it;
 		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
 			Q = it->second;
 			qsize_t qidx = Q->getIndex();
