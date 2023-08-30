@@ -58,9 +58,8 @@ qsize_t quantum_shiftR(qsize_t left, qsize_t right)
 bool stripe_lower(qsize_t index, int qubit)
 {
 	qsize_t stride = strides[qubit];
-	qsize_t stripe_width = stride * 2ULL;
 
-	if((index % stripe_width) < stride) {
+	if((index & stride) != stride) {
 		return true;
 	}
 
@@ -73,13 +72,12 @@ bool stripe_lower(qsize_t index, int qubit)
 bool stripe_upper(qsize_t index, int qubit)
 {
 	qsize_t stride = strides[qubit];
-	qsize_t stripe_width = stride * 2ULL;
 
-	if((index % stripe_width) < stride) {
-		return false;
+	if((index & stride) == stride) {
+		return true;
 	}
 
-	return true;
+	return false;
 }
 
 /* 
@@ -524,6 +522,14 @@ void nsec2str(double tm, char *str)
 	} else if(elapsedNSec > 0) {
 		sprintf(str, "%f ns", elapsedNSec);
 	}
+}
+
+void set_affinity(int coreid)
+{
+	cpu_set_t cpuset;
+	CPU_ZERO(&cpuset);
+	CPU_SET(coreid, &cpuset);
+	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 }
 
 bool isRealizedState(complex_t amp)

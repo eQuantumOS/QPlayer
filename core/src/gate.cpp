@@ -693,15 +693,12 @@ static void NMC_DiagonalGates(QRegister *QReg, int qubit, int gtype, complex_t M
 	 **************************************************/
 	#pragma omp parallel for
 	for(int i=0; i<QSTORE_PARTITION; i++) {
-		int thread_id = omp_get_thread_num();
 		QState *Q = NULL;
 		complex_t newAmp;
-		qsize_t qidx;
 
 		QMAPITER it;
 		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
 			Q = it->second;
-			qidx = Q->getIndex();
 
 			/* Despite the redundancy of the code, we subdivide the code 
 			 * as shown below to maximize computational performance.
@@ -715,7 +712,7 @@ static void NMC_DiagonalGates(QRegister *QReg, int qubit, int gtype, complex_t M
 				newAmp = Q->getAmplitude() * M[3];
 				Q->setAmplitude(newAmp);
 			} else {
-				if(stripe_lower(qidx, qubit) == true) {
+				if(stripe_lower(Q->getIndex(), qubit) == true) {
 					/* RZ */
 					newAmp = Q->getAmplitude() * M[0];
 					Q->setAmplitude(newAmp);
@@ -746,8 +743,8 @@ static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex
 	qsize_t stride = quantum_shiftL(1, (qsize_t)qubit);
 	int qubitType = QReg->qubitTypes[qubit];
 
-	vector<QState*> addQList[QSTORE_PARTITION][MAX_CORES];
-	vector<QState*> delQList[QSTORE_PARTITION][MAX_CORES];
+	static vector<QState*> addQList[QSTORE_PARTITION][MAX_CORES];
+	static vector<QState*> delQList[QSTORE_PARTITION][MAX_CORES];
 	
 	bool isLower = false;
 	bool isUpper = false;
@@ -1118,8 +1115,8 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 	qsize_t stride = quantum_shiftL(1, (qsize_t)target);
 	int targetQubitType = QReg->qubitTypes[target];
 
-	vector<QState*> addQList[QSTORE_PARTITION][MAX_CORES];
-	vector<QState*> delQList[QSTORE_PARTITION][MAX_CORES];
+	static vector<QState*> addQList[QSTORE_PARTITION][MAX_CORES];
+	static vector<QState*> delQList[QSTORE_PARTITION][MAX_CORES];
 	
 	bool isLower = false;
 	bool isUpper = false;
@@ -1437,7 +1434,7 @@ static int NMC_Measure(QRegister *QReg, int qubit)
 	double up = 0;
 	int state;
 
-	vector<QState*> delQList[QSTORE_PARTITION][MAX_CORES];
+	static vector<QState*> delQList[QSTORE_PARTITION][MAX_CORES];
 	
 	for(int i=0; i<QReg->getCPUCores(); i++) {
 		lpm[i] = upm[i] = lengthm[i] = 0;
@@ -1551,7 +1548,7 @@ static int NMC_MeasureF(QRegister *QReg, int qubit, int collapse)
 		exit(0);
 	}
 
-	vector<QState*> delQList[QSTORE_PARTITION][MAX_CORES];
+	static vector<QState*> delQList[QSTORE_PARTITION][MAX_CORES];
 	
 	/************************************************** 
 	 * (STEP1) get collapsed states according to argument

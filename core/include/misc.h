@@ -186,6 +186,7 @@ extern void sec2str(double tm, char *str);
 extern void msec2str(double tm, char *str);
 extern void usec2str(double tm, char *str);
 extern void nsec2str(double tm, char *str);
+extern void set_affinity(int coreid);
 extern bool isRealizedState(complex_t amp);
 
 #endif
