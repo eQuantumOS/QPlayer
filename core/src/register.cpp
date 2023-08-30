@@ -76,6 +76,35 @@ QRegister::~QRegister(void) {
 	}
 }
 
+void QRegister::checkMemory(void) 
+{
+	static uint64_t memTotal = 0;
+	static uint64_t memAvail = 0;
+	uint64_t memUsed = 0;
+
+	if(memTotal == 0) {
+		getTotalMem(&memTotal, &memAvail);
+	}
+
+	memUsed = getUsedMem();
+
+	if((memUsed * 2) > memAvail) {
+		char memTotalStr[32] = "";
+		char memAvailStr[32] = "";
+		char memUsedStr[32] = "";
+    
+		human_readable_size(memTotal, memTotalStr);
+		human_readable_size(memAvail, memAvailStr);
+		human_readable_size(memUsed, memAvailStr);
+
+		printf("Memory space is insufficient!!\n");
+		printf("Your quantum circuit may generate too many quantum states.\n");
+		printf(" - Memory: Total=%s, Avail=%s --> Used=%s\n", memTotalStr, memAvailStr, memUsedStr);
+		printf(" - Quantum states: %lu\n", (uint64_t)getNumStates());
+		exit(0);
+	}
+}
+
 void QRegister::updateQRegStat(int gate, QTimer timer) {
 	double tm = timer.getElapsedUSec();
 
