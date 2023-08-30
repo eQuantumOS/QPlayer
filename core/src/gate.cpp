@@ -740,7 +740,7 @@ static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex
 		exit(0);
 	}
 
-	qsize_t stride = quantum_shiftL(1, (qsize_t)qubit);
+	qsize_t stride = get_stride(qubit);
 	int qubitType = QReg->qubitTypes[qubit];
 
 	static vector<QState*> addQList[QSTORE_PARTITION][MAX_CORES];
@@ -1112,7 +1112,7 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 		return;
 	}
 
-	qsize_t stride = quantum_shiftL(1, (qsize_t)target);
+	qsize_t stride = get_stride(target);
 	int targetQubitType = QReg->qubitTypes[target];
 
 	static vector<QState*> addQList[QSTORE_PARTITION][MAX_CORES];

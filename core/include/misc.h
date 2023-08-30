@@ -164,6 +164,7 @@ static inline char *human_readable_size(uint64_t size, char *buf)
 }
 
 extern void init_strides(void);
+extern qsize_t get_stride(int qubit);
 extern qsize_t quantum_shiftL(qsize_t left, qsize_t right);
 extern qsize_t quantum_shiftR(qsize_t left, qsize_t right);
 extern bool stripe_lower(qsize_t index, int qubit);

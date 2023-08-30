@@ -35,6 +35,11 @@ void init_strides(void)
 	}
 }
 
+qsize_t get_stride(int qubit)
+{
+	return strides[qubit];
+}
+
 qsize_t quantum_shiftL(qsize_t left, qsize_t right)
 {
     return left << right.convert_to<size_t>();
