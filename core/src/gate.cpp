@@ -745,6 +745,9 @@ static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex
 
 	qsize_t stride = quantum_shiftL(1, (qsize_t)qubit);
 	int qubitType = QReg->qubitTypes[qubit];
+
+	vector<QState*> addQList[QSTORE_PARTITION][MAX_CORES];
+	vector<QState*> delQList[QSTORE_PARTITION][MAX_CORES];
 	
 	bool isLower = false;
 	bool isUpper = false;
@@ -804,7 +807,7 @@ static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex
 				} else {
 					/* remove zero amplitude |0> state */
 					hashid = (int)(i0 % QSTORE_PARTITION);
-					QReg->delQList[hashid][tid].push_back(Q);
+					delQList[hashid][tid].push_back(Q);
 				}
 
 				/* update upper state */
@@ -812,7 +815,7 @@ static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex
 					/* add new |1> state */
 					upperQ = getQState(i1, newAmp1);
 					hashid = (int)(i1 % QSTORE_PARTITION);
-					QReg->addQList[hashid][tid].push_back(upperQ);
+					addQList[hashid][tid].push_back(upperQ);
 					isUpperLocal = true;
 				}
 			} else if(qubitType == KET_ONE) {
@@ -836,7 +839,7 @@ static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex
 					/* add new |0> state */
 					lowerQ = getQState(i0, newAmp0);
 					hashid = (int)(i0 % QSTORE_PARTITION);
-					QReg->addQList[hashid][tid].push_back(lowerQ);
+					addQList[hashid][tid].push_back(lowerQ);
 					isLowerLocal = true;
 				}
 
@@ -848,7 +851,7 @@ static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex
 				} else {
 					/* remove zero amplitude |1> state */
 					hashid = (int)(i1 % QSTORE_PARTITION);
-					QReg->delQList[hashid][tid].push_back(Q);
+					delQList[hashid][tid].push_back(Q);
 				}
 			} else {
 				/************************************************* 
@@ -893,7 +896,7 @@ static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex
 					} else {
 						/* remove zero amplitude |0> state */
 						hashid = (int)(i0 % QSTORE_PARTITION);
-						QReg->delQList[hashid][tid].push_back(lowerQ);
+						delQList[hashid][tid].push_back(lowerQ);
 					}
 
 					if(isRealizedState(newAmp1) == true) {
@@ -902,7 +905,7 @@ static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex
 					} else {
 						/* remove zero amplitude |1> state */
 						hashid = (int)(i1 % QSTORE_PARTITION);
-						QReg->delQList[hashid][tid].push_back(upperQ);
+						delQList[hashid][tid].push_back(upperQ);
 					}
 				} else if(lowerQ != NULL) {
 					/******************************************
@@ -932,7 +935,7 @@ static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex
 					} else {
 						/* remove zero amplitude |0> state */
 						hashid = (int)(i0 % QSTORE_PARTITION);
-						QReg->delQList[hashid][tid].push_back(lowerQ);
+						delQList[hashid][tid].push_back(lowerQ);
 					}
 
 					/* update upper state */
@@ -940,7 +943,7 @@ static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex
 						/* add new upper state */
 						upperQ = getQState(i1, newAmp1);
 						hashid = (int)(i1 % QSTORE_PARTITION);
-						QReg->addQList[hashid][tid].push_back(upperQ);
+						addQList[hashid][tid].push_back(upperQ);
 						isUpperLocal = true;
 					}
 				} else if(upperQ != NULL) {
@@ -968,7 +971,7 @@ static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex
 						/* add new |0> state */
 						lowerQ = getQState(i0, newAmp0);
 						hashid = (int)(i0 % QSTORE_PARTITION);
-						QReg->addQList[hashid][tid].push_back(lowerQ);
+						addQList[hashid][tid].push_back(lowerQ);
 						isLowerLocal = true;
 					} 
 	
@@ -980,7 +983,7 @@ static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex
 					} else {
 						/* remove zero amplitude |1> state */
 						hashid = (int)(i1 % QSTORE_PARTITION);
-						QReg->delQList[hashid][tid].push_back(upperQ);
+						delQList[hashid][tid].push_back(upperQ);
 					}
 				}
 			}
@@ -996,14 +999,14 @@ static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex
 	#pragma omp parallel for
 	for(int i=0; i<QSTORE_PARTITION; i++) {
 		for(int j=0; j<QReg->getCPUCores(); j++) {
-			for(auto Q : QReg->delQList[i][j]) {
+			for(auto Q : delQList[i][j]) {
 				QReg->eraseQState_nolock(Q->getIndex());
 			}
-			for(auto Q : QReg->addQList[i][j]) {
+			for(auto Q : addQList[i][j]) {
 				QReg->setQState_nolock(Q->getIndex(), Q);
 			}
-			QReg->delQList[i][j].clear();
-			QReg->addQList[i][j].clear();
+			addQList[i][j].clear();
+			delQList[i][j].clear();
 		}
 	}
 
@@ -1115,6 +1118,9 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 	qsize_t stride = quantum_shiftL(1, (qsize_t)target);
 	int targetQubitType = QReg->qubitTypes[target];
 
+	vector<QState*> addQList[QSTORE_PARTITION][MAX_CORES];
+	vector<QState*> delQList[QSTORE_PARTITION][MAX_CORES];
+	
 	bool isLower = false;
 	bool isUpper = false;
 
@@ -1191,7 +1197,7 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 				} else {
 					/* remove zero amplitude |0> state */
 					hashid = (int)(i0 % QSTORE_PARTITION);
-					QReg->delQList[hashid][tid].push_back(Q);
+					delQList[hashid][tid].push_back(Q);
 				}
 
 				/* update upper state */
@@ -1199,7 +1205,7 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 					/* add new |1> state */
 					upperQ = getQState(i1, newAmp1);
 					hashid = (int)(i1 % QSTORE_PARTITION);
-					QReg->addQList[hashid][tid].push_back(upperQ);
+					addQList[hashid][tid].push_back(upperQ);
 					isUpperLocal = true;
 				}
 			} else if(targetQubitType == KET_ONE) {
@@ -1228,7 +1234,7 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 					/* add new |0> state */
 					lowerQ = getQState(i0, newAmp0);
 					hashid = (int)(i0 % QSTORE_PARTITION);
-					QReg->addQList[hashid][tid].push_back(lowerQ);
+					addQList[hashid][tid].push_back(lowerQ);
 					isLowerLocal = true;
 				}
 
@@ -1240,7 +1246,7 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 				} else {
 					/* remove zero amplitude |1> state */
 					hashid = (int)(i1 % QSTORE_PARTITION);
-					QReg->delQList[hashid][tid].push_back(Q);
+					delQList[hashid][tid].push_back(Q);
 				}
 			} else {
 				/************************************************* 
@@ -1285,7 +1291,7 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 					} else {
 						/* remove zero amplitude |0> state */
 						hashid = (int)(i0 % QSTORE_PARTITION);
-						QReg->delQList[hashid][tid].push_back(lowerQ);
+						delQList[hashid][tid].push_back(lowerQ);
 					}
 
 					if(isRealizedState(newAmp1) == true) {
@@ -1294,7 +1300,7 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 					} else {
 						/* remove zero amplitude |1> state */
 						hashid = (int)(i1 % QSTORE_PARTITION);
-						QReg->delQList[hashid][tid].push_back(upperQ);
+						delQList[hashid][tid].push_back(upperQ);
 					}
 				} else if(lowerQ != NULL) {
 					/******************************************
@@ -1324,7 +1330,7 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 					} else {
 						/* remove zero amplitude |0> state */
 						hashid = (int)(i0 % QSTORE_PARTITION);
-						QReg->delQList[hashid][tid].push_back(lowerQ);
+						delQList[hashid][tid].push_back(lowerQ);
 					}
 
 					/* update upper state */
@@ -1332,7 +1338,7 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 						/* add new upper state */
 						upperQ = getQState(i1, newAmp1);
 						hashid = (int)(i1 % QSTORE_PARTITION);
-						QReg->addQList[hashid][tid].push_back(upperQ);
+						addQList[hashid][tid].push_back(upperQ);
 						isUpperLocal = true;
 					}
 				} else if(upperQ != NULL) {
@@ -1360,7 +1366,7 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 						/* add new |0> state */
 						lowerQ = getQState(i0, newAmp0);
 						hashid = (int)(i0 % QSTORE_PARTITION);
-						QReg->addQList[hashid][tid].push_back(lowerQ);
+						addQList[hashid][tid].push_back(lowerQ);
 						if(isLowerLocal == false) isLowerLocal = true;
 					} 
 	
@@ -1372,7 +1378,7 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 					} else {
 						/* remove zero amplitude |1> state */
 						hashid = (int)(i1 % QSTORE_PARTITION);
-						QReg->delQList[hashid][tid].push_back(upperQ);
+						delQList[hashid][tid].push_back(upperQ);
 					}
 				}
 			}
@@ -1388,14 +1394,14 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 	#pragma omp parallel for
 	for(int i=0; i<QSTORE_PARTITION; i++) {
 		for(int j=0; j<QReg->getCPUCores(); j++) {
-			for(auto Q : QReg->delQList[i][j]) {
+			for(auto Q : delQList[i][j]) {
 				QReg->eraseQState_nolock(Q->getIndex());
 			}
-			for(auto Q : QReg->addQList[i][j]) {
+			for(auto Q : addQList[i][j]) {
 				QReg->setQState_nolock(Q->getIndex(), Q);
 			}
-			QReg->delQList[i][j].clear();
-			QReg->addQList[i][j].clear();
+			addQList[i][j].clear();
+			delQList[i][j].clear();
 		}
 	}
 
@@ -1431,6 +1437,8 @@ static int NMC_Measure(QRegister *QReg, int qubit)
 	double up = 0;
 	int state;
 
+	vector<QState*> delQList[QSTORE_PARTITION][MAX_CORES];
+	
 	for(int i=0; i<QReg->getCPUCores(); i++) {
 		lpm[i] = upm[i] = lengthm[i] = 0;
 	}
@@ -1498,7 +1506,7 @@ static int NMC_Measure(QRegister *QReg, int qubit)
 			if((state == 0 && stripe_upper(qidx, qubit) == true) || 
 			   (state == 1 && stripe_lower(qidx, qubit) == true)) {
 				hashid = (int)(qidx % QSTORE_PARTITION);
-				QReg->delQList[hashid][tid].push_back(Q);
+				delQList[hashid][tid].push_back(Q);
 			}
 		}
 	}
@@ -1509,10 +1517,10 @@ static int NMC_Measure(QRegister *QReg, int qubit)
 	#pragma omp parallel for
 	for(int i=0; i<QSTORE_PARTITION; i++) {
 		for(int j=0; j<QReg->getCPUCores(); j++) {
-			for(auto Q : QReg->delQList[i][j]) {
+			for(auto Q : delQList[i][j]) {
 				QReg->eraseQState_nolock(Q->getIndex());
 			}
-			QReg->delQList[i][j].clear();
+			delQList[i][j].clear();
 		}
 	}
 
@@ -1543,6 +1551,8 @@ static int NMC_MeasureF(QRegister *QReg, int qubit, int collapse)
 		exit(0);
 	}
 
+	vector<QState*> delQList[QSTORE_PARTITION][MAX_CORES];
+	
 	/************************************************** 
 	 * (STEP1) get collapsed states according to argument
 	 **************************************************/
@@ -1561,7 +1571,7 @@ static int NMC_MeasureF(QRegister *QReg, int qubit, int collapse)
 			if((collapse == 0 && stripe_upper(qidx, qubit) == true) || 
 			   (collapse == 1 && stripe_lower(qidx, qubit) == true)) {
 				hashid = (int)(qidx % QSTORE_PARTITION);
-				QReg->delQList[hashid][tid].push_back(Q);
+				delQList[hashid][tid].push_back(Q);
 			}
 		}
 	}
@@ -1572,10 +1582,10 @@ static int NMC_MeasureF(QRegister *QReg, int qubit, int collapse)
 	#pragma omp parallel for
 	for(int i=0; i<QSTORE_PARTITION; i++) {
 		for(int j=0; j<QReg->getCPUCores(); j++) {
-			for(auto Q : QReg->delQList[i][j]) {
+			for(auto Q : delQList[i][j]) {
 				QReg->eraseQState_nolock(Q->getIndex());
 			}
-			QReg->delQList[i][j].clear();
+			delQList[i][j].clear();
 		}
 	}
 

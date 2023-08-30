@@ -54,13 +54,9 @@ private:
 public:
 	QMAP qstore[QSTORE_PARTITION];
 	QMAPITER qiter[QSTORE_PARTITION];
+	int qubitTypes[MAX_QUBITS];
 	std::mutex qlock[QSTORE_PARTITION];
 	std::mutex slock;
-
-public:
-	std::vector<QState*> addQList[QSTORE_PARTITION][MAX_CORES];
-	std::vector<QState*> delQList[QSTORE_PARTITION][MAX_CORES];
-	int qubitTypes[MAX_QUBITS];
 
 public:
 	QRegister(int n);

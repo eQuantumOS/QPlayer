@@ -27,6 +27,7 @@ static char *prog = NULL;
 static int opt_qubits = 0;
 static int opt_depth = 0;
 static int opt_dratio = 0;
+static int opt_task = 0;
 
 typedef enum {
     GATE_U1 = 0,
@@ -85,6 +86,7 @@ void usage(void)
 	printf(" -q <number>   : number of qubits\n");
 	printf(" -d <number>   : circuit depth\n");
 	printf(" -r <number>   : diagonal gate ratio(0-100)\n");
+	printf(" --task        : show task info.\n");
 }
 
 void setHadamard(void)
@@ -127,7 +129,7 @@ void gen_gate(struct gate_param *param, int qubit)
 			param->gate = GATE_CU1;
 		}
 	} else {
-		int gate = rand() % 5;
+		int gate = rand() % 8;
 		if(gate == 0) {
 			param->gate = GATE_X;
 		} else if(gate == 1) {
@@ -137,7 +139,13 @@ void gen_gate(struct gate_param *param, int qubit)
 		} else if(gate == 3) {
 			param->gate = GATE_CY;
 		} else if(gate == 4) {
-			param->gate = GATE_H;
+			param->gate = GATE_RX;
+		} else if(gate == 5) {
+			param->gate = GATE_RY;
+		} else if(gate == 6) {
+			param->gate = GATE_U2;
+		} else if(gate == 7) {
+			param->gate = GATE_U3;
 		}
 	}
 #else
@@ -261,7 +269,11 @@ int main(int argc, char **argv)
 	opt_depth = -1;
 	opt_dratio = -1;
 
-	while ((c = getopt_long(argc, argv, "q:d:r:", NULL, NULL)) != -1) {
+	static const struct option options[] = {
+		{"task", 0, 0, '1'}
+	};
+
+	while ((c = getopt_long(argc, argv, "q:d:r:", options, NULL)) != -1) {
 		switch(c) {
 		case 'q':
 			if(!optarg) usage();
@@ -274,6 +286,9 @@ int main(int argc, char **argv)
 		case 'r':
 			if(!optarg) usage();
 			opt_dratio = atoi(optarg);
+			break;		
+		case '1':
+			opt_task = 1;
 			break;		
 		default:
 			usage();
@@ -293,6 +308,7 @@ int main(int argc, char **argv)
 
  	QReg = new QRegister(opt_qubits);
 
+#if 1
 	for(int i=0; i<=10; i++) {
 		QReg->reset();
 		opt_dratio = i * 10;
@@ -303,7 +319,16 @@ int main(int argc, char **argv)
 		printf("dratio=%02d -> %s\n", opt_dratio, timer.getTime());
 		fflush(stdout);
 	}
+#else
+	setHadamard();
+	timer.start();
+	test();
+	timer.end();
+	printf("dratio=%02d -> %s\n", opt_dratio, timer.getTime());
+	fflush(stdout);
+#endif
 
-//	setHadamard();
-	// QReg->showQRegStat();
+	if(opt_task) {
+		QReg->showQRegStat();
+	}
 }
