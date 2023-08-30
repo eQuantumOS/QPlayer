@@ -864,12 +864,12 @@ static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex
 					i1 = qidx + stride;
 
 					lowerQ = Q;
-					upperQ = QReg->findQState_nolock(i1);
+					upperQ = QReg->findQState(i1);
 				} else {
 					i0 = qidx - stride;
 					i1 = qidx;
 
-					lowerQ = QReg->findQState_nolock(i0);
+					lowerQ = QReg->findQState(i0);
 					upperQ = Q;
 				}
 
@@ -1000,10 +1000,10 @@ static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex
 	for(int i=0; i<QSTORE_PARTITION; i++) {
 		for(int j=0; j<QReg->getCPUCores(); j++) {
 			for(auto Q : delQList[i][j]) {
-				QReg->eraseQState_nolock(Q->getIndex());
+				QReg->delQState(Q->getIndex());
 			}
 			for(auto Q : addQList[i][j]) {
-				QReg->setQState_nolock(Q->getIndex(), Q);
+				QReg->addQState(Q->getIndex(), Q);
 			}
 			addQList[i][j].clear();
 			delQList[i][j].clear();
@@ -1259,12 +1259,12 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 					i1 = qidx + stride;
 
 					lowerQ = Q;
-					upperQ = QReg->findQState_nolock(i1);
+					upperQ = QReg->findQState(i1);
 				} else {
 					i0 = qidx - stride;
 					i1 = qidx;
 
-					lowerQ = QReg->findQState_nolock(i0);
+					lowerQ = QReg->findQState(i0);
 					upperQ = Q;
 				}
 
@@ -1395,10 +1395,10 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 	for(int i=0; i<QSTORE_PARTITION; i++) {
 		for(int j=0; j<QReg->getCPUCores(); j++) {
 			for(auto Q : delQList[i][j]) {
-				QReg->eraseQState_nolock(Q->getIndex());
+				QReg->delQState(Q->getIndex());
 			}
 			for(auto Q : addQList[i][j]) {
-				QReg->setQState_nolock(Q->getIndex(), Q);
+				QReg->addQState(Q->getIndex(), Q);
 			}
 			addQList[i][j].clear();
 			delQList[i][j].clear();
@@ -1518,7 +1518,7 @@ static int NMC_Measure(QRegister *QReg, int qubit)
 	for(int i=0; i<QSTORE_PARTITION; i++) {
 		for(int j=0; j<QReg->getCPUCores(); j++) {
 			for(auto Q : delQList[i][j]) {
-				QReg->eraseQState_nolock(Q->getIndex());
+				QReg->delQState(Q->getIndex());
 			}
 			delQList[i][j].clear();
 		}
@@ -1583,7 +1583,7 @@ static int NMC_MeasureF(QRegister *QReg, int qubit, int collapse)
 	for(int i=0; i<QSTORE_PARTITION; i++) {
 		for(int j=0; j<QReg->getCPUCores(); j++) {
 			for(auto Q : delQList[i][j]) {
-				QReg->eraseQState_nolock(Q->getIndex());
+				QReg->delQState(Q->getIndex());
 			}
 			delQList[i][j].clear();
 		}

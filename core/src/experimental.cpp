@@ -297,7 +297,7 @@ void __estimation_step3_internal(QRegister *QReg, std::vector<int> candidates, s
 				newQ = QRegMask->findQState(newIdx);
 				if(newQ == NULL) {
 					newQ = getQState(newIdx, Q->getAmplitude());
-					QRegMask->setQState(newIdx, newQ);
+					QRegMask->addQState(newIdx, newQ);
 				}
 			}
 

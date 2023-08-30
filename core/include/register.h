@@ -55,8 +55,6 @@ public:
 	QMAP qstore[QSTORE_PARTITION];
 	QMAPITER qiter[QSTORE_PARTITION];
 	int qubitTypes[MAX_QUBITS];
-	std::mutex qlock[QSTORE_PARTITION];
-	std::mutex slock;
 
 public:
 	QRegister(int n);
@@ -95,7 +93,7 @@ public:
 		qreg->setOrderedQState();
 		while((Q = qreg->getOrderedQState()) != NULL) {
 			QState *newQ = getQState(Q->getIndex(), Q->getAmplitude());
-			setQState(newQ->getIndex(), newQ);
+			addQState(newQ->getIndex(), newQ);
 		}
 	}
 
@@ -118,12 +116,6 @@ public:
 
 	/* return qstore partition id according to state index */
 	int getPartId(qsize_t index) { return (int)(index % QSTORE_PARTITION); } 
-
-	/* qstore lock & unlock */
-	void QLock(int index) { qlock[index].lock(); }
-	void QUnlock(int index) { qlock[index].unlock(); } 
-	void QLock(qsize_t index) { qlock[getPartId(index)].lock(); }
-	void QUnlock(qsize_t index) { qlock[getPartId(index)].unlock(); } 
 
 	void checkMemory(void) {
 		static uint64_t memTotal = 0;
@@ -155,14 +147,9 @@ public:
 
 public:
 	/* add new state to the quantum register */
-	void __setQState(qsize_t index, QState *state, bool lck) {
+	void addQState(qsize_t index, QState *state) {
 		QMAP *part = &qstore[getPartId(index)];
-
-		if(lck == true) QLock(index);
-
 		(*part)[index] = state;
-
-		if(lck == true) QUnlock(index);
 	}
 
 	/*
@@ -172,62 +159,28 @@ public:
 	 * (1) Remove one of the superposed states after the measurement
 	 * (2) Remove zero state after Gate operations
 	 */
-	void __eraseQState(qsize_t index, bool lck) {
+	void delQState(qsize_t index) {
 		QMAP *part = &qstore[getPartId(index)];
 		QMAPITER it;
-
-		if(lck == true) QLock(index);
 
 		it = part->find(index);
 		if(it != part->end()) {
 			putQState(it->second);
 			part->erase(it);
 		}
-
-		if(lck == true) QUnlock(index);
 	}
 
 	/* search the quantum state corresponding to state index */
-	QState *__findQState(qsize_t index, bool lck) {
+	QState *findQState(qsize_t index) {
 		QMAP *part = &qstore[getPartId(index)];
 		QMAPITER it;
 		QState *Q = NULL;
-
-		if(lck == true) QLock(index);
 
 		it = part->find(index);
 		if(it != part->end()) {
 			Q = it->second;
 		}
 
-		if(lck == true) QUnlock(index);
-
-		return Q;
-	}
-
-	void setQState(qsize_t index, QState *state) {
-		return __setQState(index, state, true);
-	}
-
-	void setQState_nolock(qsize_t index, QState *state) {
-		return __setQState(index, state, false);
-	}
-
-	void eraseQState(qsize_t index) {
-		return __eraseQState(index, true);
-	}
-
-	void eraseQState_nolock(qsize_t index) {
-		return __eraseQState(index, false);
-	}
-
-	QState *findQState(qsize_t index) {
-		QState *Q = __findQState(index, true);
-		return Q;
-	}
-	
-	QState *findQState_nolock(qsize_t index) {
-		QState *Q = __findQState(index, false);
 		return Q;
 	}
 

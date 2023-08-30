@@ -104,7 +104,7 @@ public:
 			QState *newQ = QRegMask->findQState(newIdx);
 			if(newQ == NULL) {
 				newQ = new QState(newIdx, Q->getAmplitude());
-				QRegMask->setQState(newQ->getIndex(), newQ);
+				QRegMask->addQState(newQ->getIndex(), newQ);
 			}
 
 			/* check sign of states */
@@ -206,7 +206,7 @@ public:
 			QState *newQ = QRegMask->findQState(newIdx);
 			if(newQ == NULL) {
 				newQ = new QState(newIdx, Q->getAmplitude());
-				QRegMask->setQState(newQ->getIndex(), newQ);
+				QRegMask->addQState(newQ->getIndex(), newQ);
 			}
 		}
 
@@ -310,7 +310,7 @@ public:
 			newQ = QRegReduced->findQState(newIdx);
 			if(newQ == NULL) {
 				newQ = new QState(newIdx, fromQ->getAmplitude());
-				QRegReduced->setQState(newIdx, newQ);
+				QRegReduced->addQState(newIdx, newQ);
 			} 
 		}
 
@@ -325,7 +325,7 @@ public:
 				newQ = QRegMerge->findQState(newIdx);
 				if(newQ == NULL) {
 					newQ = new QState(newIdx, toQ->getAmplitude());
-					QRegMerge->setQState(newIdx, newQ);
+					QRegMerge->addQState(newIdx, newQ);
 				} 
 			}
 		}
@@ -367,7 +367,7 @@ public:
 			newQ = QRegReduced->findQState(newIdx);
 			if(newQ == NULL) {
 				newQ = new QState(fromQ->getIndex(), fromQ->getAmplitude());
-				QRegReduced->setQState(newQ->getIndex(), newQ);
+				QRegReduced->addQState(newQ->getIndex(), newQ);
 			} 
 		}
 
@@ -410,7 +410,7 @@ public:
 				newQ = QRegMerge->findQState(newIdx);
 				if(newQ == NULL) {
 					newQ = new QState(newIdx, newAmp);
-					QRegMerge->setQState(newIdx, newQ);
+					QRegMerge->addQState(newIdx, newQ);
 				} 
 			}
 		}
@@ -507,14 +507,14 @@ public:
 			newQH = LQHigh->QReg->findQState(newIdxH);
 			if(newQH == NULL) {
 				newQH = new QState(newIdxH, Q->getAmplitude());
-				LQHigh->QReg->setQState(newQH->getIndex(), newQH);
+				LQHigh->QReg->addQState(newQH->getIndex(), newQH);
 			}
 
 			/* add new state of LQLow */
 			newQL = LQLow->QReg->findQState(newIdxL);
 			if(newQL == NULL) {
 				newQL = new QState(newIdxL, Q->getAmplitude());
-				LQLow->QReg->setQState(newQL->getIndex(), newQL);
+				LQLow->QReg->addQState(newQL->getIndex(), newQL);
 			}
 		}
 	}

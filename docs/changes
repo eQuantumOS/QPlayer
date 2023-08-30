@@ -1,3 +1,9 @@
+2023-08-23 update register.h
+    - remove all locking logic
+    - rename QState functions
+      * setQState()   -> addQState()
+      * eraseQSTate() -> delQSTate()
+
 2023-08-30 move temporal vector variables: register.h --> gate.cpp
     - vector<QState*> addQList[QSTORE_PARTITION][MAX_CORES];
     - vector<QState*> delQList[QSTORE_PARTITION][MAX_CORES];
