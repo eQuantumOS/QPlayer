@@ -20,338 +20,16 @@
 
 #include "gate.h"
 #include "dump.h"
+#include "experimental.h"
 
 using namespace std;
 
-/* 
- * phase factoring : copied from qx-simulator 
- */
-/*
-static void reset_gphase(complex_t M[])
-{
-	double n = norm(M[0]);
-
-	for(int i=0; i<4; i++) cout << i << " : " << M[i] << endl;
-
-	if (n > 10e-9) {
-		complex_t p(M[0].real()/n,M[0].imag()/n);
-		M[0] /= p;
-		M[1] /= p;
-		M[2] /= p;
-		M[3] /= p;
-		cout << "n : " << n << endl;
-		cout << "p : " << p << endl;
-	} else {
-		n = norm(M[1]);
-		complex_t p(M[1].real()/n,M[1].imag()/n);
-		cout << "n : " << n << endl;
-		cout << "p : " << p << endl;
-		M[0] /= p;
-		M[1] /= p;
-		M[2] /= p;
-		M[3] /= p;
-	}
-
-	double n1 = std::sqrt(norm(M[0])+norm(M[1]));
-	double n2 = std::sqrt(norm(M[2])+norm(M[3]));
-	M[0] /= n1;
-	M[1] /= n2;
-	M[2] /= n1;
-	M[3] /= n2;
-
-	printf("\n");
-	for(int i=0; i<4; i++) cout << i << " : " << M[i] << endl;
-}
-*/
-
-/*
- * Apply 1-qubit matrix operations to quantum states. 
- */
-static void applyMatrix(QRegister *QReg, int qubit, complex_t M[])
-{
-	QReg->checkMemory();
-	if(qubit >= QReg->getNumQubits()) {
-		printf("[%s] qubit(%d) out of range!\n", __func__, qubit);
-		exit(0);
-	}
-
-	size_t stage = QReg->incStage();
-
-	qsize_t stride = quantum_shiftL(1, (qsize_t)qubit);
-
-	complex_t m00 = M[0];
-	complex_t m01 = M[1];
-	complex_t m10 = M[2];
-	complex_t m11 = M[3];
-
-	/*
-	 * We apply the matrix by traversing the qstores of all quantum registers.
-	 */
-	std::vector<QState *> newQState[QSTORE_PARTITION];
-	std::vector<QState *> delQState[QSTORE_PARTITION];
-
-	/* 
-	 * (STEP1) apply matrix
-	 */
-	#pragma omp parallel for
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		std::map<qsize_t, QState*>::iterator it;
-		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
-			QState *Q = it->second;
-			QState *lower = NULL;
-			QState *upper = NULL;
-			complex_t amp0, amp1;
-			complex_t in0, in1;
-			qsize_t i0, i1;
-
-			i0 = Q->getIndex();
-
-			if(stripe_lower(i0, qubit) == true) {
-				/* lower bound of this stripe */
-				i1 = i0 + stride;
-
-				lower = Q;
-				upper = QReg->findQState(i1);
-			} else {
-				/* upper bound of this stripe */
-				i1 = i0;
-				i0 = i1 - stride;
-
-				lower = QReg->findQState(i0);
-				upper = Q;
-			}
-
-			/* check if already applied by other thread */
-			if(QReg->checkStage(lower, upper, i0, stage) < 0) {
-				/* just skip previously applied states */
-				continue;
-			}
-
-			if(lower == NULL) {
-				in0 = 0.0;
-			} else {
-				in0 = lower->getAmplitude();
-			}
-
-			if(upper == NULL) {
-				in1 = 0.0;
-			} else {
-				in1 = upper->getAmplitude();
-			}
-	
-			amp0 = m00*in0+m01*in1;
-			amp1 = m10*in0+m11*in1;
-
-			if(lower) {
-			#if 1
-				if(norm(amp0) > AMPLITUDE_EPS) {
-			#else
-				if(norm(amp0) > 0) {
-			#endif
-					lower->setAmplitude(amp0);
-				} else {
-					delQState[i].push_back(lower);
-				}
-			} else {
-			#if 1
-				if(norm(amp0) > AMPLITUDE_EPS) {
-			#else
-				if(norm(amp0) > 0) {
-			#endif
-					lower = getQState(i0, amp0);
-			
-					newQState[i].push_back(lower);
-				}
-			}
-
-			if(upper) {
-			#if 1
-				if(norm(amp1) > AMPLITUDE_EPS) {
-			#else
-				if(norm(amp1) > 0) {
-			#endif
-					upper->setAmplitude(amp1);
-				} else {
-					delQState[i].push_back(upper);
-				}
-			} else {
-			#if 1
-				if(norm(amp1) > AMPLITUDE_EPS) {
-			#else
-				if(norm(amp1) > 0) {
-			#endif
-					upper = getQState(i1, amp1);
-					newQState[i].push_back(upper);
-				}
-			}
-		}
-	}
-
-	/* 
-	 * (STEP2) remove zero amplitude states 
-	 */
-	#pragma omp parallel for
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		for(int j=0; j<delQState[i].size(); j++) {
-			QState *Q = delQState[i][j];
-			QReg->eraseQState(Q->getIndex());
-		}
-		delQState[i].clear();
-	}
-
-	/* 
-	 * (STEP3) add new non-zero amplitude states
-	 */
-	#pragma omp parallel for
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		for(int j=0; j<newQState[i].size(); j++) {
-			QState *Q = newQState[i][j];
-			QReg->setQState(Q->getIndex(), Q);
-		}
-		newQState[i].clear();
-	}
-}
-
-/*
- * Apply controlled matrix operations to quantum states. 
- */
-static void applyControlledMatrix(QRegister *QReg, int control, int target, complex_t M[])
-{
-	QReg->checkMemory();
-	if(target >= QReg->getNumQubits()) {
-		printf("target(%d) out of range!\n", target);
-		exit(0);
-	}
-
-	if(control >= QReg->getNumQubits()) {
-		printf("control(%d) out of range!\n", control);
-		exit(0);
-	}
-
-	size_t stage = QReg->incStage();
-
-	qsize_t stride = quantum_shiftL(1, (qsize_t)target);
-
-	complex_t m00 = M[0];
-	complex_t m01 = M[1];
-	complex_t m10 = M[2];
-	complex_t m11 = M[3];
-
-	/*
-	 * We apply the matrix by traversing the qstores of all quantum registers.
-	 */
-	std::vector<QState *> newQState[QSTORE_PARTITION];
-	std::vector<QState *> delQState[QSTORE_PARTITION];
-
-	/* 
-	 * (STEP1) apply matrix
-	 */
-	#pragma omp parallel for
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		std::map<qsize_t, QState*>::iterator it;
-		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
-			QState *Q = it->second;
-			QState *lower = NULL;
-			QState *upper = NULL;
-			complex_t amp0, amp1;
-			complex_t in0, in1;
-			qsize_t i0, i1;
-
-			i0 = Q->getIndex();
-
-			if(stripe_lower(Q->getIndex(), control) == true) {
-				/* control is |0> */
-				continue;
-			}
-
-			if(stripe_lower(i0, target) == true) {
-				/* lower bound of this stripe */
-				i1 = i0 + stride;
-
-				lower = Q;
-				upper = QReg->findQState(i1);
-			} else {
-				/* upper bound of this stripe */
-				i1 = i0;
-				i0 = i1 - stride;
-
-				lower = QReg->findQState(i0);
-				upper = Q;
-			}
-
-			/* check if already applied by other thread */
-			if(QReg->checkStage(lower, upper, i0, stage) < 0) {
-				/* just skip previously applied states */
-				continue;
-			}
-
-			if(lower == NULL) {
-				in0 = 0.0;
-			} else {
-				in0 = lower->getAmplitude();
-			}
-
-			if(upper == NULL) {
-				in1 = 0.0;
-			} else {
-				in1 = upper->getAmplitude();
-			}
-	
-			amp0 = m00*in0+m01*in1;
-			amp1 = m10*in0+m11*in1;
-	
-			if(lower) {
-				if(norm(amp0) > AMPLITUDE_EPS) {
-					lower->setAmplitude(amp0);
-				} else {
-					delQState[i].push_back(lower);
-				}
-			} else {
-				if(norm(amp0) > AMPLITUDE_EPS) {
-					lower = getQState(i0, amp0);
-					newQState[i].push_back(lower);
-				}
-			}
-
-			if(upper) {
-				if(norm(amp1) > AMPLITUDE_EPS) {
-					upper->setAmplitude(amp1);
-				} else {
-					delQState[i].push_back(upper);
-				}
-			} else {
-				if(norm(amp1) > AMPLITUDE_EPS) {
-					upper = getQState(i1, amp1);
-					newQState[i].push_back(upper);
-				}
-			}
-		}
-	}
-
-	/* 
-	 * (STEP2) remove zero amplitude states 
-	 */
-	#pragma omp parallel for
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		for(int j=0; j<delQState[i].size(); j++) {
-			QState *Q = delQState[i][j];
-			QReg->eraseQState(Q->getIndex());
-		}
-		delQState[i].clear();
-	}
-
-	/* 
-	 * (STEP3) add new non-zero amplitude states
-	 */
-	#pragma omp parallel for
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		for(int j=0; j<newQState[i].size(); j++) {
-			QState *Q = newQState[i][j];
-			QReg->setQState(Q->getIndex(), Q);
-		}
-		newQState[i].clear();
-	}
-}
+static void NMC_DiagonalGates(QRegister *QReg, int qubit, int gtype, complex_t M[]);
+static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex_t M[]);
+static void NMC_DiagonalControlGates(QRegister *QReg, int control, int target, int gtype, complex_t M[]);
+static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int target, int gtype, complex_t M[]);
+static int NMC_Measure(QRegister *QReg, int qubit);
+static int NMC_MeasureF(QRegister *QReg, int qubit, int collapse);
 
 /*
  * initZ() initialize the qubit to |0>.
@@ -386,7 +64,6 @@ void I(QRegister *QReg, int qubit)
 	};
 
 	timer.start();
-	applyMatrix(QReg, qubit, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_ID, timer);
 }
@@ -403,7 +80,7 @@ void X(QRegister *QReg, int qubit)
 	};
 
 	timer.start();
-	applyMatrix(QReg, qubit, M);
+	NMC_NoneDiagonalGates(QReg, qubit, QGATE_X, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_X, timer);
 }
@@ -420,7 +97,7 @@ void Z(QRegister *QReg, int qubit)
 	};
 
 	timer.start();
-	applyMatrix(QReg, qubit, M);
+	NMC_DiagonalGates(QReg, qubit, QGATE_Z, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_Z, timer);
 }
@@ -437,7 +114,7 @@ void Y(QRegister *QReg, int qubit)
 	};
 
 	timer.start();
-	applyMatrix(QReg, qubit, M);
+	NMC_NoneDiagonalGates(QReg, qubit, QGATE_X, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_Y, timer);
 }
@@ -454,11 +131,14 @@ void H(QRegister *QReg, int qubit)
 	};
 
 	timer.start();
-	applyMatrix(QReg, qubit, M);
+	NMC_NoneDiagonalGates(QReg, qubit, QGATE_H, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_H, timer);
 }
 
+/*
+ * Apply U1-gate to the qubit
+ */
 void U1(QRegister *QReg, int qubit, double angle)
 {
 	QTimer timer;
@@ -468,11 +148,14 @@ void U1(QRegister *QReg, int qubit, double angle)
 	};
 
 	timer.start();
-	applyMatrix(QReg, qubit, M);
+	NMC_DiagonalGates(QReg, qubit, QGATE_U1, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_U1, timer);
 }
 
+/*
+ * Apply U2-gate to the qubit
+ */
 void U2(QRegister *QReg, int qubit, double phi, double lambda)
 {
 	QTimer timer;
@@ -484,11 +167,14 @@ void U2(QRegister *QReg, int qubit, double phi, double lambda)
 	};
 
 	timer.start();
-	applyMatrix(QReg, qubit, M);
+	NMC_NoneDiagonalGates(QReg, qubit, QGATE_U2, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_U2, timer);
 }
 
+/*
+ * Apply U3-gate to the qubit
+ */
 void U3(QRegister *QReg, int qubit, double theta, double phi, double lambda)
 {
 	QTimer timer;
@@ -500,7 +186,7 @@ void U3(QRegister *QReg, int qubit, double theta, double phi, double lambda)
 	};
 
 	timer.start();
-	applyMatrix(QReg, qubit, M);
+	NMC_NoneDiagonalGates(QReg, qubit, QGATE_U3, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_U3, timer);
 }
@@ -518,7 +204,7 @@ void S(QRegister *QReg, int qubit)
 	};
 
 	timer.start();
-	applyMatrix(QReg, qubit, M);
+	NMC_DiagonalGates(QReg, qubit, QGATE_S, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_S, timer);
 }
@@ -535,7 +221,7 @@ void T(QRegister *QReg, int qubit)
 	};
 
 	timer.start();
-	applyMatrix(QReg, qubit, M);
+	NMC_DiagonalGates(QReg, qubit, QGATE_T, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_T, timer);
 }
@@ -552,7 +238,7 @@ void SDG(QRegister *QReg, int qubit)
 	};
 
 	timer.start();
-	applyMatrix(QReg, qubit, M);
+	NMC_DiagonalGates(QReg, qubit, QGATE_SDG, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_SDG, timer);
 }
@@ -569,7 +255,7 @@ void TDG(QRegister *QReg, int qubit)
 	};
 
 	timer.start();
-	applyMatrix(QReg, qubit, M);
+	NMC_DiagonalGates(QReg, qubit, QGATE_TDG, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_TDG, timer);
 }
@@ -585,11 +271,8 @@ void RX(QRegister *QReg, int qubit, double angle)
 		complex_t(0, -sin(angle/2)), cos(angle/2)
 	};
 
-#if 0
-	reset_gphase(M);
-#endif
 	timer.start();
-	applyMatrix(QReg, qubit, M);
+	NMC_NoneDiagonalGates(QReg, qubit, QGATE_RX, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_RX, timer);
 }
@@ -605,11 +288,8 @@ void RY(QRegister *QReg, int qubit, double angle)
 		sin(angle/2), cos(angle/2)
 	};
 
-#if 0
-	reset_gphase(M);
-#endif
 	timer.start();
-	applyMatrix(QReg, qubit, M);
+	NMC_NoneDiagonalGates(QReg, qubit, QGATE_RY, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_RY, timer);
 }
@@ -625,11 +305,8 @@ void RZ(QRegister *QReg, int qubit, double angle)
 		0, complex_t(cos(angle/2), sin(angle/2))
 	};
 
-#if 0
-	reset_gphase(M);
-#endif
 	timer.start();
-	applyMatrix(QReg, qubit, M);
+	NMC_DiagonalGates(QReg, qubit, QGATE_RZ, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_RZ, timer);
 }
@@ -646,7 +323,7 @@ void P(QRegister *QReg, int qubit, double angle)
 	};
 
 	timer.start();
-	applyMatrix(QReg, qubit, M);
+	NMC_DiagonalGates(QReg, qubit, QGATE_P, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_P, timer);
 }
@@ -663,7 +340,7 @@ void SX(QRegister *QReg, int qubit)
 	};
 
 	timer.start();
-	applyMatrix(QReg, qubit, M);
+	NMC_NoneDiagonalGates(QReg, qubit, QGATE_SX, M);
 	QReg->normalize();
 	timer.end();
 	QReg->updateQRegStat(QGATE_SX, timer);
@@ -685,7 +362,7 @@ void CU1(QRegister *QReg, int control, int target, double angle)
 	}
 
 	timer.start();
-	applyControlledMatrix(QReg, control, target, M);
+	NMC_DiagonalControlGates(QReg, control, target, QGATE_CU1, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_CU1, timer);
 }
@@ -708,7 +385,7 @@ void CU2(QRegister *QReg, int control, int target, double phi, double lambda)
 	}
 
 	timer.start();
-	applyControlledMatrix(QReg, control, target, M);
+	NMC_NoneDiagonalControlGates(QReg, control, target, QGATE_CU2, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_CU2, timer);
 }
@@ -731,7 +408,7 @@ void CU3(QRegister *QReg, int control, int target, double theta, double pie, dou
 	}
 
 	timer.start();
-	applyControlledMatrix(QReg, control, target, M);
+	NMC_NoneDiagonalControlGates(QReg, control, target, QGATE_CU3, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_CU3, timer);
 }
@@ -752,7 +429,7 @@ void CH(QRegister *QReg, int control, int target)
 	}
 
 	timer.start();
-	applyControlledMatrix(QReg, control, target, M);
+	NMC_NoneDiagonalControlGates(QReg, control, target, QGATE_CH, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_CH, timer);
 }
@@ -773,7 +450,7 @@ void CX(QRegister *QReg, int control, int target)
 	}
 
 	timer.start();
-	applyControlledMatrix(QReg, control, target, M);
+	NMC_NoneDiagonalControlGates(QReg, control, target, QGATE_CX, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_CX, timer);
 }
@@ -795,7 +472,7 @@ void CY(QRegister *QReg, int control, int target)
 	}
 
 	timer.start();
-	applyControlledMatrix(QReg, control, target, M);
+	NMC_NoneDiagonalControlGates(QReg, control, target, QGATE_CY, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_CY, timer);
 }
@@ -816,7 +493,7 @@ void CZ(QRegister *QReg, int control, int target)
 	}
 
 	timer.start();
-	applyControlledMatrix(QReg, control, target, M);
+	NMC_DiagonalControlGates(QReg, control, target, QGATE_CZ, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_CZ, timer);
 }
@@ -851,126 +528,34 @@ void CRZ(QRegister *QReg, int control, int target, double angle)
 	}
 
 	timer.start();
-	applyControlledMatrix(QReg, control, target, M);
+	NMC_DiagonalControlGates(QReg, control, target, QGATE_CRZ, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_CRZ, timer);
 }
 
-/* 
- * Apply Toffoli gate
+/*
+ * Apply Toffoli-gate to the qubit
  */
-void CCX(QRegister *QReg, int control1, int control2, int target) 
+void CCX(QRegister *QReg, int control1, int control2, int target)
 {
 	QTimer timer;
 	timer.start();
 
-	if(control1 >= QReg->getNumQubits()) {
-		printf("control1 qubit(%d) out of range!\n", control1);
-		exit(0);
-	}
-
-	if(control2 >= QReg->getNumQubits()) {
-		printf("control2 qubit(%d) out of range!\n", control2);
-		exit(0);
-	}
-
-	if(target >= QReg->getNumQubits()) {
-		printf("target qubit(%d) out of range!\n", target);
-		exit(0);
-	}
-
-	if(control1 == target || control2 == target) {
-		printf("CCNOT does not allow the same qubit of control & target\n");
-		exit(0);
-	}
-
-	std::vector<QState *> newQState[QSTORE_PARTITION];
-	std::vector<QState *> delQState[QSTORE_PARTITION];
-
-	/* 
-	 * (STEP1) CCNOT operation
-	 */
-	#pragma omp parallel for
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		std::map<qsize_t, QState*>::iterator it;
-		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
-			QState *Q = it->second;
-			QState *lower = NULL;
-			QState *upper = NULL;
-			complex_t amp0, amp1;
-			qsize_t i0, i1;
-	
-			i0 = Q->getIndex();
-			i1 = i0;
-
-			if(stripe_lower(Q->getIndex(), control1) == true) {
-				/* control1 is |0> */
-				continue;
-			}
-
-			if(stripe_lower(Q->getIndex(), control2) == true) {
-				/* control1 is |0> */
-				continue;
-			}
-
-			if(stripe_lower(i0, target) == true) {
-				i1 = i0 + quantum_shiftL(1, (qsize_t)target);
-			} else {
-				i1 = i0 - quantum_shiftL(1, (qsize_t)target);
-			}
-
-			lower = QReg->findQState(i0);
-			upper = QReg->findQState(i1);
-			if(upper == NULL) {
-				/* 
-				 *  pair state does not exist, just move state index 
-				 *  +--+       +--+
-				 *  |00|  -->  |01|
-				 *  +--+       +--+
-				 */
-				upper = getQState(i1, Q->getAmplitude());
-				delQState[i].push_back(lower);
-				newQState[i].push_back(upper);
-			} else {
-				/* 
-				 *    swap two entry
-				 *  +--+         +--+
-				 *  |00| -- -->  |00|
-				 *  +--+   -     +--+
-				 *  |01| -- -->  |01|
-				 *  +--+         +--+
-				 */
-				lower->setIndex(i1);
-				upper->setIndex(i0);
-				newQState[i].push_back(lower);
-				newQState[i].push_back(upper);
-			}
-		}
-	}
-
-	/* 
-	 * (STEP2) remove zero amplitude states after CCNOT 
-	 */
-	#pragma omp parallel for
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		for(int j=0; j<delQState[i].size(); j++) {
-			QState *Q = delQState[i][j];
-			QReg->eraseQState(Q->getIndex());
-		}
-		delQState[i].clear();
-	}
-
-	/* 
-	 * (STEP3) add non-zero amplitude states after CCNOT 
-	 */
-	#pragma omp parallel for
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		for(int j=0; j<newQState[i].size(); j++) {
-			QState *Q = newQState[i][j];
-			QReg->setQState(Q->getIndex(), Q);
-		}
-		newQState[i].clear();
-	}
+	H(QReg, target);
+	CX(QReg, control2, target);
+	TDG(QReg, target);
+	CX(QReg, control1, target);
+	T(QReg, target);
+	CX(QReg, control2, target);
+	TDG(QReg, target);
+	CX(QReg, control1, target);
+	T(QReg, control2);
+	T(QReg, target);
+	CX(QReg, control1, control2);
+	H(QReg, target);
+	T(QReg, control1);
+	TDG(QReg, control2);
+	CX(QReg, control1, control2);
 
 	timer.end();
 	QReg->updateQRegStat(QGATE_CCX, timer);
@@ -1008,7 +593,7 @@ void SWAP(QRegister *QReg, int qubit1, int qubit2)
 }
 
 /*
- * Apply SWAP-gate to the qubit
+ * Apply iSWAP-gate to the qubit
  */
 void iSWAP(QRegister *QReg, int qubit1, int qubit2) 
 {
@@ -1043,114 +628,35 @@ void CSWAP(QRegister *QReg, int control, int qubit1, int qubit2)
 }
 
 /*
- * The quantum state is measured on a Z basis. After measurement, 
- * the quantum state collapses to a state of |0> or |1>.
- * If you want to measure on the basis of X, you must apply 
- * the H operation in advance.
- *
- * The return value is 0 or 1, not +1 or -1. Note that if it 
- * collapses with |0>, it returns 0, and if it collapses with |1>, 
- * it returns 1.
+ * Apply Z-basis measurement 
  */
-int M(QRegister *QReg, int qubit) 
+int M(QRegister *QReg, int qubit)
 {
 	QTimer timer;
+	int val = 0;
+
 	timer.start();
-
-	if(qubit >= QReg->getNumQubits()) {
-		printf("[%s] qubit(%d) out of range!\n", __func__, qubit);
-		return -1;
-	}
-
-	double f = (double)(rand() % 100) / 100.0;
-	double lpm[QSTORE_PARTITION];
-	double upm[QSTORE_PARTITION];
-	double lengthm[QSTORE_PARTITION];
-	double lp = 0;
-	double up = 0;
-	double length = 0;
-	int state;
-
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		lpm[i] = upm[i] = lengthm[i] = 0;
-	}
-
-	/* 
-	 * (STEP1) Calculate the amplitude according to the |0> or |1>, respectively.
-	 */
-	#pragma omp parallel for
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		std::map<qsize_t, QState*>::iterator it;
-		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
-			QState *Q = it->second;
-			if(stripe_lower(Q->getIndex(), qubit) == true) {
-				lpm[i] += norm(Q->getAmplitude());
-			} else {
-				upm[i] += norm(Q->getAmplitude());
-			}
-		}
-	}
-
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		lp += lpm[i];
-		up += upm[i];
-	}
-
-	if(lp == 0 || up == 0) {
-		/* already measured */
-		if(lp > 0) {
-			state = 0;
-		} else {
-			state = 1;
-		}
-
-		timer.end();
-		QReg->updateQRegStat(QGATE_MEASURE, timer);
-
-		return state;
-	}
-
-	/* 
-	 * (STEP2) Determine final state according to the probability
-	 */
-	if(f < lp) {
-		state = 0;      // collapsed to |0>
-	} else {
-		state = 1;      // collapsed to |1>
-	}
-
-	/* 
-	 * (STEP3) Set zero-amplited after collapse.
-	 */
-	#pragma omp parallel for
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		std::map<qsize_t, QState*>::iterator it;
-		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
-			QState *Q = it->second;
-			qsize_t i0 = Q->getIndex();
-	
-			if(state == 0 && stripe_upper(i0, qubit) == true) {
-				Q->setAmplitude(complex_t(0, 0));
-			} else if(state == 1 && stripe_lower(i0, qubit) == true) {
-				Q->setAmplitude(complex_t(0, 0));
-			}
-		}
-	}
-
-	/* 
-	 * (STEP4) Cleanup zero amplitude states
-	 */
-	QReg->clearZeroStates();
-
-	/* 
-	 * (STEP5) Normalize amplitudes
-	 */
-	QReg->normalize();
-
+	val = NMC_Measure(QReg, qubit);
 	timer.end();
 	QReg->updateQRegStat(QGATE_MEASURE, timer);
 
-	return state;
+	return val;
+}
+
+/*
+ * Apply forced Z-basis measurement 
+ */
+int MF(QRegister *QReg, int qubit, int collapse)
+{
+	QTimer timer;
+	int val = 0;
+
+	timer.start();
+	val = NMC_MeasureF(QReg, qubit, collapse);
+	timer.end();
+	QReg->updateQRegStat(QGATE_MEASURE, timer);
+
+	return val;
 }
 
 int MV(QRegister *QReg, int qubit) {
@@ -1159,131 +665,802 @@ int MV(QRegister *QReg, int qubit) {
 	return mv == 0 ? 1 : -1;
 }
 
-int MF(QRegister *QReg, int qubit, int collapse) 
+/******************************************************************
+ *
+ * Internal functions to support gate-aware matrix fuctions.
+ *
+ *  - NMC_DiagonalGates: Z, S, T, SDG, TDG, RZ, U1
+ *  - NMC_NoneDiagonalGates: X, Y, H, U2, U3, RX, RY, SX
+ *  - NMC_DiagonalControlGates: CZ, CU1, CRZ
+ *  - NMC_NoneDiagonalControlGates: CX, CY, CU2, CU3, CH, CSWAP
+ *  - NMC_Measure: M
+ *
+ ******************************************************************/
+static void NMC_DiagonalGates(QRegister *QReg, int qubit, int gtype, complex_t M[])
 {
 	if(qubit >= QReg->getNumQubits()) {
 		printf("[%s] qubit(%d) out of range!\n", __func__, qubit);
 		exit(0);
 	}
 
-	double f = (double)(rand() % 100) / 100.0;
-	double lpm[QSTORE_PARTITION];
-	double upm[QSTORE_PARTITION];
-	double lengthm[QSTORE_PARTITION];
-	double lp = 0;
-	double up = 0;
-	double length = 0;
-	int state;
-
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		lpm[i] = upm[i] = lengthm[i] = 0;
+	if(QReg->qubitTypes[qubit] == KET_ZERO && gtype != QGATE_RZ) {
+		/* do nothing */
+		return;
 	}
 
-	/* 
-	 * (STEP1) Calculate the amplitude according to the |0> or |1>, respectively.
-	 */
+	/************************************************** 
+	 * (STEP1) evolve quantum states 
+	 **************************************************/
 	#pragma omp parallel for
 	for(int i=0; i<QSTORE_PARTITION; i++) {
-		std::map<qsize_t, QState*>::iterator it;
+		QState *Q = NULL;
+		complex_t newAmp;
+
+		QMAPITER it;
 		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
-			QState *Q = it->second;
-			if(stripe_lower(Q->getIndex(), qubit) == true) {
-				lpm[i] += norm(Q->getAmplitude());
+			Q = it->second;
+
+			/* Despite the redundancy of the code, we subdivide the code 
+			 * as shown below to maximize computational performance.
+			 */
+			if(QReg->qubitTypes[qubit] == KET_ZERO) {
+				/* RZ */
+				newAmp = Q->getAmplitude() * M[0];
+				Q->setAmplitude(newAmp);
+			} else if(QReg->qubitTypes[qubit] == KET_ONE) {
+				/* Z, S, T, SDG, TDG, RZ, U1 */
+				newAmp = Q->getAmplitude() * M[3];
+				Q->setAmplitude(newAmp);
 			} else {
-				upm[i] += norm(Q->getAmplitude());
+				if(stripe_lower(Q->getIndex(), qubit) == true) {
+					/* RZ */
+					newAmp = Q->getAmplitude() * M[0];
+					Q->setAmplitude(newAmp);
+				} else {
+					/* Z, S, T, SDG, TDG, RZ, U1 */
+					newAmp = Q->getAmplitude() * M[3];
+					Q->setAmplitude(newAmp);
+				}
 			}
-		}
+		} 
 	}
 
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		lp += lpm[i];
-		up += upm[i];
-	}
-
-	if(lp == 0 || up == 0) {
-		/* already measured */
-		if(lp > 0) {
-			state = 0;
-		} else {
-			state = 1;
-		}
-
-		return state;
-	}
-
-	/* 
-	 * (STEP2) Determine final state according to the probability
-	 */
-	state = collapse;
-
-	/* 
-	 * (STEP3) Set zero-amplited after collapse.
-	 */
-	#pragma omp parallel for
-	for(int i=0; i<QSTORE_PARTITION; i++) {
-		std::map<qsize_t, QState*>::iterator it;
-		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
-			QState *Q = it->second;
-			qsize_t i0 = Q->getIndex();
-	
-			if(state == 0 && stripe_upper(i0, qubit) == true) {
-				Q->setAmplitude(0);
-			} else if(state == 1 && stripe_lower(i0, qubit) == true) {
-				Q->setAmplitude(0);
-			}
-		}
-	}
-
-	/* 
-	 * (STEP4) Cleanup zero amplitude states
-	 */
-	QReg->clearZeroStates();
-
-	/* 
-	 * (STEP5) Normalize amplitudes
-	 */
-	QReg->normalize();
-
-	return state;
+	/************************************************** 
+	 * (STEP2) update qubit type
+	 **************************************************/
+	/* There is no target to update the qubit type. */
 }
 
-int MNOP(QRegister *QReg, int qubit) 
+static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex_t M[])
+{
+	QReg->checkMemory();
+
+	if(qubit >= QReg->getNumQubits()) {
+		printf("[%s] qubit(%d) out of range!\n", __func__, qubit);
+		exit(0);
+	}
+
+	qsize_t stride = get_stride(qubit);
+	int qubitType = QReg->qubitTypes[qubit];
+
+	static vector<QState*> addQList[QSTORE_PARTITION][MAX_CORES];
+	static vector<QState*> delQList[QSTORE_PARTITION][MAX_CORES];
+	
+	bool isLower = false;
+	bool isUpper = false;
+
+	/************************************************** 
+	 * (STEP1) evolve quantum states 
+	 **************************************************/
+	#pragma omp parallel for
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		int thread_id = omp_get_thread_num();
+		int tid = thread_id % QReg->getCPUCores();
+		bool isLowerLocal = false;
+		bool isUpperLocal = false;
+		QState *Q = NULL;
+		QState *lowerQ = NULL;
+		QState *upperQ = NULL;
+		complex_t oldAmp0;
+		complex_t oldAmp1;
+		complex_t newAmp0;
+		complex_t newAmp1;
+		qsize_t qidx = 0;
+		qsize_t i0 = 0;
+		qsize_t i1 = 0;
+		int hashid = 0;
+
+		QMAPITER it;
+		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
+			Q = it->second;
+			qidx = Q->getIndex();
+
+			/*****************************************************
+			 * (NOTICE!!) Despite the redundancy of the code, we 
+			 * subdivide the code by scenario as shown below to 
+			 * increase the readability of the source code.
+			 *****************************************************/
+			if(qubitType == KET_ZERO) {
+				/************************************************* 
+				 * (Scenario#1) Qubit is |0> state.
+				 * 
+				 *  state will evolves as follows 
+				 *    a|0> --> b|0> + c|1> 
+				 *************************************************/
+				oldAmp0 = Q->getAmplitude();
+				oldAmp1 = 0;
+
+				i0 = qidx;
+				i1 = qidx + stride;
+
+				newAmp0 = M[0]*oldAmp0 + M[1]*oldAmp1;
+				newAmp1 = M[2]*oldAmp0 + M[3]*oldAmp1;
+
+				/* update lower state */
+				if(isRealizedState(newAmp0) == true) {
+					/* update existing |0> amplitude */
+					Q->setAmplitude(newAmp0);
+					isLowerLocal = true;
+				} else {
+					/* remove zero amplitude |0> state */
+					hashid = (int)(i0 % QSTORE_PARTITION);
+					delQList[hashid][tid].push_back(Q);
+				}
+
+				/* update upper state */
+				if(isRealizedState(newAmp1) == true) {
+					/* add new |1> state */
+					upperQ = getQState(i1, newAmp1);
+					hashid = (int)(i1 % QSTORE_PARTITION);
+					addQList[hashid][tid].push_back(upperQ);
+					isUpperLocal = true;
+				}
+			} else if(qubitType == KET_ONE) {
+				/************************************************* 
+				 * (Scenario#2) Qubit is |1> state.
+				 * 
+				 *  state will evolves as follows 
+				 *    a|1> --> b|0> + c|1> 
+				 *************************************************/
+				oldAmp0 = 0;
+				oldAmp1 = Q->getAmplitude();
+
+				i0 = qidx - stride;
+				i1 = qidx;
+
+				newAmp0 = M[0]*oldAmp0 + M[1]*oldAmp1;
+				newAmp1 = M[2]*oldAmp0 + M[3]*oldAmp1;
+
+				/* update lower state */
+				if(isRealizedState(newAmp0) == true) {
+					/* add new |0> state */
+					lowerQ = getQState(i0, newAmp0);
+					hashid = (int)(i0 % QSTORE_PARTITION);
+					addQList[hashid][tid].push_back(lowerQ);
+					isLowerLocal = true;
+				}
+
+				/* update upper state */
+				if(isRealizedState(newAmp1) == true) {
+					/* update existing |1> amplitude */
+					Q->setAmplitude(newAmp1);
+					isUpperLocal = true;
+				} else {
+					/* remove zero amplitude |1> state */
+					hashid = (int)(i1 % QSTORE_PARTITION);
+					delQList[hashid][tid].push_back(Q);
+				}
+			} else {
+				/************************************************* 
+				 * (Scenario#3) Qubit is in superposed state    
+				 *
+				 * This is divided into following sub-scenarios 
+				 *************************************************/
+				if(stripe_lower(qidx, qubit) == true) {
+					i0 = qidx;
+					i1 = qidx + stride;
+
+					lowerQ = Q;
+					upperQ = QReg->findQState(i1);
+				} else {
+					i0 = qidx - stride;
+					i1 = qidx;
+
+					lowerQ = QReg->findQState(i0);
+					upperQ = Q;
+				}
+
+				if(lowerQ != NULL && upperQ != NULL) {
+					/******************************************
+					 * (Sub3-1) two matrix pair exist             
+					 *  - just update new amplitudes 
+				 	 ******************************************/
+					oldAmp0 = lowerQ->getAmplitude();
+					oldAmp1 = upperQ->getAmplitude();
+
+					if(lowerQ->getIndex() != qidx) {
+						/* (Important!!) To ensure concurrency when all matrix pairs are
+						   exist, only the thread assigned lowerQ updates the state. */
+						continue;
+					}
+
+					newAmp0 = M[0]*oldAmp0 + M[1]*oldAmp1;
+					newAmp1 = M[2]*oldAmp0 + M[3]*oldAmp1;
+
+					if(isRealizedState(newAmp0) == true) {
+						lowerQ->setAmplitude(newAmp0);
+						isLowerLocal = true;
+					} else {
+						/* remove zero amplitude |0> state */
+						hashid = (int)(i0 % QSTORE_PARTITION);
+						delQList[hashid][tid].push_back(lowerQ);
+					}
+
+					if(isRealizedState(newAmp1) == true) {
+						upperQ->setAmplitude(newAmp1);
+						isUpperLocal = true;
+					} else {
+						/* remove zero amplitude |1> state */
+						hashid = (int)(i1 % QSTORE_PARTITION);
+						delQList[hashid][tid].push_back(upperQ);
+					}
+				} else if(lowerQ != NULL) {
+					/******************************************
+					 * (Sub3-2) one of matrix pair(|0>) exists
+				 	 *  state will evolves as follows 
+		 			 *   a|0> --> b|0> + c|1> 
+				 	 ******************************************/
+					oldAmp0 = lowerQ->getAmplitude();
+					oldAmp1 = 0;
+
+					i0 = qidx;
+					i1 = qidx + stride;
+
+				#if 0
+					newAmp0 = M[0]*oldAmp0 + M[1]*oldAmp1;
+					newAmp1 = M[2]*oldAmp0 + M[3]*oldAmp1;
+				#else
+					newAmp0 = M[0]*oldAmp0;
+					newAmp1 = M[2]*oldAmp0;
+				#endif
+
+					/* update lower state */
+					if(isRealizedState(newAmp0) == true) {
+						/* update existing |0> amplitude */
+						lowerQ->setAmplitude(newAmp0);
+						isLowerLocal = true;
+					} else {
+						/* remove zero amplitude |0> state */
+						hashid = (int)(i0 % QSTORE_PARTITION);
+						delQList[hashid][tid].push_back(lowerQ);
+					}
+
+					/* update upper state */
+					if(isRealizedState(newAmp1) == true) {
+						/* add new upper state */
+						upperQ = getQState(i1, newAmp1);
+						hashid = (int)(i1 % QSTORE_PARTITION);
+						addQList[hashid][tid].push_back(upperQ);
+						isUpperLocal = true;
+					}
+				} else if(upperQ != NULL) {
+					/******************************************
+					 * (Sub3-3) one of matrix pair(|1>) exists
+				 	 *  state will evolves as follows 
+		 			 *   a|1> --> b|0> + c|1> 
+				 	 ******************************************/
+					oldAmp0 = 0;
+					oldAmp1 = upperQ->getAmplitude();
+
+					i0 = qidx - stride;
+					i1 = qidx;
+
+				#if 0
+					newAmp0 = M[0]*oldAmp0 + M[1]*oldAmp1;
+					newAmp1 = M[2]*oldAmp0 + M[3]*oldAmp1;
+				#else
+					newAmp0 = M[1]*oldAmp1;
+					newAmp1 = M[3]*oldAmp1;
+				#endif
+
+					/* update lower state */
+					if(isRealizedState(newAmp0) == true) {
+						/* add new |0> state */
+						lowerQ = getQState(i0, newAmp0);
+						hashid = (int)(i0 % QSTORE_PARTITION);
+						addQList[hashid][tid].push_back(lowerQ);
+						isLowerLocal = true;
+					} 
+	
+					/* update upper state */
+					if(isRealizedState(newAmp1) == true) {
+						/* update existing |1> amplitude */
+						upperQ->setAmplitude(newAmp1);
+						isUpperLocal = true;
+					} else {
+						/* remove zero amplitude |1> state */
+						hashid = (int)(i1 % QSTORE_PARTITION);
+						delQList[hashid][tid].push_back(upperQ);
+					}
+				}
+			}
+		}
+
+		if(isLowerLocal == true) isLower = true;
+		if(isUpperLocal == true) isUpper = true;
+	}
+
+	/******************************************************** 
+	 * (STEP2) remove zero amplitude states or add new state
+	 ********************************************************/
+	#pragma omp parallel for
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		for(int j=0; j<QReg->getCPUCores(); j++) {
+			for(auto Q : delQList[i][j]) {
+				QReg->delQState(Q->getIndex());
+			}
+			for(auto Q : addQList[i][j]) {
+				QReg->addQState(Q->getIndex(), Q);
+			}
+			addQList[i][j].clear();
+			delQList[i][j].clear();
+		}
+	}
+
+	/************************************************** 
+	 * (STEP3) update qubit type
+	 **************************************************/
+	if(isLower == true && isUpper == true) {
+		QReg->qubitTypes[qubit] = KET_SUPERPOSED;
+	} else if(isLower == true) {
+		QReg->qubitTypes[qubit] = KET_ZERO;
+	} else if(isUpper == true) {
+		QReg->qubitTypes[qubit] = KET_ONE;
+	}
+}
+
+static void NMC_DiagonalControlGates(QRegister *QReg, int control, int target, int gtype, complex_t M[])
+{
+	if(control >= QReg->getNumQubits()) {
+		printf("control(%d) out of range!\n", control);
+		exit(0);
+	}
+
+	if(target >= QReg->getNumQubits()) {
+		printf("target(%d) out of range!\n", target);
+		exit(0);
+	}
+
+	if(QReg->qubitTypes[control] == KET_ZERO) {
+		/* do nothing */
+		return;
+	}
+
+	/************************************************** 
+	 * (STEP1) apply matrix
+	 *************************************************/ 
+	#pragma omp parallel for
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		int thread_id = omp_get_thread_num();
+		cpu_set_t cpuset;
+		QState *Q = NULL;
+		qsize_t qidx;
+		complex_t oldAmp;
+		complex_t newAmp;
+
+		QMAPITER it;
+		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
+			Q = it->second;
+			qidx = Q->getIndex();
+			oldAmp = Q->getAmplitude();
+			newAmp = 0;
+
+			if(QReg->qubitTypes[control] == KET_SUPERPOSED) {
+				if(stripe_lower(qidx, control) == true) {
+					continue;
+				}
+			}
+
+			/* Despite the redundancy of the code, we subdivide the code 
+			 * as shown below to maximize computational performance.
+			 */
+
+			if(QReg->qubitTypes[target] == KET_ZERO) {
+				/* RZ */
+				newAmp = oldAmp * M[0];
+				Q->setAmplitude(newAmp);
+			} else if(QReg->qubitTypes[target] == KET_ONE) {
+				/* Z, S, T, SDG, TDG, RZ, U1 */
+				newAmp = oldAmp * M[3];
+				Q->setAmplitude(newAmp);
+			} else {
+				if(stripe_lower(qidx, target) == true) {
+					/* RZ */
+					newAmp = oldAmp * M[0];
+					Q->setAmplitude(newAmp);
+				} else {
+					/* Z, S, T, SDG, TDG, RZ, U1 */
+					newAmp = oldAmp * M[3];
+					Q->setAmplitude(newAmp);
+				}
+			}
+		}
+	}
+
+	/************************************************** 
+	 * (STEP2) update qubit type
+	 **************************************************/
+	/* There is no target to update the qubit type. */
+}
+
+static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int target, int gtype, complex_t M[])
+{
+	QReg->checkMemory();
+
+	if(control >= QReg->getNumQubits()) {
+		printf("control(%d) out of range!\n", control);
+		exit(0);
+	}
+
+	if(target >= QReg->getNumQubits()) {
+		printf("target(%d) out of range!\n", target);
+		exit(0);
+	}
+
+	if(QReg->qubitTypes[control] == KET_ZERO) {
+		/* do nothing */
+		return;
+	}
+
+	qsize_t stride = get_stride(target);
+	int targetQubitType = QReg->qubitTypes[target];
+
+	static vector<QState*> addQList[QSTORE_PARTITION][MAX_CORES];
+	static vector<QState*> delQList[QSTORE_PARTITION][MAX_CORES];
+	
+	bool isLower = false;
+	bool isUpper = false;
+
+	/************************************************** 
+	 * (STEP1) apply matrix
+	 *************************************************/ 
+	#pragma omp parallel for
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		int thread_id = omp_get_thread_num();
+		int tid = thread_id % QReg->getCPUCores();
+		cpu_set_t cpuset;
+		bool isLowerLocal = false;
+		bool isUpperLocal = false;
+		QState *lowerQ = NULL;
+		QState *upperQ = NULL;
+		QState *Q = NULL;
+		qsize_t qidx;
+		qsize_t i0;
+		qsize_t i1;
+		complex_t oldAmp0;
+		complex_t oldAmp1;
+		complex_t newAmp0;
+		complex_t newAmp1;
+		int hashid;
+
+		QMAPITER it;
+		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
+			Q = it->second;
+			qidx = Q->getIndex();
+
+			if(QReg->qubitTypes[control] == KET_SUPERPOSED) {
+				if(stripe_lower(qidx, control) == true) {
+					/* control bit is |0> */
+					if(stripe_lower(qidx, target) == true) {
+						isLowerLocal = true;
+					} else {
+						isUpperLocal = true;
+					}
+					continue;
+				}
+			}
+
+			/*****************************************************
+			 * (NOTICE!!) Despite the redundancy of the code, we 
+			 * subdivide the code by scenario as shown below to 
+			 * increase the readability of the source code.
+			 *****************************************************/
+			if(targetQubitType == KET_ZERO) {
+				/************************************************* 
+				 * (Scenario#1) Qubit is |0> state.
+				 * 
+				 *  state will evolves as follows 
+				 *    a|0> --> b|0> + c|1> 
+				 *************************************************/
+				oldAmp0 = Q->getAmplitude();
+				oldAmp1 = 0;
+
+				i0 = qidx;
+				i1 = qidx + stride;
+
+			#if 0
+				newAmp0 = M[0]*oldAmp0 + M[1]*oldAmp1;
+				newAmp1 = M[2]*oldAmp0 + M[3]*oldAmp1;
+			#else
+				newAmp0 = M[0]*oldAmp0;
+				newAmp1 = M[2]*oldAmp0;
+			#endif
+
+				/* update lower state */
+				if(isRealizedState(newAmp0) == true) {
+					/* update existing |0> amplitude */
+					Q->setAmplitude(newAmp0);
+					isLowerLocal = true;
+				} else {
+					/* remove zero amplitude |0> state */
+					hashid = (int)(i0 % QSTORE_PARTITION);
+					delQList[hashid][tid].push_back(Q);
+				}
+
+				/* update upper state */
+				if(isRealizedState(newAmp1) == true) {
+					/* add new |1> state */
+					upperQ = getQState(i1, newAmp1);
+					hashid = (int)(i1 % QSTORE_PARTITION);
+					addQList[hashid][tid].push_back(upperQ);
+					isUpperLocal = true;
+				}
+			} else if(targetQubitType == KET_ONE) {
+				/************************************************* 
+				 * (Scenario#2) Qubit is |1> state.
+				 * 
+				 *  state will evolves as follows 
+				 *    a|1> --> b|0> + c|1> 
+				 *************************************************/
+				oldAmp0 = 0;
+				oldAmp1 = Q->getAmplitude();
+
+				i0 = qidx - stride;
+				i1 = qidx;
+
+			#if 0
+				newAmp0 = M[0]*oldAmp0 + M[1]*oldAmp1;
+				newAmp1 = M[2]*oldAmp0 + M[3]*oldAmp1;
+			#else
+				newAmp0 = M[1]*oldAmp1;
+				newAmp1 = M[3]*oldAmp1;
+			#endif
+
+				/* update lower state */
+				if(isRealizedState(newAmp0) == true) {
+					/* add new |0> state */
+					lowerQ = getQState(i0, newAmp0);
+					hashid = (int)(i0 % QSTORE_PARTITION);
+					addQList[hashid][tid].push_back(lowerQ);
+					isLowerLocal = true;
+				}
+
+				/* update upper state */
+				if(isRealizedState(newAmp1) == true) {
+					/* update existing |1> amplitude */
+					Q->setAmplitude(newAmp1);
+					isUpperLocal = true;
+				} else {
+					/* remove zero amplitude |1> state */
+					hashid = (int)(i1 % QSTORE_PARTITION);
+					delQList[hashid][tid].push_back(Q);
+				}
+			} else {
+				/************************************************* 
+				 * (Scenario#3) Qubit is in superposed state    
+				 *
+				 * This is divided into following sub-scenarios 
+				 *************************************************/
+				if(stripe_lower(qidx, target) == true) {
+					i0 = qidx;
+					i1 = qidx + stride;
+
+					lowerQ = Q;
+					upperQ = QReg->findQState(i1);
+				} else {
+					i0 = qidx - stride;
+					i1 = qidx;
+
+					lowerQ = QReg->findQState(i0);
+					upperQ = Q;
+				}
+
+				if(lowerQ != NULL && upperQ != NULL) {
+					/******************************************
+					 * (Sub3-1) two matrix pair exist             
+					 *  - just update new amplitudes 
+				 	 ******************************************/
+					oldAmp0 = lowerQ->getAmplitude();
+					oldAmp1 = upperQ->getAmplitude();
+
+					if(lowerQ->getIndex() != qidx) {
+						/* (Important!!) To ensure concurrency when all matrix pairs are
+						   exist, only the thread assigned lowerQ updates the state. */
+						continue;
+					}
+
+					newAmp0 = M[0]*oldAmp0 + M[1]*oldAmp1;
+					newAmp1 = M[2]*oldAmp0 + M[3]*oldAmp1;
+
+					if(isRealizedState(newAmp0) == true) {
+						lowerQ->setAmplitude(newAmp0);
+						isLowerLocal = true;
+					} else {
+						/* remove zero amplitude |0> state */
+						hashid = (int)(i0 % QSTORE_PARTITION);
+						delQList[hashid][tid].push_back(lowerQ);
+					}
+
+					if(isRealizedState(newAmp1) == true) {
+						upperQ->setAmplitude(newAmp1);
+						isUpperLocal = true;
+					} else {
+						/* remove zero amplitude |1> state */
+						hashid = (int)(i1 % QSTORE_PARTITION);
+						delQList[hashid][tid].push_back(upperQ);
+					}
+				} else if(lowerQ != NULL) {
+					/******************************************
+					 * (Sub3-2) one of matrix pair(|0>) exists
+				 	 *  state will evolves as follows 
+		 			 *   a|0> --> b|0> + c|1> 
+				 	 ******************************************/
+					oldAmp0 = lowerQ->getAmplitude();
+					oldAmp1 = 0;
+
+					i0 = qidx;
+					i1 = qidx + stride;
+
+				#if 0
+					newAmp0 = M[0]*oldAmp0 + M[1]*oldAmp1;
+					newAmp1 = M[2]*oldAmp0 + M[3]*oldAmp1;
+				#else
+					newAmp0 = M[0]*oldAmp0;
+					newAmp1 = M[2]*oldAmp0;
+				#endif
+
+					/* update lower state */
+					if(isRealizedState(newAmp0) == true) {
+						/* update existing |0> amplitude */
+						lowerQ->setAmplitude(newAmp0);
+						isLowerLocal = true;
+					} else {
+						/* remove zero amplitude |0> state */
+						hashid = (int)(i0 % QSTORE_PARTITION);
+						delQList[hashid][tid].push_back(lowerQ);
+					}
+
+					/* update upper state */
+					if(isRealizedState(newAmp1) == true) {
+						/* add new upper state */
+						upperQ = getQState(i1, newAmp1);
+						hashid = (int)(i1 % QSTORE_PARTITION);
+						addQList[hashid][tid].push_back(upperQ);
+						isUpperLocal = true;
+					}
+				} else if(upperQ != NULL) {
+					/******************************************
+					 * (Sub3-3) one of matrix pair(|1>) exists
+				 	 *  state will evolves as follows 
+		 			 *   a|1> --> b|0> + c|1> 
+				 	 ******************************************/
+					oldAmp0 = 0;
+					oldAmp1 = upperQ->getAmplitude();
+
+					i0 = qidx - stride;
+					i1 = qidx;
+
+				#if 0
+					newAmp0 = M[0]*oldAmp0 + M[1]*oldAmp1;
+					newAmp1 = M[2]*oldAmp0 + M[3]*oldAmp1;
+				#else
+					newAmp0 = M[1]*oldAmp1;
+					newAmp1 = M[3]*oldAmp1;
+				#endif
+
+					/* update lower state */
+					if(isRealizedState(newAmp0) == true) {
+						/* add new |0> state */
+						lowerQ = getQState(i0, newAmp0);
+						hashid = (int)(i0 % QSTORE_PARTITION);
+						addQList[hashid][tid].push_back(lowerQ);
+						if(isLowerLocal == false) isLowerLocal = true;
+					} 
+	
+					/* update upper state */
+					if(isRealizedState(newAmp1) == true) {
+						/* update existing |1> amplitude */
+						upperQ->setAmplitude(newAmp1);
+						if(isUpperLocal == false) isUpperLocal = true;
+					} else {
+						/* remove zero amplitude |1> state */
+						hashid = (int)(i1 % QSTORE_PARTITION);
+						delQList[hashid][tid].push_back(upperQ);
+					}
+				}
+			}
+		}
+
+		if(isLowerLocal == true) isLower = true;
+		if(isUpperLocal == true) isUpper = true;
+	}
+
+	/******************************************************** 
+	 * (STEP2) remove zero amplitude states or add new state
+	 ********************************************************/
+	#pragma omp parallel for
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		for(int j=0; j<QReg->getCPUCores(); j++) {
+			for(auto Q : delQList[i][j]) {
+				QReg->delQState(Q->getIndex());
+			}
+			for(auto Q : addQList[i][j]) {
+				QReg->addQState(Q->getIndex(), Q);
+			}
+			addQList[i][j].clear();
+			delQList[i][j].clear();
+		}
+	}
+
+	/************************************************** 
+	 * (STEP3) update qubit type
+	 **************************************************/
+	if(isLower == true && isUpper == true) {
+		QReg->qubitTypes[target] = KET_SUPERPOSED;
+	} else if(isLower == true) {
+			QReg->qubitTypes[target] = KET_ZERO;
+	} else if(isUpper == true) {
+		QReg->qubitTypes[target] = KET_ONE;
+	}
+}
+
+static int NMC_Measure(QRegister *QReg, int qubit) 
 {
 	if(qubit >= QReg->getNumQubits()) {
 		printf("[%s] qubit(%d) out of range!\n", __func__, qubit);
 		return -1;
 	}
 
+	if(QReg->qubitTypes[qubit] == KET_ZERO || QReg->qubitTypes[qubit] == KET_ONE) {
+		/* do nothing */
+		return QReg->qubitTypes[qubit];
+	}
+
 	double f = (double)(rand() % 100) / 100.0;
-	double lpm[QSTORE_PARTITION];
-	double upm[QSTORE_PARTITION];
-	double lengthm[QSTORE_PARTITION];
+	double lpm[QReg->getCPUCores()];
+	double upm[QReg->getCPUCores()];
+	double lengthm[QReg->getCPUCores()];
 	double lp = 0;
 	double up = 0;
-	double length = 0;
 	int state;
 
-	for(int i=0; i<QSTORE_PARTITION; i++) {
+	static vector<QState*> delQList[QSTORE_PARTITION][MAX_CORES];
+	
+	for(int i=0; i<QReg->getCPUCores(); i++) {
 		lpm[i] = upm[i] = lengthm[i] = 0;
 	}
 
-	/* 
-	 * (STEP1) Calculate the amplitude according to the |0> or |1>, respectively.
-	 */
+	/************************************************** 
+	 * (STEP1) get probability of |0> and |1> 
+	 **************************************************/
 	#pragma omp parallel for
 	for(int i=0; i<QSTORE_PARTITION; i++) {
-		std::map<qsize_t, QState*>::iterator it;
+		int thread_id = omp_get_thread_num();
+		int tid = thread_id % QReg->getCPUCores();
+		QState *Q = NULL;
+
+		QMAPITER it;
 		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
-			QState *Q = it->second;
+			Q = it->second;
 			if(stripe_lower(Q->getIndex(), qubit) == true) {
-				lpm[i] += norm(Q->getAmplitude());
+				lpm[tid] += norm(Q->getAmplitude());
 			} else {
-				upm[i] += norm(Q->getAmplitude());
+				upm[tid] += norm(Q->getAmplitude());
 			}
 		}
 	}
 
-	for(int i=0; i<QSTORE_PARTITION; i++) {
+	for(int i=0; i<QReg->getCPUCores(); i++) {
 		lp += lpm[i];
 		up += upm[i];
 	}
@@ -1299,15 +1476,127 @@ int MNOP(QRegister *QReg, int qubit)
 		return state;
 	}
 
-	/* 
-	 * (STEP2) Determine final state according to the probability
-	 */
+	/************************************************** 
+	 * (STEP2) set final state according to the probability
+	 **************************************************/
 	if(f < lp) {
 		state = 0;      // collapsed to |0>
 	} else {
 		state = 1;      // collapsed to |1>
 	}
 
+	/************************************************** 
+	 * (STEP3) get collapsed states
+	 **************************************************/
+	#pragma omp parallel for
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		int thread_id = omp_get_thread_num();
+		int tid = thread_id % QReg->getCPUCores();
+		QState *Q = NULL;
+
+		QMAPITER it;
+		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
+			Q = it->second;
+			qsize_t qidx = Q->getIndex();
+			int hashid;
+
+			if((state == 0 && stripe_upper(qidx, qubit) == true) || 
+			   (state == 1 && stripe_lower(qidx, qubit) == true)) {
+				hashid = (int)(qidx % QSTORE_PARTITION);
+				delQList[hashid][tid].push_back(Q);
+			}
+		}
+	}
+
+	/************************************************** 
+	 * (STEP5) remove zero amplitude states 
+	 **************************************************/
+	#pragma omp parallel for
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		for(int j=0; j<QReg->getCPUCores(); j++) {
+			for(auto Q : delQList[i][j]) {
+				QReg->delQState(Q->getIndex());
+			}
+			delQList[i][j].clear();
+		}
+	}
+
+	/************************************************** 
+	 * (STEP6) Normalize amplitudes
+	 **************************************************/
+	QReg->normalize();
+
+	/************************************************** 
+	 * (STEP7) Revalidate qubit types
+	 **************************************************/
+	for(int i=0; i<QReg->getNumQubits(); i++) {
+		QReg->qubitTypes[i] = QType(QReg, i);
+	}
+
 	return state;
 }
 
+static int NMC_MeasureF(QRegister *QReg, int qubit, int collapse) 
+{
+	if(QReg->qubitTypes[qubit] == KET_ZERO || QReg->qubitTypes[qubit] == KET_ONE) {
+		/* do nothing */
+		return QReg->qubitTypes[qubit];
+	}
+
+	if(qubit >= QReg->getNumQubits()) {
+		printf("[%s] qubit(%d) out of range!\n", __func__, qubit);
+		exit(0);
+	}
+
+	static vector<QState*> delQList[QSTORE_PARTITION][MAX_CORES];
+	
+	/************************************************** 
+	 * (STEP1) get collapsed states according to argument
+	 **************************************************/
+	#pragma omp parallel for
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		int thread_id = omp_get_thread_num();
+		int tid = thread_id % QReg->getCPUCores();
+		QState *Q = NULL;
+
+		QMAPITER it;
+		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
+			Q = it->second;
+			qsize_t qidx = Q->getIndex();
+			int hashid;
+	
+			if((collapse == 0 && stripe_upper(qidx, qubit) == true) || 
+			   (collapse == 1 && stripe_lower(qidx, qubit) == true)) {
+				hashid = (int)(qidx % QSTORE_PARTITION);
+				delQList[hashid][tid].push_back(Q);
+			}
+		}
+	}
+
+	/************************************************** 
+	 * (STEP5) remove zero amplitude states 
+	 **************************************************/
+	#pragma omp parallel for
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		for(int j=0; j<QReg->getCPUCores(); j++) {
+			for(auto Q : delQList[i][j]) {
+				QReg->delQState(Q->getIndex());
+			}
+			delQList[i][j].clear();
+		}
+	}
+
+	/************************************************** 
+	 * (STEP4) Normalize amplitudes
+	 **************************************************/
+	QReg->normalize();
+
+	/************************************************** 
+	 * (STEP5) Revalidate qubit types
+	 **************************************************/
+	for(int i=0; i<QReg->getNumQubits(); i++) {
+		QReg->qubitTypes[i] = QType(QReg, i);
+	}
+
+	return collapse;
+}

@@ -163,6 +163,8 @@ static inline char *human_readable_size(uint64_t size, char *buf)
 	return buf;
 }
 
+extern void init_strides(void);
+extern qsize_t get_stride(int qubit);
 extern qsize_t quantum_shiftL(qsize_t left, qsize_t right);
 extern qsize_t quantum_shiftR(qsize_t left, qsize_t right);
 extern bool stripe_lower(qsize_t index, int qubit);
@@ -181,5 +183,11 @@ extern void getCPU(char *cpu, int *cores, char *herz);
 extern void getOS(char *name, char *version);
 extern char *getUsedMemHuman(char *buf);
 extern void showMemoryInfo(void);
+extern void sec2str(double tm, char *str);
+extern void msec2str(double tm, char *str);
+extern void usec2str(double tm, char *str);
+extern void nsec2str(double tm, char *str);
+extern void set_affinity(int coreid);
+extern bool isRealizedState(complex_t amp);
 
 #endif

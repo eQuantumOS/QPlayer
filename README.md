@@ -1,4 +1,4 @@
-# QPlayer v1.0-Leopard 
+# QPlayer v2.0-Puma 
 ### Light-weight, Scalable and Fast Quantum Simulator
   
 With the rapid evolution of quantum computing, classical quantum simulations
@@ -68,10 +68,12 @@ more qubits and faster quantum operations with smaller memory than before.
 
 # QPlayer Source Tree
 <pre>
-  + core               : qplayer core library
-  + docs               : manual and documentations
-  + qasm               : OpenQASM 2.0 parser & executor
-  + test - general     : test examples for general quantum algorithms
-         - surfacecode : test examples for surface code
-         - MLQ         : experimental code to support 20 logical qubits with d-3 surface code
+  + core                : qplayer core library
+  + docs                : manual and documentations
+  + qasm                : OpenQASM 2.0 parser & executor
+  + test - general      : test examples for general quantum algorithms
+         - surfacecode  : test examples for surface code
+         - MLQ          : experimental code to support 20 logical qubits with d-3 surface code
+         - verification : verification code to validate QPlayer installation
+         - benchmark    : several benchmark codes
 </pre>

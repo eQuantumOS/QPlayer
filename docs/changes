@@ -1,3 +1,44 @@
+2023-08-31 release QPlayer v2.0-Puma
+
+2023-08-30 add get_stride(int qubit) function
+
+2023-08-30 update stripe_lower()/stripe_upper()
+    - check state by using bit operation
+
+2023-08-30 move checkMemory(): register.h --> register.cpp
+
+2023-08-30 update register.h
+    - remove all locking logic
+    - rename QState functions
+      * setQState()   -> addQState()
+      * eraseQSTate() -> delQSTate()
+
+2023-08-30 move temporal vector variables: register.h --> gate.cpp
+    - vector<QState*> addQList[QSTORE_PARTITION][MAX_CORES];
+    - vector<QState*> delQList[QSTORE_PARTITION][MAX_CORES];
+
+2023-08-30 alias data structures
+    - std::map<qsize_t, QState*>           --> QMAP
+    - std::map<qsize_t, QState*>::iterator --> QMAPITER
+
+2023-08-29 move some functions register.h --> register.cpp
+    - void updateQRegStat(int gate, QTimer timer)
+    - struct qregister_stat getQRegStat(void)
+    - void showQRegStat(void)
+
+2023-08-29 remove old matrix calculation logic
+    - we only support new matrix calculation algorithm.
+
+2023-08-29 support gate-aware matrix calculation
+    - add core/src/gate_nmc.cpp
+    - update core/src/gate.cpp 
+    - add benchmard codes : ~/test/benchmark/gate_perf.cpp
+
+2023-08-29 update testing directory
+    - move general/install_test.cpp --> verification/install_test.cpp
+    - add benchmark/longrun_test.cpp
+    - add benchmark/rcs.cpp
+
 2023-07-10 add memory utility function
     - add getMemory(uint64_t *memTotal, uint64_t *memAvail, uint64_t *memUsed)
 

@@ -36,9 +36,10 @@ using namespace std;
 #include <boost/multiprecision/cpp_int.hpp>
 using namespace boost::multiprecision;
 
-typedef uint1024_t qsize_t;
+typedef uint512_t qsize_t;
 #define MAX_QUBITS	1024
 #define QSTORE_PARTITION    1171
+#define MAX_CORES 64
 
 typedef complex<double> complex_t;
 

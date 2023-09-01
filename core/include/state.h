@@ -44,7 +44,6 @@ class QState {
 private:
 	qsize_t index;
 	complex_t amplitude;
-	size_t stage;
 
 public:
 	QState(void);
@@ -58,8 +57,6 @@ public:
 	void setIndex(qsize_t i) { index = i; }
 	void setAmplitude(complex_t a) { amplitude = a; }
 	void resizeAmplitude(complex_t a) { amplitude /= a; }
-	void setStage(size_t s) { stage = s; }
-	size_t getStage(void) { return stage; }
 };
 
 extern QState *getQState(void);

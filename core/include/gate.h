@@ -56,6 +56,5 @@ extern void iSWAP(QRegister *QReg, int qubit1, int qubit2);
 extern int M(QRegister *QReg, int qubit);
 extern int MV(QRegister *QReg, int qubit);
 extern int MF(QRegister *QReg, int qubit, int collapse);
-extern int MNOP(QRegister *QReg, int qubit);
 
 #endif

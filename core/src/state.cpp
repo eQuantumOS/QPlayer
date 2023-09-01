@@ -33,21 +33,18 @@ QState::QState(void)
 {
 	index = 0;
 	amplitude = complex_t(0, 0);
-	stage = 0;
 }	
 
 QState::QState(qsize_t i, complex_t a) 
 {
 	index = i;
 	amplitude = a;
-	stage = 0;
 }	
 
 QState::QState(QState *Q) 
 {
 	index = Q->getIndex();
 	amplitude = Q->getAmplitude();
-	stage = 0;
 }	
 
 QState::~QState(void) 

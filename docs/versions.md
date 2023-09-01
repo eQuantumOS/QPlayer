@@ -1,5 +1,21 @@
 ![image](https://github.com/eQuantumOS/QPlayer/assets/17871602/3e9517cf-bed6-45b9-8cea-255bf1b84935)
   
+# v2.0-Puma
++ release date : August 31, 2023
++ features
+  - approximately 2 to 10 times improved calculation performance thana
+    v1.0-Leopard by utilizing gate-aware low computational matrix calculation 
+    * DiagonalGates() : Z, S, T, SDG, TDG, RZ, U1
+    * NoneDiagonalGates() : X, Y, H, U2, U3, RX, RY, SX
+    * DiagonalControlGates() : CZ, CU1, CRZ
+    * NoneDiagonalControlGates() : CX, CY, CU2, CU3, CH, CSWAP
+  - remove locking on access to multiple state containers
+  - refine the testing directory as follows
+    * ~/test/general
+    * ~/test/surfacecode
+    * ~/test/verification
+    * ~/test/benchmark
+
 # v1.0-Leopard
 + release date : June 23, 2023
 + features
