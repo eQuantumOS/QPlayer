@@ -27,7 +27,11 @@ using namespace std;
 
 void grover(QRegister *QReg, int qubits) {
 	int target = qubits / 2;
-	int repeat = (int)(sqrt(pow(4, qubits)));
+#if 1
+	int repeat = qubits * 2;
+#else
+	int repeat = (int)((M_PI/4) * sqrt(pow(2, qubits)));
+#endif
 
 	/* prepare grover algorithm */
 	X(QReg, target);
