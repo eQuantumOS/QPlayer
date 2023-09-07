@@ -30,7 +30,8 @@ static int opt_dratio = 0;
 static int opt_task = 0;
 
 typedef enum {
-    GATE_U1 = 0,
+    GATE_ID = 0,
+    GATE_U1,
     GATE_U2,
     GATE_U3,
     GATE_X,
@@ -110,7 +111,7 @@ void gen_gate(struct gate_param *param, int qubit)
 
 #if 1
 	if((rand() % 100 < opt_dratio)) {
-		int gate = rand() % 8;
+		int gate = rand() % 9;
 		if(gate == 0) {
 			param->gate = GATE_Z;
 		} else if(gate == 1) {
@@ -127,9 +128,11 @@ void gen_gate(struct gate_param *param, int qubit)
 			param->gate = GATE_CZ;
 		} else if(gate == 7) {
 			param->gate = GATE_CU1;
+		} else if(gate == 8) {
+			param->gate = GATE_ID;
 		}
 	} else {
-		int gate = rand() % 8;
+		int gate = rand() % 9;
 		if(gate == 0) {
 			param->gate = GATE_X;
 		} else if(gate == 1) {
@@ -146,6 +149,8 @@ void gen_gate(struct gate_param *param, int qubit)
 			param->gate = GATE_U2;
 		} else if(gate == 7) {
 			param->gate = GATE_U3;
+		} else if(gate == 8) {
+			param->gate = GATE_ID;
 		}
 	}
 #else
@@ -200,7 +205,9 @@ void run_gate(struct gate_param *param)
 	double angle2 = param->angle2;
 	double angle3 = param->angle3;
 
-	if(gate == GATE_X) {
+	if(gate == GATE_ID) {
+        I(QReg, target);
+	} else if(gate == GATE_X) {
         X(QReg, target);
     } else if(gate == GATE_Y) {
         Y(QReg, target);
@@ -254,8 +261,8 @@ void test(void)
 			gen_gate(&param, j);
 			run_gate(&param);
 		}
-//		printf("%d/%d round done...\n", i+1, opt_depth);
-//		fflush(stdout);
+		printf("%d/%d round done...\n", i+1, opt_depth);
+		fflush(stdout);
 	}
 }
 
@@ -312,7 +319,11 @@ int main(int argc, char **argv)
 	for(int i=0; i<=10; i++) {
 		QReg->reset();
 		opt_dratio = i * 10;
+		timer.start();
 		setHadamard();
+		timer.end();
+		printf("dratio=%02d -> %s... prepare done..\n", opt_dratio, timer.getTime());
+		fflush(stdout);
 		timer.start();
 		test();
 		timer.end();
