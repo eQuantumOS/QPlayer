@@ -85,31 +85,31 @@ void showStat(struct qregister_stat *stat)
 
 	printf("\n");
 	printf("\033[1;34m2. Runtime (micro seconds)\033[0;39m\n");
-	printf("+-----------------------------+-----------------------------------------+\n");
+	printf("+-----------------------------+---------------------------------------------+\n");
 	printf("| 1. total simulation time    |   %11.f %29s |\n", stat->tm_total, totalTimeStr);
-	printf("+-----------------------------+---------------+---------+---------+---------+\n");
-	printf("| 2. each gate execution time |     total     |   max   |   min   |   avg   |\n");
-	printf("+-----------------------------+---------------+---------+---------+---------+\n");
+	printf("+-----------------------------+---------------+-----------+-------+---------+\n");
+	printf("| 2. each gate execution time |     total     |    max    |  min  |   avg   |\n");
+	printf("+-----------------------------+---------------+-----------+-------+---------+\n");
 	for(int i=0; i<MAX_GATES; i++) {
 		if(stat->gateCalls[i] != 0) {
-			printf("| %27s | %13.0f | %7.0f | %7.0f | %7.0f |\n", gateString(i),
+			printf("| %27s | %13.0f | %9.0f | %5.0f | %7.0f |\n", gateString(i),
 					stat->tm_gates_total[i],
 					stat->tm_gates_max[i],
 					stat->tm_gates_min[i],
 					stat->tm_gates_avg[i]);
 			}
 	}
-	printf("+-----------------------------+---------------+---------+---------+---------+\n");
+	printf("+-----------------------------+---------------+-----------+-------+---------+\n");
 
 	printf("\n");
 	printf("\033[1;34m3. Simulation Jobs\033[0;39m\n");
-	printf("+-----------------------------------+----------+\n");
+	printf("+-----------------------------------+---------------+\n");
 	printf("| 1. max number of quantum states   | %13ld |\n", (uint64_t)stat->maxQStates);
-	printf("+-----------------------------------+----------+\n");
+	printf("+-----------------------------------+---------------+\n");
 	printf("| 2. final number of quantum states | %13ld |\n", (uint64_t)stat->finalQStates);
-	printf("+-----------------------------------+----------+\n");
+	printf("+-----------------------------------+---------------+\n");
 	printf("| 3. used memory                    | %13s |\n", memUsedStr);
-	printf("+-----------------------------------+----------+\n");
+	printf("+-----------------------------------+---------------+\n");
 
 	printf("\n");
 	printf("\033[1;34m4. System Information\033[0;39m\n");
@@ -228,7 +228,7 @@ void convertQASM(void)
 	out = fopen(f_qasm, "wt");
 
 	while(!feof(in)) {
-		char line[128] = "";
+		char line[1024] = "";
 
 		fgets(line, sizeof(line), in);
 		fprintf(out, "%s\n", line);
