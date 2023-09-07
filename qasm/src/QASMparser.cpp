@@ -464,6 +464,8 @@ void QASMparser::QASMgate(bool execute) {
 								RY(QReg, argsMap[u->target].first+i, parameters[i]->num);
 							} else if(gate_name == "rz") {
 								RZ(QReg, argsMap[u->target].first+i, parameters[i]->num);
+							} else if(gate_name == "sx") {
+								SX(QReg, argsMap[u->target].first+i);
 							} else {
 								addUgate(argsMap[u->target].first+i, theta->num, phi->num, lambda->num);
 							}

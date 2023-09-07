@@ -34,6 +34,8 @@ gate sdg a { u1(-pi/2) a; }
 gate t a { u1(pi/4) a; }
 // C3 gate: conjugate of sqrt(S)
 gate tdg a { u1(-pi/4) a; }
+// sx gate  : fake implementation
+gate sx a { id a; } 
 
 // --- Standard rotations ---
 // Rotation around X-axis
