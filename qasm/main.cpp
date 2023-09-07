@@ -56,10 +56,12 @@ void showStat(struct qregister_stat *stat)
 	char memTotalStr[32] = "";
 	char memAvailStr[32] = "";
 	char memUsedStr[32] = "";
+	char totalTimeStr[32] = "";
 
 	human_readable_size(stat->memTotal, memTotalStr);
 	human_readable_size(stat->memAvail, memAvailStr);
 	human_readable_size(stat->memUsed, memUsedStr);
+	usec2str(stat->tm_total, totalTimeStr);
 
 	printf("\n");
 	printf("\033[1;34m1. Circuit Information\033[0;39m\n");
@@ -84,29 +86,29 @@ void showStat(struct qregister_stat *stat)
 	printf("\n");
 	printf("\033[1;34m2. Runtime (micro seconds)\033[0;39m\n");
 	printf("+-----------------------------+-----------------------------------------+\n");
-	printf("| 1. total simulation time    |   %-20.f                  |\n", stat->tm_total);
-	printf("+-----------------------------+-----------+---------+---------+---------+\n");
-	printf("| 2. each gate execution time |   total   |   max   |   min   |   avg   |\n");
-	printf("+-----------------------------+-----------+---------+---------+---------+\n");
+	printf("| 1. total simulation time    |   %11.f %29s |\n", stat->tm_total, totalTimeStr);
+	printf("+-----------------------------+---------------+---------+---------+---------+\n");
+	printf("| 2. each gate execution time |     total     |   max   |   min   |   avg   |\n");
+	printf("+-----------------------------+---------------+---------+---------+---------+\n");
 	for(int i=0; i<MAX_GATES; i++) {
 		if(stat->gateCalls[i] != 0) {
-			printf("| %27s | %9.0f | %7.0f | %7.0f | %7.0f |\n", gateString(i), 
-				stat->tm_gates_total[i],
-				stat->tm_gates_max[i],
-				stat->tm_gates_min[i],
-				stat->tm_gates_avg[i]);
-		}
+			printf("| %27s | %13.0f | %7.0f | %7.0f | %7.0f |\n", gateString(i),
+					stat->tm_gates_total[i],
+					stat->tm_gates_max[i],
+					stat->tm_gates_min[i],
+					stat->tm_gates_avg[i]);
+			}
 	}
-	printf("+-----------------------------+-----------+---------+---------+---------+\n");
+	printf("+-----------------------------+---------------+---------+---------+---------+\n");
 
 	printf("\n");
 	printf("\033[1;34m3. Simulation Jobs\033[0;39m\n");
 	printf("+-----------------------------------+----------+\n");
-	printf("| 1. max number of quantum states   | %8ld |\n", (uint64_t)stat->maxQStates);
+	printf("| 1. max number of quantum states   | %13ld |\n", (uint64_t)stat->maxQStates);
 	printf("+-----------------------------------+----------+\n");
-	printf("| 2. final number of quantum states | %8ld |\n", (uint64_t)stat->finalQStates);
+	printf("| 2. final number of quantum states | %13ld |\n", (uint64_t)stat->finalQStates);
 	printf("+-----------------------------------+----------+\n");
-	printf("| 3. used memory                    | %8s |\n", memUsedStr);
+	printf("| 3. used memory                    | %13s |\n", memUsedStr);
 	printf("+-----------------------------------+----------+\n");
 
 	printf("\n");
