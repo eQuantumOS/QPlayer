@@ -261,8 +261,6 @@ void test(void)
 			gen_gate(&param, j);
 			run_gate(&param);
 		}
-		printf("%d/%d round done...\n", i+1, opt_depth);
-		fflush(stdout);
 	}
 }
 
@@ -316,18 +314,14 @@ int main(int argc, char **argv)
  	QReg = new QRegister(opt_qubits);
 
 #if 1
-	for(int i=0; i<=10; i++) {
+	for(int i=0; i<=100; i++) {
 		QReg->reset();
-		opt_dratio = i * 10;
-		timer.start();
+		opt_dratio = i * 1;
 		setHadamard();
-		timer.end();
-		printf("dratio=%02d -> %s... prepare done..\n", opt_dratio, timer.getTime());
-		fflush(stdout);
 		timer.start();
 		test();
 		timer.end();
-		printf("dratio=%02d -> %s\n", opt_dratio, timer.getTime());
+		printf("dratio=%02d -> %20s (%.0f sec)\n", opt_dratio, timer.getTime(), timer.getElapsedSec());
 		fflush(stdout);
 	}
 #else

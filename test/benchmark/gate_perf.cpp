@@ -135,30 +135,33 @@ void run_gate_loop(int gtype)
 {
 	QTimer timer;
 
-	if(baseMode == KET_ZERO) {
-		set_targetState(KET_ZERO);
-	} else if(baseMode == KET_ONE) {
-		set_targetState(KET_ONE);
-	} else {
-		set_targetState(KET_SUPERPOSED);
-	}
-
-	timer.start();
 	for(int i=0; i<opt_runs; i++) { 
-		run_gate(gtype); 
-	}
-	timer.end();
+		if(baseMode == KET_ZERO) {
+			set_targetState(KET_ZERO);
+		} else if(baseMode == KET_ONE) {
+			set_targetState(KET_ONE);
+		} else {
+			set_targetState(KET_SUPERPOSED);
+		}
 
-	double tm = timer.getElapsedMSec() / (double)(opt_runs);
-	printf("%-10s : %10.1f ms\n", gateString(gtype), tm);
+		if(QType(QReg, control) != KET_SUPERPOSED) {
+			H(QReg, control);
+		}
+
+		timer.lapStart();
+		run_gate(gtype); 
+		timer.lapStop();
+	}
+	timer.lapFinish();
+
+	double tm_s = timer.getElapsedSec() / (double)(opt_runs);
+	double tm_ms = timer.getElapsedMSec() / (double)(opt_runs);
+	printf("%-10s : %10.2f s or %10.2f ms\n", gateString(gtype), tm_s, tm_ms);
 	fflush(stdout);
 }
 
 void run(void)
 {
-	run_gate_loop(QGATE_X);
-	run_gate_loop(QGATE_Y);
-	run_gate_loop(QGATE_H);
 	run_gate_loop(QGATE_Z);
 	run_gate_loop(QGATE_S);
 	run_gate_loop(QGATE_T);
@@ -171,6 +174,9 @@ void run(void)
 	run_gate_loop(QGATE_CU1);
 	printf("\n");
 
+	run_gate_loop(QGATE_X);
+	run_gate_loop(QGATE_Y);
+	run_gate_loop(QGATE_H);
 	run_gate_loop(QGATE_RX);
 	run_gate_loop(QGATE_RY);
 	run_gate_loop(QGATE_U2);
