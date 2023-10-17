@@ -97,11 +97,17 @@ gate cu3(theta,phi,lambda) c, t
   cx c,t;
   u3(theta/2,phi,0) t;
 }
-
 //swap
 gate swap a, b 
 {
 	cx a,b;
 	cx b,a;
 	cx a,b;
+}
+//cswap
+gate cswap a, b, c
+{
+    cx c,b;
+    ccx a, b, c;
+    cx c,b;
 }
