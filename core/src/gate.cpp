@@ -887,22 +887,29 @@ static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex
 					newAmp0 = M[0]*oldAmp0 + M[1]*oldAmp1;
 					newAmp1 = M[2]*oldAmp0 + M[3]*oldAmp1;
 
-					if(isRealizedState(newAmp0) == true) {
+					if(isRealizedState(newAmp0) == true && isRealizedState(newAmp1) == true) {
 						lowerQ->setAmplitude(newAmp0);
-						isLowerLocal = true;
-					} else {
-						/* remove zero amplitude |0> state */
-						hashid = (int)(i0 % QSTORE_PARTITION);
-						delQList[hashid][tid].push_back(lowerQ);
-					}
-
-					if(isRealizedState(newAmp1) == true) {
 						upperQ->setAmplitude(newAmp1);
+						isLowerLocal = true;
 						isUpperLocal = true;
 					} else {
-						/* remove zero amplitude |1> state */
-						hashid = (int)(i1 % QSTORE_PARTITION);
-						delQList[hashid][tid].push_back(upperQ);
+						if(isRealizedState(newAmp0) == true) {
+							lowerQ->setAmplitude(newAmp0);
+							isLowerLocal = true;
+						} else {
+							/* remove zero amplitude |0> state */
+							hashid = (int)(i0 % QSTORE_PARTITION);
+							delQList[hashid][tid].push_back(lowerQ);
+						}
+	
+						if(isRealizedState(newAmp1) == true) {
+							upperQ->setAmplitude(newAmp1);
+							isUpperLocal = true;
+						} else {
+							/* remove zero amplitude |1> state */
+							hashid = (int)(i1 % QSTORE_PARTITION);
+							delQList[hashid][tid].push_back(upperQ);
+						}
 					}
 				} else if(lowerQ != NULL) {
 					/******************************************
@@ -916,13 +923,8 @@ static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex
 					i0 = qidx;
 					i1 = qidx + stride;
 
-				#if 0
-					newAmp0 = M[0]*oldAmp0 + M[1]*oldAmp1;
-					newAmp1 = M[2]*oldAmp0 + M[3]*oldAmp1;
-				#else
 					newAmp0 = M[0]*oldAmp0;
 					newAmp1 = M[2]*oldAmp0;
-				#endif
 
 					/* update lower state */
 					if(isRealizedState(newAmp0) == true) {
@@ -955,13 +957,8 @@ static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex
 					i0 = qidx - stride;
 					i1 = qidx;
 
-				#if 0
-					newAmp0 = M[0]*oldAmp0 + M[1]*oldAmp1;
-					newAmp1 = M[2]*oldAmp0 + M[3]*oldAmp1;
-				#else
 					newAmp0 = M[1]*oldAmp1;
 					newAmp1 = M[3]*oldAmp1;
-				#endif
 
 					/* update lower state */
 					if(isRealizedState(newAmp0) == true) {
@@ -1178,13 +1175,8 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 				i0 = qidx;
 				i1 = qidx + stride;
 
-			#if 0
-				newAmp0 = M[0]*oldAmp0 + M[1]*oldAmp1;
-				newAmp1 = M[2]*oldAmp0 + M[3]*oldAmp1;
-			#else
 				newAmp0 = M[0]*oldAmp0;
 				newAmp1 = M[2]*oldAmp0;
-			#endif
 
 				/* update lower state */
 				if(isRealizedState(newAmp0) == true) {
@@ -1218,13 +1210,8 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 				i0 = qidx - stride;
 				i1 = qidx;
 
-			#if 0
-				newAmp0 = M[0]*oldAmp0 + M[1]*oldAmp1;
-				newAmp1 = M[2]*oldAmp0 + M[3]*oldAmp1;
-			#else
 				newAmp0 = M[1]*oldAmp1;
 				newAmp1 = M[3]*oldAmp1;
-			#endif
 
 				/* update lower state */
 				if(isRealizedState(newAmp0) == true) {
@@ -1282,22 +1269,29 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 					newAmp0 = M[0]*oldAmp0 + M[1]*oldAmp1;
 					newAmp1 = M[2]*oldAmp0 + M[3]*oldAmp1;
 
-					if(isRealizedState(newAmp0) == true) {
+					if(isRealizedState(newAmp0) == true && isRealizedState(newAmp1) == true) {
 						lowerQ->setAmplitude(newAmp0);
-						isLowerLocal = true;
-					} else {
-						/* remove zero amplitude |0> state */
-						hashid = (int)(i0 % QSTORE_PARTITION);
-						delQList[hashid][tid].push_back(lowerQ);
-					}
-
-					if(isRealizedState(newAmp1) == true) {
 						upperQ->setAmplitude(newAmp1);
+						isLowerLocal = true;
 						isUpperLocal = true;
 					} else {
-						/* remove zero amplitude |1> state */
-						hashid = (int)(i1 % QSTORE_PARTITION);
-						delQList[hashid][tid].push_back(upperQ);
+						if(isRealizedState(newAmp0) == true) {
+							lowerQ->setAmplitude(newAmp0);
+							isLowerLocal = true;
+						} else {
+							/* remove zero amplitude |0> state */
+							hashid = (int)(i0 % QSTORE_PARTITION);
+							delQList[hashid][tid].push_back(lowerQ);
+						}
+
+						if(isRealizedState(newAmp1) == true) {
+							upperQ->setAmplitude(newAmp1);
+							isUpperLocal = true;
+						} else {
+							/* remove zero amplitude |1> state */
+							hashid = (int)(i1 % QSTORE_PARTITION);
+							delQList[hashid][tid].push_back(upperQ);
+						}
 					}
 				} else if(lowerQ != NULL) {
 					/******************************************
@@ -1311,13 +1305,8 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 					i0 = qidx;
 					i1 = qidx + stride;
 
-				#if 0
-					newAmp0 = M[0]*oldAmp0 + M[1]*oldAmp1;
-					newAmp1 = M[2]*oldAmp0 + M[3]*oldAmp1;
-				#else
 					newAmp0 = M[0]*oldAmp0;
 					newAmp1 = M[2]*oldAmp0;
-				#endif
 
 					/* update lower state */
 					if(isRealizedState(newAmp0) == true) {
@@ -1350,13 +1339,8 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 					i0 = qidx - stride;
 					i1 = qidx;
 
-				#if 0
-					newAmp0 = M[0]*oldAmp0 + M[1]*oldAmp1;
-					newAmp1 = M[2]*oldAmp0 + M[3]*oldAmp1;
-				#else
 					newAmp0 = M[1]*oldAmp1;
 					newAmp1 = M[3]*oldAmp1;
-				#endif
 
 					/* update lower state */
 					if(isRealizedState(newAmp0) == true) {
@@ -1427,9 +1411,8 @@ static int NMC_Measure(QRegister *QReg, int qubit)
 	}
 
 	double f = (double)(rand() % 100) / 100.0;
-	double lpm[QReg->getCPUCores()];
-	double upm[QReg->getCPUCores()];
-	double lengthm[QReg->getCPUCores()];
+	complex_t lpm[QReg->getCPUCores()];
+	complex_t upm[QReg->getCPUCores()];
 	double lp = 0;
 	double up = 0;
 	int state;
@@ -1437,7 +1420,7 @@ static int NMC_Measure(QRegister *QReg, int qubit)
 	static vector<QState*> delQList[QSTORE_PARTITION][MAX_CORES];
 	
 	for(int i=0; i<QReg->getCPUCores(); i++) {
-		lpm[i] = upm[i] = lengthm[i] = 0;
+		lpm[i] = upm[i] = 0;
 	}
 
 	/************************************************** 
@@ -1453,16 +1436,16 @@ static int NMC_Measure(QRegister *QReg, int qubit)
 		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
 			Q = it->second;
 			if(stripe_lower(Q->getIndex(), qubit) == true) {
-				lpm[tid] += norm(Q->getAmplitude());
+				lpm[tid] += Q->getAmplitude();
 			} else {
-				upm[tid] += norm(Q->getAmplitude());
+				upm[tid] += Q->getAmplitude();
 			}
 		}
 	}
 
 	for(int i=0; i<QReg->getCPUCores(); i++) {
-		lp += lpm[i];
-		up += upm[i];
+		lp += norm(lpm[i]);
+		up += norm(upm[i]);
 	}
 
 	if(lp == 0 || up == 0) {

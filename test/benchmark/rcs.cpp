@@ -90,10 +90,10 @@ void usage(void)
 	printf(" --task        : show task info.\n");
 }
 
-void setHadamard(void)
+void init(void)
 {
 	for(int i=0; i<opt_qubits; i++) {
-		H(QReg, i);
+		U3(QReg, i, M_PI/5, M_PI/5, M_PI/5);
 	}
 //	printf("\n\nqubits(%d) prepare done....\n", opt_qubits);
 //	fflush(stdout);
@@ -111,7 +111,7 @@ void gen_gate(struct gate_param *param, int qubit)
 
 #if 1
 	if((rand() % 100 < opt_dratio)) {
-		int gate = rand() % 9;
+		int gate = rand() % 5;
 		if(gate == 0) {
 			param->gate = GATE_Z;
 		} else if(gate == 1) {
@@ -123,34 +123,22 @@ void gen_gate(struct gate_param *param, int qubit)
 		} else if(gate == 4) {
 			param->gate = GATE_TDG;
 		} else if(gate == 5) {
-			param->gate = GATE_RZ;
-		} else if(gate == 6) {
-			param->gate = GATE_CZ;
-		} else if(gate == 7) {
-			param->gate = GATE_CU1;
-		} else if(gate == 8) {
-			param->gate = GATE_ID;
+			param->gate = GATE_U1;
 		}
 	} else {
-		int gate = rand() % 9;
+		int gate = rand() % 5;
 		if(gate == 0) {
 			param->gate = GATE_X;
 		} else if(gate == 1) {
 			param->gate = GATE_Y;
 		} else if(gate == 2) {
-			param->gate = GATE_CX;
-		} else if(gate == 3) {
-			param->gate = GATE_CY;
-		} else if(gate == 4) {
 			param->gate = GATE_RX;
-		} else if(gate == 5) {
+		} else if(gate == 3) {
 			param->gate = GATE_RY;
-		} else if(gate == 6) {
+		} else if(gate == 4) {
 			param->gate = GATE_U2;
-		} else if(gate == 7) {
+		} else if(gate == 5) {
 			param->gate = GATE_U3;
-		} else if(gate == 8) {
-			param->gate = GATE_ID;
 		}
 	}
 #else
@@ -278,7 +266,7 @@ int main(int argc, char **argv)
 		{"task", 0, 0, '1'}
 	};
 
-	while ((c = getopt_long(argc, argv, "q:d:r:", options, NULL)) != -1) {
+	while ((c = getopt_long(argc, argv, "q:d:", options, NULL)) != -1) {
 		switch(c) {
 		case 'q':
 			if(!optarg) usage();
@@ -287,10 +275,6 @@ int main(int argc, char **argv)
 		case 'd':
 			if(!optarg) usage();
 			opt_depth = atoi(optarg);
-			break;		
-		case 'r':
-			if(!optarg) usage();
-			opt_dratio = atoi(optarg);
 			break;		
 		case '1':
 			opt_task = 1;
@@ -301,7 +285,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if(opt_qubits == -1 || opt_depth == -1 || opt_dratio == -1) {
+	if(opt_qubits == -1 || opt_depth == -1) {
 		usage();
 		exit(0);
 	}
@@ -312,26 +296,18 @@ int main(int argc, char **argv)
 	}
 
  	QReg = new QRegister(opt_qubits);
+	init();
 
-#if 1
 	for(int i=0; i<=100; i++) {
-		QReg->reset();
-		opt_dratio = i * 1;
-		setHadamard();
+		opt_dratio = i;
+
 		timer.start();
 		test();
 		timer.end();
+
 		printf("dratio=%02d -> %20s (%.0f sec)\n", opt_dratio, timer.getTime(), timer.getElapsedSec());
 		fflush(stdout);
 	}
-#else
-	setHadamard();
-	timer.start();
-	test();
-	timer.end();
-	printf("dratio=%02d -> %s\n", opt_dratio, timer.getTime());
-	fflush(stdout);
-#endif
 
 	if(opt_task) {
 		QReg->showQRegStat();

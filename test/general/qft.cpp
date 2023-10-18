@@ -26,6 +26,10 @@
 using namespace std;
 
 void qft(QRegister *QReg, int qubits) {
+	QTimer timer;
+
+	timer.start();
+
 	X(QReg, qubits-1);
 
 	for(int i=0; i<qubits; i++) {
@@ -42,7 +46,8 @@ void qft(QRegister *QReg, int qubits) {
 		SWAP(QReg, i, qubits-i-1);
 	}
 
-	dump(QReg);
+	timer.end();
+	printf("%s\n", timer.getTime());
 }
 
 int main(int argc, char **argv)

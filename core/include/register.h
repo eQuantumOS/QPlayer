@@ -63,6 +63,7 @@ public:
 
 	/* clear all quantum states */
 	void clear(void) {
+		#pragma omp parallel for
 		for(int i=0; i<QSTORE_PARTITION; i++) {
 			for(auto entry : qstore[i]) {
 				putQState(entry.second);

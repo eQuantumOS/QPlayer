@@ -26,12 +26,15 @@
 using namespace std;
 
 void grover(QRegister *QReg, int qubits) {
+	QTimer timer;
 	int target = qubits / 2;
 #if 1
 	int repeat = qubits * 2;
 #else
 	int repeat = (int)((M_PI/4) * sqrt(pow(2, qubits)));
 #endif
+
+	timer.start();
 
 	/* prepare grover algorithm */
 	X(QReg, target);
@@ -104,17 +107,19 @@ void grover(QRegister *QReg, int qubits) {
 	}
 
 	/* measure target qubit */
-	printf("measure target qubit(%d)\n", target);
 	H(QReg, target);
 	M(QReg, target);
-	dump(QReg);
 
 	/* measure all qubits */
-	printf("\nmeasure remaining qubits=%d\n", target);
 	for(int i=0; i<qubits; i++) {
 		M(QReg, i);
 	}
+
+	timer.end();
+
 	dump(QReg);
+
+	printf("%s\n", timer.getTime());
 }
 
 int main(int argc, char **argv)

@@ -64,7 +64,7 @@ void init(void)
 	control = opt_qubits - 2;
 
 	for(int i=0; i<opt_qubits-1; i++) {
-		H(QReg, i);
+		U3(QReg, i, M_PI/5, M_PI/5, M_PI/5);
 	}
 	printf("\n\nqubits(%d) prepare done....\n", opt_qubits);
 	fflush(stdout);
@@ -135,28 +135,23 @@ void run_gate_loop(int gtype)
 {
 	QTimer timer;
 
-	for(int i=0; i<opt_runs; i++) { 
-		if(baseMode == KET_ZERO) {
-			set_targetState(KET_ZERO);
-		} else if(baseMode == KET_ONE) {
-			set_targetState(KET_ONE);
-		} else {
-			set_targetState(KET_SUPERPOSED);
-		}
-
-		if(QType(QReg, control) != KET_SUPERPOSED) {
-			H(QReg, control);
-		}
-
-		timer.lapStart();
-		run_gate(gtype); 
-		timer.lapStop();
+	if(baseMode == KET_ZERO) {
+		set_targetState(KET_ZERO);
+	} else if(baseMode == KET_ONE) {
+		set_targetState(KET_ONE);
+	} else {
+		set_targetState(KET_SUPERPOSED);
 	}
-	timer.lapFinish();
 
-	double tm_s = timer.getElapsedSec() / (double)(opt_runs);
-	double tm_ms = timer.getElapsedMSec() / (double)(opt_runs);
-	printf("%-10s : %10.2f s or %10.2f ms\n", gateString(gtype), tm_s, tm_ms);
+	timer.start();
+	for(int i=0; i<opt_runs; i++) { 
+		run_gate(gtype); 
+	}
+	timer.end();
+
+	double tm_sec = timer.getElapsedSec() / (double)(opt_runs);
+	double tm_msec = timer.getElapsedMSec() / (double)(opt_runs);
+	printf("%-10s : %10.1f secs, %10.1f ms\n", gateString(gtype), tm_sec, tm_msec);
 	fflush(stdout);
 }
 
@@ -169,9 +164,12 @@ void run(void)
 	run_gate_loop(QGATE_TDG);
 	run_gate_loop(QGATE_U1);
 	run_gate_loop(QGATE_RZ);
+#if 0
 	run_gate_loop(QGATE_CZ);
 	run_gate_loop(QGATE_CRZ);
 	run_gate_loop(QGATE_CU1);
+#endif
+
 	printf("\n");
 
 	run_gate_loop(QGATE_X);
@@ -181,10 +179,12 @@ void run(void)
 	run_gate_loop(QGATE_RY);
 	run_gate_loop(QGATE_U2);
 	run_gate_loop(QGATE_U3);
+#if 0
 	run_gate_loop(QGATE_CX);
 	run_gate_loop(QGATE_CY);
 	run_gate_loop(QGATE_CH);
 	run_gate_loop(QGATE_CU3);
+#endif
 }
 
 void run_single_zero(void)
@@ -243,7 +243,7 @@ int main(int argc, char **argv)
 	}
 
 	init();
-	run_single_zero();
+//	run_single_zero();
 	run_single_one();
 	run_superposed();
 }

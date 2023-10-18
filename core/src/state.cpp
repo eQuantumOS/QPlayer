@@ -19,15 +19,8 @@
  */
 
 #include "state.h"
-#include "spool.h"
 
 using namespace std;
-
-#if 0
-#define ENABLE_SPOOL
-#endif
-
-static SPool *spool = NULL;
 
 QState::QState(void) 
 {
@@ -58,16 +51,7 @@ QState *getQState(void)
 {
 	QState *Q = NULL;
 
-#ifdef ENABLE_SPOOL
-	/* if first request, allocate state pool */
-	if(spool == NULL) {
-		spool = new SPool();
-	}
-
-	Q = spool->deque();
-#else
 	Q = new QState();
-#endif
 
 	return Q;
 }
@@ -76,32 +60,12 @@ QState *getQState(qsize_t qidx, complex_t amp)
 {
 	QState *Q = NULL;
 
-#ifdef ENABLE_SPOOL
-	/* if first request, allocate state pool */
-	if(spool == NULL) {
-		spool = new SPool();
-	}
-
-	Q = spool->deque(qidx);
-	Q->setIndex(qidx);
-	Q->setAmplitude(amp);
-#else
 	Q = new QState(qidx, amp);
-#endif
 
 	return Q;
 }
 
 void putQState(QState *Q) 
 {
-#ifdef ENABLE_SPOOL
-	/* if first request, allocate state pool */
-	if(spool == NULL) {
-		spool = new SPool();
-	}
-
-	spool->enque(Q);
-#else
 	delete Q;
-#endif
 }

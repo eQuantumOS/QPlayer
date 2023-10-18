@@ -1,3 +1,8 @@
+2023-10-18 remove all lock-contentions from matrix operations
+    - remove state pooling mechanism
+    - update gate operational functions
+    - update benchmark programs
+
 2023-10-04 bug fix. malfunction swap gate in OpenQASM 2.0
 
 2023-08-31 release QPlayer v2.0-Puma
