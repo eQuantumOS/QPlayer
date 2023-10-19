@@ -1,3 +1,5 @@
+2023-10-19 update version --> QPlayer v2.1-Cheetah
+
 2023-10-18 remove all lock-contentions from matrix operations
     - remove state pooling mechanism
     - update gate operational functions

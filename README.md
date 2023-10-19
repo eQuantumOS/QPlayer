@@ -1,4 +1,4 @@
-# QPlayer v2.0-Puma 
+# QPlayer v2.1-Cheetah 
 ### Light-weight, Scalable and Fast Quantum Simulator
   
 With the rapid evolution of quantum computing, classical quantum simulations
