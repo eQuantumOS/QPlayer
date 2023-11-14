@@ -44,6 +44,7 @@ QRegister::QRegister(int n) {
 	maxStates = quantum_shiftL(1, numQubit);
 	qstat.qubits = numQubit;
 	getCPU(cpu, &cpuCores, herz);
+
 	init();
 
 	/* set random seed */

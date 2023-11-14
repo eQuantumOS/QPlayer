@@ -961,7 +961,6 @@ void QASMparser::get_cregStr(vector<string> &cregStr) {
 		}
 		to_binary(creg_num, nqubits, creg_str);
 		cregStr.push_back(string(creg_str));
-		// printf("creg:%s -> %s\n", creg.first.c_str(), creg_str);
 	}
 }
 

@@ -28,6 +28,32 @@ using namespace std;
 
 static qsize_t strides[MAX_QUBITS];
 
+std::ostream&
+operator<<( std::ostream& dest, qsize_t value)
+{
+    std::ostream::sentry s( dest );
+    if ( s ) {
+        __uint128_t tmp = value < 0 ? -value : value;
+        char buffer[ 128 ];
+        char* d = std::end( buffer );
+        do
+        {
+            -- d;
+            *d = "0123456789"[ tmp % 10 ];
+            tmp /= 10;
+        } while ( tmp != 0 );
+        if ( value < 0 ) {
+            -- d;
+            *d = '-';
+        }
+        int len = std::end( buffer ) - d;
+        if ( dest.rdbuf()->sputn( d, len ) != len ) {
+            dest.setstate( std::ios_base::badbit );
+        }
+    }
+    return dest;
+}
+
 void init_strides(void)
 {
 	for(int i=0; i<MAX_QUBITS; i++) {
@@ -42,12 +68,12 @@ qsize_t get_stride(int qubit)
 
 qsize_t quantum_shiftL(qsize_t left, qsize_t right)
 {
-    return left << right.convert_to<size_t>();
+    return left << right;
 }
 
 qsize_t quantum_shiftR(qsize_t left, qsize_t right)
 {
-    return left >> right.convert_to<size_t>();
+    return left >> right;
 }
 
 /*

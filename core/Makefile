@@ -6,10 +6,8 @@ CXXFLAGS += -I. -I./include
 CXXFLAGS += -Wno-reorder -Wno-sign-compare -Wno-parentheses -Wno-pessimizing-move
 CXXFLAGS += -Wno-unused-function -Wno-unused-variable -Wno-write-strings
 CXXFLAGS += -Wno-class-conversion -Wno-unused-result -Wno-class-memaccess
-CXXFLAGS += -DLARGE_SCALE
 
 LIBS = -lm -lpthread -lgomp
-LIBS += -lboost_system-mt
 
 Q=@echo
 E=@

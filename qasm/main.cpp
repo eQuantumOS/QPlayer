@@ -244,13 +244,15 @@ void runQASM(void)
 	map<string, int> cregMap;
 	QASMparser* parser = NULL;
 
-	/* STEP1: execute QASM file for shot-round */
+	/* STEP1: parsing QASM file */
+	parser = new QASMparser(f_qasm);
+	parser->Parse();
+
+	/* STEP2: execute QASM file for shot-round */
 	for(int i=0; i<shots; i++) {
-		parser = new QASMparser(f_qasm);
 		vector<string> cregStr;
 
 		parser->resetQReg();	
-		parser->Parse();
 		parser->get_cregStr(cregStr);
 
 		for(auto entry : cregStr) {
@@ -263,7 +265,7 @@ void runQASM(void)
 		}
 	}
 
-	/* STEP2: generate measured output */
+	/* STEP3: generate measured output */
 	char cmd[256] = "";
 	dirc = strdup(f_out);
 	dname = dirname(dirc);

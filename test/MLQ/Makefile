@@ -8,10 +8,9 @@ CXXFLAGS += -I. -I$(QPLAYER_RELEASE)/include
 CXXFLAGS += -Wno-reorder -Wno-sign-compare -Wno-parentheses -Wno-pessimizing-move
 CXXFLAGS += -Wno-unused-function -Wno-unused-variable -Wno-write-strings
 CXXFLAGS += -Wno-class-conversion -Wno-unused-result
-CXXFLAGS += -DLARGE_SCALE
 
 LIBS = -L$(QPLAYER_RELEASE)/lib
-LIBS += -lm -lpthread -lgomp -lqplayer -fopenmp -lboost_system
+LIBS += -lm -lpthread -lgomp -lqplayer -fopenmp 
 
 Q=@echo
 E=@

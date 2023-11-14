@@ -33,13 +33,11 @@ using namespace std;
 
 #define AMPLITUDE_EPS 1e-13
 
-#include <boost/multiprecision/cpp_int.hpp>
-using namespace boost::multiprecision;
+typedef __uint128_t qsize_t;
 
-typedef uint256_t qsize_t;
-#define MAX_QUBITS			1024
+#define MAX_QUBITS			128
 #define QSTORE_PARTITION    1171
-#define MAX_CORES 			64
+#define MAX_CORES			256
 
 typedef complex<double> complex_t;
 

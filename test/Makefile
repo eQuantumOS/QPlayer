@@ -16,7 +16,7 @@
 #
 #*******************************************************************************
 
-all: GENERAL SURFACECODE MLQ VERIFICATION BENCHMARK
+all: GENERAL SURFACECODE VERIFICATION BENCHMARK
 
 GENERAL:
 	@ $(MAKE) -C general 
