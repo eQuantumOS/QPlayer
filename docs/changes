@@ -1,3 +1,7 @@
+2023-11-14 refactoring source code
+    - remove entanglement related functions in experimental.cpp
+    - move QType() functions from experimental --> register class
+
 2023-11-13 use __uint128_t instead of boost multiprecision class
     - remove boost library dependency
     - support the number of qubits up to 128

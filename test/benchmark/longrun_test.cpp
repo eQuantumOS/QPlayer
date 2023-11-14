@@ -359,7 +359,7 @@ void long_run_test(void)
 			CU3(QReg, p->control1, p->qubit, p->theta, p->phi, p->rambda);
 			break;
 		case GATE_MEASURE:
-			double probZero = getQubitProb(QReg, p->qubit, 0);
+			double probZero = QReg->getQubitProb(p->qubit, 0);
 			if(probZero >= 0.5) {
 				MF(QReg, p->qubit, 0);
 				if(opt_qasm) {

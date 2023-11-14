@@ -247,3 +247,111 @@ void QRegister::showQRegStat(void) {
 	printf("|           | avail   | %47s | \n", memAvailStr);
 	printf("+-----------+---------+-------------------------------------------------+\n");
 }
+
+/*
+ * Estimate the quantum state int four types below.
+ * 
+ *   - KET_ZERO  : |0>
+ *   - KET_ONE   : |1>
+ *   - KET_SUPERPOSED : a|0> + b|1> or a|0> - b|1>
+ */
+int QRegister::QType(int qubit) 
+{
+	QState *Q = NULL;
+	qsize_t qidx = 0;
+	bool isLower = false;
+	bool isUpper = false;
+	int type = KET_UNKNOWN;
+
+	#pragma omp parallel for
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		bool isLowerLocal = false;
+		bool isUpperLocal = false;
+
+		QMAPITER it;
+		for(it = qstore[i].begin(); it != qstore[i].end(); it++) {
+			Q = it->second;
+			qidx = Q->getIndex();
+
+			if(stripe_lower(qidx, qubit) == true) {
+				isLowerLocal = true;
+			} else {
+				isUpperLocal = true;
+			}
+
+			if(isLowerLocal == true && isUpperLocal == true) {
+				break;
+			}
+		}
+
+		if(isLowerLocal == true) isLower = true;
+		if(isUpperLocal == true) isUpper = true;
+	}
+
+	if(isLower == true && isUpper == true) {
+		type = KET_SUPERPOSED;
+	} else if(isLower == true) {
+		type = KET_ZERO;
+	} else if(isUpper == true) {
+		type = KET_ONE;
+	}
+
+	return type;
+}
+
+char *QRegister::QTypeStr(int qubit)
+{
+	int type = QType(qubit);
+
+	if(type == KET_ZERO) return "|0>"; 
+	else if(type == KET_ONE) return "|1>"; 
+	else if(type == KET_SUPERPOSED) return "|S>";
+
+	return "UNKNOWN";
+}
+
+/*
+ * show probability of the qubit 
+ */
+double QRegister::getQubitProb(int qubit, int state) 
+{
+	if(qubit >= getNumQubits()) {
+		printf("[%s] qubit(%d) out of range!\n", __func__, qubit);
+		return -1;
+	}
+
+	double real = 0;
+	double imag = 0;
+	double length = 0;
+	complex_t lo = 0;
+	complex_t up = 0;
+
+	QMAPITER it[QSTORE_PARTITION];
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		for(it[i] = qstore[i].begin(); it[i] != qstore[i].end(); it[i]++) {
+			QState *Q = it[i]->second;
+			real = Q->getAmplitude().real();
+			imag = Q->getAmplitude().imag();
+			if(stripe_lower(Q->getIndex(), qubit) == true) {
+				lo += complex_t(abs(real), abs(imag));
+			} else {
+				up += complex_t(abs(real), abs(imag));
+			}
+		}
+	}
+
+	/* normalize */
+	length = (norm(lo) + norm(up));
+	length = std::sqrt(length);
+
+	lo = lo / length;
+	up = up / length;
+
+	if(state == KET_ZERO) {
+		return norm(lo);
+	} else if(state == KET_ONE) {
+		return norm(up);
+	}
+
+	return 0;
+}

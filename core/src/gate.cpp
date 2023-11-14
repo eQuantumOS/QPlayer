@@ -20,7 +20,6 @@
 
 #include "gate.h"
 #include "dump.h"
-#include "experimental.h"
 
 using namespace std;
 
@@ -1513,7 +1512,7 @@ static int NMC_Measure(QRegister *QReg, int qubit)
 	 * (STEP7) Revalidate qubit types
 	 **************************************************/
 	for(int i=0; i<QReg->getNumQubits(); i++) {
-		QReg->qubitTypes[i] = QType(QReg, i);
+		QReg->qubitTypes[i] = QReg->QType(i);
 	}
 
 	return state;
@@ -1578,7 +1577,7 @@ static int NMC_MeasureF(QRegister *QReg, int qubit, int collapse)
 	 * (STEP5) Revalidate qubit types
 	 **************************************************/
 	for(int i=0; i<QReg->getNumQubits(); i++) {
-		QReg->qubitTypes[i] = QType(QReg, i);
+		QReg->qubitTypes[i] = QReg->QType(i);
 	}
 
 	return collapse;

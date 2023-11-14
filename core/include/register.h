@@ -244,6 +244,9 @@ public:
 	struct qregister_stat getQRegStat(void);
 	void showQRegStat(void);
 	void checkMemory(void);
+	int QType(int qubit);
+	char *QTypeStr(int qubit);
+	double getQubitProb(int qubit, int state);
 };
 
 #endif
