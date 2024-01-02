@@ -242,17 +242,13 @@ void convertQASM(void)
 void runQASM(void)
 {
 	map<string, int> cregMap;
-	QASMparser* parser = NULL;
 
-	/* STEP1: parsing QASM file */
-	parser = new QASMparser(f_qasm);
-	parser->Parse();
-
-	/* STEP2: execute QASM file for shot-round */
+	/* STEP1: parse & execute QASM file for shot-round */
 	for(int i=0; i<shots; i++) {
+		QASMparser* parser = new QASMparser(f_qasm);
 		vector<string> cregStr;
 
-		parser->resetQReg();	
+		parser->Parse();
 		parser->get_cregStr(cregStr);
 
 		for(auto entry : cregStr) {
@@ -263,9 +259,13 @@ void runQASM(void)
 				it->second++;
 			}
 		}
+
+		QReg->reset();
+
+		delete parser;
 	}
 
-	/* STEP3: generate measured output */
+	/* STEP2: generate measured output */
 	char cmd[256] = "";
 	dirc = strdup(f_out);
 	dname = dirname(dirc);
@@ -289,8 +289,8 @@ void runQASM(void)
 
 	fclose(fp);
 
-	/* STEP4: show simulation stat or generate json */
-	struct qregister_stat stat = parser->getQRegStat();
+	/* STEP3: show simulation stat or generate json */
+	struct qregister_stat stat = QReg->getQRegStat();
 
 	if(is_verbose) {
 		showStat(&stat);
@@ -300,7 +300,7 @@ void runQASM(void)
 		genStatJson(&stat);
 	}
 
-	delete parser;
+	delete QReg;
 }
 
 int main(int argc, char **argv)

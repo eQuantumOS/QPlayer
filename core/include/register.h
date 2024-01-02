@@ -77,6 +77,9 @@ public:
 		QState *q = getQState(0, complex_t(1, 0));
 		qstore[0][0] = q;
 		init_strides();
+		for(int i=0; i<MAX_QUBITS; i++) {
+			qubitTypes[i] = KET_ZERO;
+		}
 	}
 
 	/* reset quantum state to |00...00> */

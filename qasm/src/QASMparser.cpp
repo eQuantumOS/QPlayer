@@ -27,7 +27,7 @@ by citing the following publication:
 #include <algorithm>
 #include <cmath>
 
-static QRegister *QReg = NULL;
+QRegister *QReg = NULL;
 
 QASMparser::QASMparser(std::string filename) {
 	in = new std::ifstream (filename, std::ifstream::in);
@@ -973,16 +973,3 @@ void QASMparser::clear() {
 	}
 }
 
-void QASMparser::resetQReg(void) {
-	if(QReg != NULL) {
-		QReg->reset();
-	}
-}
-
-void QASMparser::dumpQReg(void) {
-	dump(QReg);
-}
-
-struct qregister_stat QASMparser::getQRegStat(void) {
-	return QReg->getQRegStat();
-}

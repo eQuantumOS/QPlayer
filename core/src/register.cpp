@@ -36,10 +36,6 @@ QRegister::QRegister(int n) {
 
 	memset(&qstat, 0, sizeof(struct qregister_stat));
 
-	for(int i=0; i<MAX_QUBITS; i++) {
-		qubitTypes[i] = KET_ZERO;
-	}
-
 	numQubit = n;
 	maxStates = quantum_shiftL(1, numQubit);
 	qstat.qubits = numQubit;

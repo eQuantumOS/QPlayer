@@ -40,9 +40,6 @@ public:
 
 	void Parse();
 	void get_cregStr(vector<string> &cregStr);
-	void resetQReg(void);
-	void dumpQReg(void);
-	struct qregister_stat getQRegStat(void);
 
 	struct gate {
 		int target;
@@ -213,5 +210,7 @@ private:
 	void addUgate(int target, double theta, double phi, double lambda);
 	void addCXgate(int target, int control);
 };
+
+extern QRegister *QReg;
 
 #endif /* QASM_SIMULATOR_H_ */

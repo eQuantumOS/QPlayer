@@ -1411,8 +1411,8 @@ static int NMC_Measure(QRegister *QReg, int qubit)
 	}
 
 	double f = (double)(rand() % 100) / 100.0;
-	complex_t lpm[QReg->getCPUCores()];
-	complex_t upm[QReg->getCPUCores()];
+	double lpm[QReg->getCPUCores()];
+	double upm[QReg->getCPUCores()];
 	double lp = 0;
 	double up = 0;
 	int state;
@@ -1436,16 +1436,16 @@ static int NMC_Measure(QRegister *QReg, int qubit)
 		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
 			Q = it->second;
 			if(stripe_lower(Q->getIndex(), qubit) == true) {
-				lpm[tid] += Q->getAmplitude();
+				lpm[tid] += norm(Q->getAmplitude());
 			} else {
-				upm[tid] += Q->getAmplitude();
+				upm[tid] += norm(Q->getAmplitude());
 			}
 		}
 	}
 
 	for(int i=0; i<QReg->getCPUCores(); i++) {
-		lp += norm(lpm[i]);
-		up += norm(upm[i]);
+		lp += lpm[i];
+		up += upm[i];
 	}
 
 	if(lp == 0 || up == 0) {
