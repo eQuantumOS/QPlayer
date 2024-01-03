@@ -103,6 +103,10 @@ public:
 
 	/* return the number of qubits for this Q-register */
 	int getNumQubits(void) { return numQubit; }
+	void setNumQubits(int n) { 
+		numQubit = n; 
+		maxStates = quantum_shiftL(1, numQubit);
+	}
 
 	/* return the number of CPU cores */
 	int getCPUCores(void) { return cpuCores; }

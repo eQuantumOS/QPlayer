@@ -311,9 +311,9 @@ int main(int argc, char **argv)
 	prog = argv[0];
 
 	memset(&sa, 0, sizeof(struct sigaction));
-    sa.sa_handler = sig_handler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
+	sa.sa_handler = sig_handler;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;
 
 	sigaction(SIGABRT, &sa, NULL);
 

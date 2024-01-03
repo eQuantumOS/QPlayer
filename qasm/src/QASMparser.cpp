@@ -880,6 +880,10 @@ void QASMparser::Parse()
 
 			if(QReg == NULL) {
 				QReg = new QRegister(nqubits);
+			} else {
+				if(QReg->getNumQubits() < nqubits) {
+					QReg->setNumQubits(nqubits);
+				}
 			}
         } else if(sym == Token::Kind::creg) {
 			scan();
