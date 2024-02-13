@@ -60,11 +60,10 @@ std::string convertGate2String(int gate)
 	case QGATE_Y: return "Pauli-Y";
 	case QGATE_Z: return "Pauli-Z";
 	case QGATE_H: return "H";
-	case QGATE_S: return "S";
 	case QGATE_P: return "P";
-	case QGATE_SX: return "SX";
-	case QGATE_SDG: return "SDG";
+	case QGATE_S: return "S";
 	case QGATE_T: return "T";
+	case QGATE_SDG: return "SDG";
 	case QGATE_TDG: return "TDG";
 	case QGATE_RX: return "RX";
 	case QGATE_RY: return "RY";
@@ -80,6 +79,9 @@ std::string convertGate2String(int gate)
 	case QGATE_CU3: return "CU3";
 	case QGATE_SWAP: return "SWAP";
 	case QGATE_CSWAP: return "CSWAP";
+	case QGATE_SX: return "SX";
+	case QGATE_SXDG: return "SXDG";
+	case QGATE_ISWAP: return "ISWAP";
 	case QGATE_MEASURE: return "MEASURE";
 	}
 

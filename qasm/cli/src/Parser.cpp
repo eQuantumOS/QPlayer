@@ -460,6 +460,11 @@ void Parser::exec_gate(STMT stmt)
 			// printf("SX %d\n", stmt.qubits[i]);
 			SX(QReg, stmt.qubits[i]);
 		}
+	} else if(stmt.gate == "sxdg") {
+		for(int i=0; i<stmt.qubits.size(); i++) {
+			// printf("SXDG %d\n", stmt.qubits[i]);
+			SXDG(QReg, stmt.qubits[i]);
+		}
 	} else if(stmt.gate == "u1") {
 		for(int i=0; i<stmt.qubits.size(); i++) {
 			// printf("U1 (%.2f) %d\n", stmt.args[0], stmt.qubits[i]);
@@ -704,32 +709,35 @@ void Parser::show_stmt(void)
 void Parser::init_gates(void) 
 {
 	gates.insert(make_pair("id", 0));
+	gates.insert(make_pair("u1", 1));
+	gates.insert(make_pair("u2", 1));
+	gates.insert(make_pair("u3", 1));
 	gates.insert(make_pair("x", 0));
 	gates.insert(make_pair("y", 0));
 	gates.insert(make_pair("z", 0));
-	gates.insert(make_pair("cx", 0));
 	gates.insert(make_pair("h", 0));
+	gates.insert(make_pair("p", 1));
 	gates.insert(make_pair("s", 0));
-	gates.insert(make_pair("sdg", 0));
 	gates.insert(make_pair("t", 0));
+	gates.insert(make_pair("sdg", 0));
 	gates.insert(make_pair("tdg", 0));
-	gates.insert(make_pair("sx", 0));
+	gates.insert(make_pair("rx", 1));
+	gates.insert(make_pair("ry", 1));
+	gates.insert(make_pair("rz", 1));
+	gates.insert(make_pair("cx", 0));
 	gates.insert(make_pair("cz", 0));
 	gates.insert(make_pair("cy", 0));
 	gates.insert(make_pair("ch", 0));
 	gates.insert(make_pair("ccx", 0));
-	gates.insert(make_pair("swap", 0));
-	gates.insert(make_pair("cswap", 0));
-	gates.insert(make_pair("p", 1));
-	gates.insert(make_pair("u1", 1));
-	gates.insert(make_pair("u2", 1));
-	gates.insert(make_pair("u3", 1));
-	gates.insert(make_pair("rx", 1));
-	gates.insert(make_pair("ry", 1));
-	gates.insert(make_pair("rz", 1));
 	gates.insert(make_pair("crz", 1));
 	gates.insert(make_pair("cu1", 1));
+	gates.insert(make_pair("cu2", 1));
 	gates.insert(make_pair("cu3", 1));
+	gates.insert(make_pair("swap", 0));
+	gates.insert(make_pair("cswap", 0));
+	gates.insert(make_pair("sx", 0));
+	gates.insert(make_pair("sxdg", 0));
+	gates.insert(make_pair("iswap", 0));
 } 
 
 void Parser::reset(void)

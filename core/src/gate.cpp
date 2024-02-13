@@ -348,6 +348,24 @@ void SX(QRegister *QReg, int qubit)
 }
 
 /*
+ * Apply SXDG-gate to the qubit
+ */
+void SXDG(QRegister *QReg, int qubit) 
+{
+	QTimer timer;
+	complex_t M[] = {
+		complex_t(1, 0)/std::sqrt(2), complex_t(0, 1)/std::sqrt(2),
+		complex_t(0, 1)/std::sqrt(2), complex_t(1, 0)/std::sqrt(2)
+	};
+
+	timer.start();
+	NMC_NoneDiagonalGates(QReg, qubit, QGATE_SXDG, M);
+	QReg->normalize();
+	timer.end();
+	QReg->updateQRegStat(QGATE_SXDG, timer);
+}
+
+/*
  * Apply Controlled-U1 gate
  */
 void CU1(QRegister *QReg, int control, int target, double angle) 

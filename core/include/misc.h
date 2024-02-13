@@ -62,10 +62,10 @@ typedef enum {
 	QGATE_Y,
 	QGATE_Z,
 	QGATE_H,
-	QGATE_S,
 	QGATE_P,
-	QGATE_SDG,
+	QGATE_S,
 	QGATE_T,
+	QGATE_SDG,
 	QGATE_TDG,
 	QGATE_RX,
 	QGATE_RY,
@@ -82,11 +82,12 @@ typedef enum {
 	QGATE_SWAP,
 	QGATE_CSWAP,
 	QGATE_SX,
+	QGATE_SXDG,
 	QGATE_ISWAP,
 	QGATE_MEASURE
 } QUANTUM_GATE;
 
-#define MAX_GATES 30 
+#define MAX_GATES 31 
 
 struct qregister_stat {
 	/* Quantum Circuit */

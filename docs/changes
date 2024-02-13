@@ -1,3 +1,5 @@
+2024-02-13 add sxdg gate (inverse sx gate) 
+
 2024-02-13 support qiskit compatible python interface
     - remove ~/qasm directory
     - add ~/qasm/cli directory (for qplayer cli)
