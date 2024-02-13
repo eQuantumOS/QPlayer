@@ -22,13 +22,13 @@ CORE:
 	@ $(MAKE) -C core 
 
 QASM:
-	@ $(MAKE) -C qasm 
+	@ $(MAKE) -C qasm/cli
 
 TEST:
 	@ $(MAKE) -C test
 
 clean:
 	@ $(MAKE) -C core clean
-	@ $(MAKE) -C qasm clean
+	@ $(MAKE) -C qasm/cli clean
 	@ $(MAKE) -C test clean
 	@ $(RM) -rf release
