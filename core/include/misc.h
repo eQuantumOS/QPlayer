@@ -30,6 +30,9 @@
 #define __bit_flip(x,pos) ((x) ^ (1ULL<<(pos)))
 #define __bit_reset(x,pos) ((x) & ~(1ULL<<(pos)))
 
+#define _F_ 		__FUNCTION__
+#define _L_ 		__LINE__ 
+
 struct qubit_delimiter {
     int size;
     int qubits[128];

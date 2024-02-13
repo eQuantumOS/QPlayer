@@ -165,38 +165,33 @@ void Scanner::check_args(void)
 	for(auto k : tokens) {
 		if(k.kind == Kind::lbrack) {
 			if(brack_cnt != 0) {
-				printf("'[]' pair is invalid in line %d\n", k.line);
-				exit(0);
+				logExit("[%s:%d] '[]' pair is invalid in line %d", _F_, _L_, k.line);
 			}
 			brack_cnt++;
 		} else if(k.kind == Kind::rbrack) {
 			if(brack_cnt == 0) {
-				printf("'[]' pair is invalid in line %d\n", k.line);
-				exit(0);
+				logExit("[%s:%d] '[]' pair is invalid in line %d", _F_, _L_, k.line);
 			}
 			brack_cnt--;
 		} else if(k.kind == Kind::lpar) {
 			par_cnt++;
 		} else if(k.kind == Kind::rpar) {
 			if(par_cnt == 0) {
-				printf("'()' pair is invalid in line %d\n", k.line);
-				exit(0);
+				logExit("[%s:%d] '()' pair is invalid in line %d", _F_, _L_, k.line);
 			}
 			par_cnt--;
 		} else if(k.kind == Kind::lbrace) {
 			brace_cnt++;
 		} else if(k.kind == Kind::rbrace) {
 			if(brace_cnt == 0) {
-				printf("'{}' pair is invalid in line %d\n", k.line);
-				exit(0);
+				logExit("[%s:%d] '{}' pair is invalid in line %d", _F_, _L_, k.line);
 			}
 			brace_cnt--;
 		}
 	}
 
 	if(par_cnt != 0 || brack_cnt != 0 || brace_cnt != 0) {
-		printf("symbolic pair('[]', '()', '{}') is invalid.\n");
-		exit(0);
+		logExit("[%s:%d] symbolic pair('[]', '()', '{}') is invalid.", _F_, _L_);
 	}
 }
 

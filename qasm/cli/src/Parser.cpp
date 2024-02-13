@@ -32,8 +32,7 @@ void Parser::parse(void)
 		}
 
 		if(tokens[0].kind != Kind::str) {
-			printf("line %d does not start with gate operation.\n", tokens[0].line);
-			exit(0);
+			logExit("[%s:%d] does not start with invalid gate in line %d", _F_, _L_, tokens[0].line);
 		}
 
 		if(gates.find(tokens[0].str) != gates.end()) {
@@ -47,8 +46,7 @@ void Parser::parse(void)
 		} else if(tokens[0].str == "barrier") {
 			continue;
 		} else {
-			printf("line %d does not start with gate operation.\n", tokens[0].line);
-			exit(0);
+			logExit("[%s:%d] does not start with invalid gate in line %d", _F_, _L_, tokens[0].line);
 		}
 	}
 
@@ -67,6 +65,7 @@ void Parser::build_gate_stmt(std::vector<Token> tokens)
 	/***********************************/
 	stmt.gate = tokens[pos++].str;
 	stmt.type = StmtType::GATE;
+	stmt.line = tokens[0].line;
 	check_brack(tokens, is_brack);
 
 	/***********************************/
@@ -138,8 +137,7 @@ void Parser::build_ugate_stmt(std::vector<Token> tokens)
 
 	auto it = ugates.find(uname);
 	if(it == ugates.end()) {
-		printf("invalid user gate in line %d\n", tokens[0].line);
-		exit(0);
+		logExit("[%s:%d] invalid user gate(%s) in line %d", _F_, _L_, uname.c_str(), tokens[0].line);
 	} else { 
 		ugate = it->second;
 	}
@@ -208,6 +206,7 @@ void Parser::build_ugate_stmt(std::vector<Token> tokens)
 		/* step1: parsing gate name        */
 		/***********************************/
 		stmt.gate = utokens[upos++].str;
+		stmt.line = utokens[0].line;
 		stmt.type = StmtType::GATE;
 
 		/***********************************/
@@ -233,8 +232,7 @@ void Parser::build_ugate_stmt(std::vector<Token> tokens)
 				}
 	
 				if(arg_found == false) {
-					printf("invalid user gate in line %d\n", tokens[0].line);
-					exit(0);
+					logExit("[%s:%d] invalid gate(%s) in line %d", _F_, _L_, stmt.gate.c_str(), tokens[0].line);
 				} 
 
 				stmt.args.push_back(arg_params[aidx]);
@@ -267,8 +265,7 @@ void Parser::build_ugate_stmt(std::vector<Token> tokens)
 			}
 
 			if(param_found == false) {
-				printf("invalid user gate in line %d\n", tokens[0].line);
-				exit(0);
+				logExit("[%s:%d] invalid gate(%s) in line %d", _F_, _L_, stmt.gate.c_str(), tokens[0].line);
 			}
 
 			stmt.qubits.push_back(qubit_params[qidx]);
@@ -290,6 +287,7 @@ void Parser::build_measure_stmt(std::vector<Token> tokens)
 	/* step1: parsing gate name        */
 	/***********************************/
 	stmt.gate = tokens[pos++].str;
+	stmt.line = tokens[0].line;
 	stmt.type = StmtType::MEASURE;
 	check_brack(tokens, is_brack);
 
@@ -323,8 +321,7 @@ void Parser::build_measure_stmt(std::vector<Token> tokens)
 	}
 
 	if(stmt.qubits.size() != stmt.cubits.size()) {
-		printf("invalid user gate in line %d\n", tokens[0].line);
-		exit(0);
+		logExit("[%s:%d] qubit size mismatch in line %d", _F_, _L_, tokens[0].line);
 	}
 
 	stmts.push_back(stmt);
@@ -340,6 +337,7 @@ void Parser::build_if_stmt(std::vector<Token> tokens)
 	/* step1: parsing gate name        */
 	/***********************************/
 	stmt.type = StmtType::IF;
+	stmt.line = tokens[0].line;
 	check_brack(tokens, is_brack);
 
 	/***********************************/
@@ -410,6 +408,8 @@ void Parser::build_if_stmt(std::vector<Token> tokens)
 
 void Parser::exec_gate(STMT stmt)
 {
+	check_gate_stmt(stmt);
+
 	if(stmt.gate == "id") {
 		for(int i=0; i<stmt.qubits.size(); i++) {
 			// printf("ID %d\n", stmt.qubits[i]);
@@ -592,8 +592,7 @@ void Parser::get_qubit(Token tk, std::string qname, int val, std::vector<int> &q
 {
 	auto it = qregs.find(qname);
 	if(it == qregs.end()) {
-		printf("invalid qregister in line %d\n", tk.line);
-		exit(0);
+		logExit("[%s:%d] invalid qreg line %d", _F_, _L_, tk.line);
 	} else {
 		qubits.push_back(it->second.min + val);
 	}
@@ -603,8 +602,7 @@ void Parser::get_qubits(Token tk, std::string qname, std::vector<int> &qubits)
 {
 	auto it = qregs.find(qname);
 	if(it == qregs.end()) {
-		printf("invalid qregister in line %d\n", tk.line);
-		exit(0);
+		logExit("[%s:%d] invalid qreg line %d", _F_, _L_, tk.line);
 	} else {
 		for(int i=0; i<it->second.max; i++) {
 			qubits.push_back(it->second.min + i);
@@ -616,8 +614,7 @@ void Parser::get_cubit(Token tk, std::string cname, int val, std::vector<int> &c
 {
 	auto it = cregs.find(cname);
 	if(it == cregs.end()) {
-		printf("invalid cregister in line %d\n", tk.line);
-		exit(0);
+		logExit("[%s:%d] invalid creg line %d", _F_, _L_, tk.line);
 	} else {
 		cubits.push_back(it->second.min + val);
 	}
@@ -627,8 +624,7 @@ void Parser::get_cubits(Token tk, std::string cname, std::vector<int> &cubits)
 {
 	auto it = cregs.find(cname);
 	if(it == cregs.end()) {
-		printf("invalid cregister in line %d\n", tk.line);
-		exit(0);
+		logExit("[%s:%d] invalid creg line %d", _F_, _L_, tk.line);
 	} else {
 		for(int i=0; i<it->second.max; i++) {
 			cubits.push_back(it->second.min + i);
@@ -642,8 +638,7 @@ void Parser::get_cregvalue(Token tk, std::string cname, int &cuval)
 
 	auto it = cregs.find(cname);
 	if(it == cregs.end()) {
-		printf("invalid cregister in line %d\n", tk.line);
-		exit(0);
+		logExit("[%s:%d] invalid creg line %d", _F_, _L_, tk.line);
 	} else { 
 		creg = it->second;
 	}
@@ -706,38 +701,88 @@ void Parser::show_stmt(void)
 	}
 }
 
+void Parser::check_gate_stmt(STMT stmt)
+{
+	int type = 0;
+
+	auto it = gates.find(stmt.gate);
+	if(it == gates.end()) {
+		logExit("[%s:%d] invalid gate(%s) in line %d", _F_, _L_, stmt.gate.c_str(), stmt.line);
+	} else { 
+		type = it->second;
+	}
+
+	if(type == G1) {
+		if(stmt.args.size() != 0 || stmt.qubits.size() < 1) {
+			logExit("[%s:%d] invalid gate(%s) in line %d", _F_, _L_, stmt.gate.c_str(), stmt.line);
+		}
+	} else if(type == G2) {
+		if(stmt.args.size() != 0 || stmt.qubits.size() != 2) {
+			logExit("[%s:%d] invalid gate(%s) in line %d", _F_, _L_, stmt.gate.c_str(), stmt.line);
+		}
+	} else if(type == G3) {
+		if(stmt.args.size() != 0 || stmt.qubits.size() != 3) {
+			logExit("[%s:%d] invalid gate(%s) in line %d", _F_, _L_, stmt.gate.c_str(), stmt.line);
+		}
+	} else if(type == G4) {
+		if(stmt.args.size() != 1 || stmt.qubits.size() < 1) {
+			logExit("[%s:%d] invalid gate(%s) in line %d", _F_, _L_, stmt.gate.c_str(), stmt.line);
+		}
+	} else if(type == G5) {
+		if(stmt.args.size() != 2 || stmt.qubits.size() < 1) {
+			logExit("[%s:%d] invalid gate(%s) in line %d", _F_, _L_, stmt.gate.c_str(), stmt.line);
+		}
+	} else if(type == G6) {
+		if(stmt.args.size() != 3 || stmt.qubits.size() < 1) {
+			logExit("[%s:%d] invalid gate(%s) in line %d", _F_, _L_, stmt.gate.c_str(), stmt.line);
+		}
+	} else if(type == G7) {
+		if(stmt.args.size() != 1 || stmt.qubits.size() != 2) {
+			logExit("[%s:%d] invalid gate(%s) in line %d", _F_, _L_, stmt.gate.c_str(), stmt.line);
+		}
+	} else if(type == G8) {
+		if(stmt.args.size() != 2 || stmt.qubits.size() != 2) {
+			logExit("[%s:%d] invalid gate(%s) in line %d", _F_, _L_, stmt.gate.c_str(), stmt.line);
+		}
+	} else if(type == G9) {
+		if(stmt.args.size() != 3 || stmt.qubits.size() != 2) {
+			logExit("[%s:%d] invalid gate(%s) in line %d", _F_, _L_, stmt.gate.c_str(), stmt.line);
+		}
+	}
+}
+
 void Parser::init_gates(void) 
 {
-	gates.insert(make_pair("id", 0));
-	gates.insert(make_pair("u1", 1));
-	gates.insert(make_pair("u2", 1));
-	gates.insert(make_pair("u3", 1));
-	gates.insert(make_pair("x", 0));
-	gates.insert(make_pair("y", 0));
-	gates.insert(make_pair("z", 0));
-	gates.insert(make_pair("h", 0));
-	gates.insert(make_pair("p", 1));
-	gates.insert(make_pair("s", 0));
-	gates.insert(make_pair("t", 0));
-	gates.insert(make_pair("sdg", 0));
-	gates.insert(make_pair("tdg", 0));
-	gates.insert(make_pair("rx", 1));
-	gates.insert(make_pair("ry", 1));
-	gates.insert(make_pair("rz", 1));
-	gates.insert(make_pair("cx", 0));
-	gates.insert(make_pair("cz", 0));
-	gates.insert(make_pair("cy", 0));
-	gates.insert(make_pair("ch", 0));
-	gates.insert(make_pair("ccx", 0));
-	gates.insert(make_pair("crz", 1));
-	gates.insert(make_pair("cu1", 1));
-	gates.insert(make_pair("cu2", 1));
-	gates.insert(make_pair("cu3", 1));
-	gates.insert(make_pair("swap", 0));
-	gates.insert(make_pair("cswap", 0));
-	gates.insert(make_pair("sx", 0));
-	gates.insert(make_pair("sxdg", 0));
-	gates.insert(make_pair("iswap", 0));
+	gates.insert(make_pair("id", GateType::G1));
+	gates.insert(make_pair("u1", GateType::G4));
+	gates.insert(make_pair("u2", GateType::G5));
+	gates.insert(make_pair("u3", GateType::G6));
+	gates.insert(make_pair("x", GateType::G1));
+	gates.insert(make_pair("y", GateType::G1));
+	gates.insert(make_pair("z", GateType::G1));
+	gates.insert(make_pair("h", GateType::G1));
+	gates.insert(make_pair("p", GateType::G1));
+	gates.insert(make_pair("s", GateType::G1));
+	gates.insert(make_pair("t", GateType::G1));
+	gates.insert(make_pair("sdg", GateType::G1));
+	gates.insert(make_pair("tdg", GateType::G1));
+	gates.insert(make_pair("rx", GateType::G4));
+	gates.insert(make_pair("ry", GateType::G4));
+	gates.insert(make_pair("rz", GateType::G4));
+	gates.insert(make_pair("cx", GateType::G2));
+	gates.insert(make_pair("cz", GateType::G2));
+	gates.insert(make_pair("cy", GateType::G2));
+	gates.insert(make_pair("ch", GateType::G2));
+	gates.insert(make_pair("ccx", GateType::G3));
+	gates.insert(make_pair("crz", GateType::G7));
+	gates.insert(make_pair("cu1", GateType::G7));
+	gates.insert(make_pair("cu2", GateType::G8));
+	gates.insert(make_pair("cu3", GateType::G9));
+	gates.insert(make_pair("swap", GateType::G2));
+	gates.insert(make_pair("cswap", GateType::G3));
+	gates.insert(make_pair("sx", GateType::G1));
+	gates.insert(make_pair("sxdg", GateType::G1));
+	gates.insert(make_pair("iswap", GateType::G2));
 } 
 
 void Parser::reset(void)

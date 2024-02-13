@@ -7,7 +7,7 @@
 #include <string>
 #include <map>
 
-#include "qplayer.h"
+#include "Token.h"
 #include "Scanner.h"
 
 class Parser {
@@ -51,6 +51,7 @@ private:
 	void get_qubits(Token tk, std::string qname, std::vector<int> &qubits);
 	void get_cubits(Token tk, std::string cname, std::vector<int> &cubits);
 	void get_cregvalue(Token tk, std::string cname, int &cuval);
+	void check_gate_stmt(STMT stmt);
 
 	void build_gate_stmt(std::vector<Token> tokens);
 	void build_ugate_stmt(std::vector<Token> tokens);

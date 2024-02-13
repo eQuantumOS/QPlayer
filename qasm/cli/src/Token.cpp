@@ -71,6 +71,7 @@ void Token::show_human(void)
 		return;
 	}
 
+	printf("line(%d) ", line);
 	if(val != INT_MAX) {
 		printf("%d", val);
 	} else if(rval != LONG_MAX) {

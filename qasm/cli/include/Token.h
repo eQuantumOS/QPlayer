@@ -6,54 +6,8 @@
 #include <vector>
 #include <map>
 
-using namespace std;
-
-enum StmtType {
-	GATE,
-	IF,
-	MEASURE
-};
-
-enum Kind {
-	none, 
-	openqasm, 		
-	include, 		
-	qreg, 			
-	creg, 
-	gate, 
-	number, 
-	rnumber, 
-	str, 
-	semicolon, 
-	eol,
-	comma, 
-	plus, 
-	minus, 
-	multiply,
-	divide, 
-	lpar, 
-	rpar, 
-	lbrack, 
-	rbrack, 
-	lbrace, 
-	rbrace, 
-	PI, 
-	SIN, 
-	COS, 
-	TAN, 
-	EXP, 
-	LOG, 
-	SQRT, 
-	POWER, 
-	lt,
-	lte,
-	eq,
-	gt, 
-	gte, 
-	arrow,			
-	barrier, 
-	ifstmt
-};
+#include "qplayer.h"
+#include "ds.h"
 
 class Token {
 public:
@@ -81,6 +35,7 @@ public:
 class STMT {
 public:
 	int type;
+	int line;
     std::vector<Token> compare;
     std::string gate;
     std::vector<double> args;
