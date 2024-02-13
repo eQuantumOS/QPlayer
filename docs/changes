@@ -1,3 +1,5 @@
+2024-02-13 fix CCX code 
+
 2024-01-03 fix abnormal execution of multi qregister in OpenQASM
 
 2024-01-02 fix abnormal execution of multi-shot processing in OpenQASM

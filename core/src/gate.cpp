@@ -28,6 +28,7 @@ static void NMC_DiagonalGates(QRegister *QReg, int qubit, int gtype, complex_t M
 static void NMC_NoneDiagonalGates(QRegister *QReg, int qubit, int gtype, complex_t M[]);
 static void NMC_DiagonalControlGates(QRegister *QReg, int control, int target, int gtype, complex_t M[]);
 static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int target, int gtype, complex_t M[]);
+static void NMC_Toffoli(QRegister *QReg, int control1, int control2, int target, complex_t M[]);
 static int NMC_Measure(QRegister *QReg, int qubit);
 static int NMC_MeasureF(QRegister *QReg, int qubit, int collapse);
 
@@ -539,24 +540,17 @@ void CRZ(QRegister *QReg, int control, int target, double angle)
 void CCX(QRegister *QReg, int control1, int control2, int target)
 {
 	QTimer timer;
+	complex_t M[] = {
+		complex_t(0, 0), complex_t(1, 0),
+		complex_t(1, 0), complex_t(0, 0)
+	};
+
+	if(control1 == target || control2 == target) {
+		return;
+	}
+
 	timer.start();
-
-	H(QReg, target);
-	CX(QReg, control2, target);
-	TDG(QReg, target);
-	CX(QReg, control1, target);
-	T(QReg, target);
-	CX(QReg, control2, target);
-	TDG(QReg, target);
-	CX(QReg, control1, target);
-	T(QReg, control2);
-	T(QReg, target);
-	CX(QReg, control1, control2);
-	H(QReg, target);
-	T(QReg, control1);
-	TDG(QReg, control2);
-	CX(QReg, control1, control2);
-
+	NMC_Toffoli(QReg, control1, control2, target, M);
 	timer.end();
 	QReg->updateQRegStat(QGATE_CCX, timer);
 }
@@ -1148,6 +1142,331 @@ static void NMC_NoneDiagonalControlGates(QRegister *QReg, int control, int targe
 			if(QReg->qubitTypes[control] == KET_SUPERPOSED) {
 				if(stripe_lower(qidx, control) == true) {
 					/* control bit is |0> */
+					if(stripe_lower(qidx, target) == true) {
+						isLowerLocal = true;
+					} else {
+						isUpperLocal = true;
+					}
+					continue;
+				}
+			}
+
+			/*****************************************************
+			 * (NOTICE!!) Despite the redundancy of the code, we 
+			 * subdivide the code by scenario as shown below to 
+			 * increase the readability of the source code.
+			 *****************************************************/
+			if(targetQubitType == KET_ZERO) {
+				/************************************************* 
+				 * (Scenario#1) Qubit is |0> state.
+				 * 
+				 *  state will evolves as follows 
+				 *    a|0> --> b|0> + c|1> 
+				 *************************************************/
+				oldAmp0 = Q->getAmplitude();
+				oldAmp1 = 0;
+
+				i0 = qidx;
+				i1 = qidx + stride;
+
+				newAmp0 = M[0]*oldAmp0;
+				newAmp1 = M[2]*oldAmp0;
+
+				/* update lower state */
+				if(isRealizedState(newAmp0) == true) {
+					/* update existing |0> amplitude */
+					Q->setAmplitude(newAmp0);
+					isLowerLocal = true;
+				} else {
+					/* remove zero amplitude |0> state */
+					hashid = (int)(i0 % QSTORE_PARTITION);
+					delQList[hashid][tid].push_back(Q);
+				}
+
+				/* update upper state */
+				if(isRealizedState(newAmp1) == true) {
+					/* add new |1> state */
+					upperQ = getQState(i1, newAmp1);
+					hashid = (int)(i1 % QSTORE_PARTITION);
+					addQList[hashid][tid].push_back(upperQ);
+					isUpperLocal = true;
+				}
+			} else if(targetQubitType == KET_ONE) {
+				/************************************************* 
+				 * (Scenario#2) Qubit is |1> state.
+				 * 
+				 *  state will evolves as follows 
+				 *    a|1> --> b|0> + c|1> 
+				 *************************************************/
+				oldAmp0 = 0;
+				oldAmp1 = Q->getAmplitude();
+
+				i0 = qidx - stride;
+				i1 = qidx;
+
+				newAmp0 = M[1]*oldAmp1;
+				newAmp1 = M[3]*oldAmp1;
+
+				/* update lower state */
+				if(isRealizedState(newAmp0) == true) {
+					/* add new |0> state */
+					lowerQ = getQState(i0, newAmp0);
+					hashid = (int)(i0 % QSTORE_PARTITION);
+					addQList[hashid][tid].push_back(lowerQ);
+					isLowerLocal = true;
+				}
+
+				/* update upper state */
+				if(isRealizedState(newAmp1) == true) {
+					/* update existing |1> amplitude */
+					Q->setAmplitude(newAmp1);
+					isUpperLocal = true;
+				} else {
+					/* remove zero amplitude |1> state */
+					hashid = (int)(i1 % QSTORE_PARTITION);
+					delQList[hashid][tid].push_back(Q);
+				}
+			} else {
+				/************************************************* 
+				 * (Scenario#3) Qubit is in superposed state    
+				 *
+				 * This is divided into following sub-scenarios 
+				 *************************************************/
+				if(stripe_lower(qidx, target) == true) {
+					i0 = qidx;
+					i1 = qidx + stride;
+
+					lowerQ = Q;
+					upperQ = QReg->findQState(i1);
+				} else {
+					i0 = qidx - stride;
+					i1 = qidx;
+
+					lowerQ = QReg->findQState(i0);
+					upperQ = Q;
+				}
+
+				if(lowerQ != NULL && upperQ != NULL) {
+					/******************************************
+					 * (Sub3-1) two matrix pair exist             
+					 *  - just update new amplitudes 
+				 	 ******************************************/
+					oldAmp0 = lowerQ->getAmplitude();
+					oldAmp1 = upperQ->getAmplitude();
+
+					if(lowerQ->getIndex() != qidx) {
+						/* (Important!!) To ensure concurrency when all matrix pairs are
+						   exist, only the thread assigned lowerQ updates the state. */
+						continue;
+					}
+
+					newAmp0 = M[0]*oldAmp0 + M[1]*oldAmp1;
+					newAmp1 = M[2]*oldAmp0 + M[3]*oldAmp1;
+
+					if(isRealizedState(newAmp0) == true && isRealizedState(newAmp1) == true) {
+						lowerQ->setAmplitude(newAmp0);
+						upperQ->setAmplitude(newAmp1);
+						isLowerLocal = true;
+						isUpperLocal = true;
+					} else {
+						if(isRealizedState(newAmp0) == true) {
+							lowerQ->setAmplitude(newAmp0);
+							isLowerLocal = true;
+						} else {
+							/* remove zero amplitude |0> state */
+							hashid = (int)(i0 % QSTORE_PARTITION);
+							delQList[hashid][tid].push_back(lowerQ);
+						}
+
+						if(isRealizedState(newAmp1) == true) {
+							upperQ->setAmplitude(newAmp1);
+							isUpperLocal = true;
+						} else {
+							/* remove zero amplitude |1> state */
+							hashid = (int)(i1 % QSTORE_PARTITION);
+							delQList[hashid][tid].push_back(upperQ);
+						}
+					}
+				} else if(lowerQ != NULL) {
+					/******************************************
+					 * (Sub3-2) one of matrix pair(|0>) exists
+				 	 *  state will evolves as follows 
+		 			 *   a|0> --> b|0> + c|1> 
+				 	 ******************************************/
+					oldAmp0 = lowerQ->getAmplitude();
+					oldAmp1 = 0;
+
+					i0 = qidx;
+					i1 = qidx + stride;
+
+					newAmp0 = M[0]*oldAmp0;
+					newAmp1 = M[2]*oldAmp0;
+
+					/* update lower state */
+					if(isRealizedState(newAmp0) == true) {
+						/* update existing |0> amplitude */
+						lowerQ->setAmplitude(newAmp0);
+						isLowerLocal = true;
+					} else {
+						/* remove zero amplitude |0> state */
+						hashid = (int)(i0 % QSTORE_PARTITION);
+						delQList[hashid][tid].push_back(lowerQ);
+					}
+
+					/* update upper state */
+					if(isRealizedState(newAmp1) == true) {
+						/* add new upper state */
+						upperQ = getQState(i1, newAmp1);
+						hashid = (int)(i1 % QSTORE_PARTITION);
+						addQList[hashid][tid].push_back(upperQ);
+						isUpperLocal = true;
+					}
+				} else if(upperQ != NULL) {
+					/******************************************
+					 * (Sub3-3) one of matrix pair(|1>) exists
+				 	 *  state will evolves as follows 
+		 			 *   a|1> --> b|0> + c|1> 
+				 	 ******************************************/
+					oldAmp0 = 0;
+					oldAmp1 = upperQ->getAmplitude();
+
+					i0 = qidx - stride;
+					i1 = qidx;
+
+					newAmp0 = M[1]*oldAmp1;
+					newAmp1 = M[3]*oldAmp1;
+
+					/* update lower state */
+					if(isRealizedState(newAmp0) == true) {
+						/* add new |0> state */
+						lowerQ = getQState(i0, newAmp0);
+						hashid = (int)(i0 % QSTORE_PARTITION);
+						addQList[hashid][tid].push_back(lowerQ);
+						if(isLowerLocal == false) isLowerLocal = true;
+					} 
+	
+					/* update upper state */
+					if(isRealizedState(newAmp1) == true) {
+						/* update existing |1> amplitude */
+						upperQ->setAmplitude(newAmp1);
+						if(isUpperLocal == false) isUpperLocal = true;
+					} else {
+						/* remove zero amplitude |1> state */
+						hashid = (int)(i1 % QSTORE_PARTITION);
+						delQList[hashid][tid].push_back(upperQ);
+					}
+				}
+			}
+		}
+
+		if(isLowerLocal == true) isLower = true;
+		if(isUpperLocal == true) isUpper = true;
+	}
+
+	/******************************************************** 
+	 * (STEP2) remove zero amplitude states or add new state
+	 ********************************************************/
+	#pragma omp parallel for
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		for(int j=0; j<QReg->getCPUCores(); j++) {
+			for(auto Q : delQList[i][j]) {
+				QReg->delQState(Q->getIndex());
+			}
+			for(auto Q : addQList[i][j]) {
+				QReg->addQState(Q->getIndex(), Q);
+			}
+			addQList[i][j].clear();
+			delQList[i][j].clear();
+		}
+	}
+
+	/************************************************** 
+	 * (STEP3) update qubit type
+	 **************************************************/
+	if(isLower == true && isUpper == true) {
+		QReg->qubitTypes[target] = KET_SUPERPOSED;
+	} else if(isLower == true) {
+			QReg->qubitTypes[target] = KET_ZERO;
+	} else if(isUpper == true) {
+		QReg->qubitTypes[target] = KET_ONE;
+	}
+}
+
+static void NMC_Toffoli(QRegister *QReg, int control1, int control2, int target, complex_t M[])
+{
+	QReg->checkMemory();
+
+	if(control1 >= QReg->getNumQubits()) {
+		printf("control1(%d) out of range!\n", control1);
+		exit(0);
+	}
+
+	if(control2 >= QReg->getNumQubits()) {
+		printf("control2(%d) out of range!\n", control2);
+		exit(0);
+	}
+
+	if(target >= QReg->getNumQubits()) {
+		printf("target(%d) out of range!\n", target);
+		exit(0);
+	}
+
+	if(QReg->qubitTypes[control1] == KET_ZERO || QReg->qubitTypes[control2] == KET_ZERO) {
+		/* do nothing */
+		return;
+	}
+
+	qsize_t stride = get_stride(target);
+	int targetQubitType = QReg->qubitTypes[target];
+
+	static vector<QState*> addQList[QSTORE_PARTITION][MAX_CORES];
+	static vector<QState*> delQList[QSTORE_PARTITION][MAX_CORES];
+	
+	bool isLower = false;
+	bool isUpper = false;
+
+	/************************************************** 
+	 * (STEP1) apply matrix
+	 *************************************************/ 
+	#pragma omp parallel for
+	for(int i=0; i<QSTORE_PARTITION; i++) {
+		int thread_id = omp_get_thread_num();
+		int tid = thread_id % QReg->getCPUCores();
+		cpu_set_t cpuset;
+		bool isLowerLocal = false;
+		bool isUpperLocal = false;
+		QState *lowerQ = NULL;
+		QState *upperQ = NULL;
+		QState *Q = NULL;
+		qsize_t qidx;
+		qsize_t i0;
+		qsize_t i1;
+		complex_t oldAmp0;
+		complex_t oldAmp1;
+		complex_t newAmp0;
+		complex_t newAmp1;
+		int hashid;
+
+		QMAPITER it;
+		for(it = QReg->qstore[i].begin(); it != QReg->qstore[i].end(); it++) {
+			Q = it->second;
+			qidx = Q->getIndex();
+
+			if(QReg->qubitTypes[control1] == KET_SUPERPOSED) {
+				if(stripe_lower(qidx, control1) == true) {
+					/* control1 bit is |0> */
+					if(stripe_lower(qidx, target) == true) {
+						isLowerLocal = true;
+					} else {
+						isUpperLocal = true;
+					}
+					continue;
+				}
+			}
+
+			if(QReg->qubitTypes[control2] == KET_SUPERPOSED) {
+				if(stripe_lower(qidx, control2) == true) {
+					/* control2 bit is |0> */
 					if(stripe_lower(qidx, target) == true) {
 						isLowerLocal = true;
 					} else {
