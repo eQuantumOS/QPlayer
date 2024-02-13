@@ -1,4 +1,4 @@
-QPLAYER_RELEASE=../release
+QPLAYER_RELEASE=../../release
 
 CXX = g++
 CXXLD = g++

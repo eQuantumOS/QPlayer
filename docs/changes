@@ -1,4 +1,9 @@
-2024-02-13 fix CCX code 
+2024-02-13 support qiskit compatible python interface
+    - remove ~/qasm directory
+    - add ~/qasm/cli directory (for qplayer cli)
+    - add ~/qasm/qiskit directory (for qiskit compatible python interface)
+
+2024-02-12 fix CCX code 
 
 2024-01-03 fix abnormal execution of multi qregister in OpenQASM
 

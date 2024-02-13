@@ -14,7 +14,7 @@
 #include <signal.h>
 #include <libgen.h>
 
-#include "QASMparser.h"
+#include "include/Parser.h"
 
 #define MAX_LENG 512
 
@@ -26,7 +26,7 @@ static char j_out[MAX_LENG];
 static int shots;
 static int is_verbose;
 static int is_json;
-static char *version = "QPlayer v-1.0-Leopard";
+static char *version = "QPlayer v2.3-Cougar";
 static char *dirc = NULL;
 static char *dname = NULL;
 
@@ -241,32 +241,37 @@ void convertQASM(void)
 
 void runQASM(void)
 {
-	map<string, int> cregMap;
+	map<std::string, int> cregMap;
 
-	/* STEP1: parse & execute QASM file for shot-round */
+	/*********************************************/
+	/* STEP1: parsing qasm codes                 */
+	/*********************************************/
+	Parser *parser = new Parser(f_qasm);
+	parser->parse();
+
+	/*********************************************/
+	/* STEP2: run qasm codes for nshots          */
+	/*********************************************/
 	for(int i=0; i<shots; i++) {
-		QASMparser* parser = new QASMparser(f_qasm);
-		vector<string> cregStr;
+		std::string str;
 
-		parser->Parse();
-		parser->get_cregStr(cregStr);
+		parser->run();
+		parser->get_measure(str);
 
-		for(auto entry : cregStr) {
-			auto it = cregMap.find(entry);
-			if(it == cregMap.end()) {
-				cregMap[entry] = 1;
-			} else {
-				it->second++;
-			}
+		auto it = cregMap.find(str);
+		if(it == cregMap.end()) {
+			cregMap[str] = 1;
+		} else {
+			it->second++;
 		}
 
-		QReg->reset();
+		parser->reset();
+	};
 
-		delete parser;
-	}
-
-	/* STEP2: generate measured output */
-	char cmd[256] = "";
+	/*********************************************/
+	/* STEP3: generate measured output           */
+	/*********************************************/
+	char cmd[256]= "";
 	dirc = strdup(f_out);
 	dname = dirname(dirc);
 	sprintf(cmd, "mkdir -p %s", dname);
@@ -283,14 +288,18 @@ void runQASM(void)
 	if(cregMap.size() > 0) {
 		fprintf(fp, "\n");
 		for(auto entry : cregMap) {
-			fprintf(fp, "%d%%, %d/%d, |%s>\n", (int)(entry.second*100/shots), entry.second, shots, entry.first.c_str());
+			fprintf(fp, "%d%%, %d/%d, |%s>\n", 
+				(int)(entry.second*100/shots), 
+				entry.second, shots, entry.first.c_str());
 		}
 	}
 
 	fclose(fp);
 
-	/* STEP3: show simulation stat or generate json */
-	struct qregister_stat stat = QReg->getQRegStat();
+	/*********************************************/
+	/* STEP4: generate simulation stat to json   */
+	/*********************************************/
+	struct qregister_stat stat = parser->getQRegStat();
 
 	if(is_verbose) {
 		showStat(&stat);
@@ -300,7 +309,7 @@ void runQASM(void)
 		genStatJson(&stat);
 	}
 
-	delete QReg;
+	delete parser;
 }
 
 int main(int argc, char **argv)
