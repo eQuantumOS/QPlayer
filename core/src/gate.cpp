@@ -354,8 +354,8 @@ void SXDG(QRegister *QReg, int qubit)
 {
 	QTimer timer;
 	complex_t M[] = {
-		complex_t(1, 0)/std::sqrt(2), complex_t(0, 1)/std::sqrt(2),
-		complex_t(0, 1)/std::sqrt(2), complex_t(1, 0)/std::sqrt(2)
+		complex_t(1, -1)/std::sqrt(2), complex_t(1, 1)/std::sqrt(2),
+		complex_t(1, 1)/std::sqrt(2), complex_t(1, -1)/std::sqrt(2)
 	};
 
 	timer.start();
