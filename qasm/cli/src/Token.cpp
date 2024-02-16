@@ -52,8 +52,12 @@ void Token::show(void)
 		return;
 	} else if(kind == Kind::eol) {
 		printf("\n");
+	} else if(kind == Kind::lbrace) {
+		printf("{\n");
+	} else if(kind == Kind::rbrace) {
+		printf("}\n");
 	} else if(kind == Kind::semicolon) {
-		printf(";");
+		printf(";\n");
 	} else {
 		if(val != INT_MAX) {
 			printf("%d ", val);
@@ -62,31 +66,5 @@ void Token::show(void)
 		} else {
 			printf("%s ", str.c_str());
 		}
-	}
-}
-
-void Token::show_human(void) 
-{
-	if(kind == Kind::none) {
-		return;
-	}
-
-	printf("line(%d) ", line);
-	if(val != INT_MAX) {
-		printf("%d", val);
-	} else if(rval != LONG_MAX) {
-		printf("%.2f", rval);
-	} else {
-		printf("%s", str.c_str());
-	}
-
-	if(kind == Kind::semicolon) {
-		printf("\n");
-	} else if(kind == Kind::lbrace) {
-		printf("\n");
-	} else if(kind == Kind::rbrace) {
-		printf("\n");
-	} else {
-		printf(" ");
 	}
 }

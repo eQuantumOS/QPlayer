@@ -30,9 +30,9 @@ enum GateType {
 
 enum Kind {
 	none, 
-	openqasm, 		
-	include, 		
-	qreg, 			
+	openqasm, 
+	include, 
+	qreg, 
 	creg, 
 	gate, 
 	number, 

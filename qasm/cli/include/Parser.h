@@ -21,7 +21,7 @@ public:
 	std::vector<int> creg_measure;
 	QRegister *QReg;
 	int numQubits;
-	int numCbits;
+	int numCubits;
 
 public:
 	Scanner *scanner;

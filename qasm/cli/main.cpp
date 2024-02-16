@@ -233,6 +233,7 @@ void convertQASM(void)
 		fgets(line, sizeof(line), in);
 		fprintf(out, "%s", line);
 	}
+	fprintf(out, "\n\n");
 
 	fclose(in);
 	fclose(out);
@@ -264,7 +265,6 @@ void runQASM(void)
 			it->second++;
 		}
 
-		parser->dumpQReg();
 		parser->reset();
 	};
 

@@ -154,6 +154,8 @@ void Scanner::scan(void)
 			tokens.push_back(t);
 		}
 	}
+
+	check_args();
 }
 
 void Scanner::check_args(void) 
@@ -248,18 +250,18 @@ void Scanner::build_qregs(std::map<std::string, Reg_args> &qregs)
 		std::string name = tokens[++i].str;
 
 		if(tokens[++i].kind != Kind::lbrack) {	
-			printf("qreg definition is invalid in line %d\n", tokens[i].line);
+			logExit("[%s:%d] qreg definition is invalid in line %d", _F_, _L_, tokens[i].line);
 		}
 
 		qsize = tokens[++i].val;
-		regs.min = qpos;
-		regs.max = qsize;
+		regs.pos = qpos;
+		regs.size = qsize;
 
 		qregs.insert(make_pair(name, regs));
 		qpos += qsize;
 
 		if(tokens[++i].kind != Kind::rbrack) {	
-			printf("qreg definition is invalid in line %d\n", tokens[i].line);
+			logExit("[%s:%d] qreg definition is invalid in line %d", _F_, _L_, tokens[i].line);
 		}
 	}
 }
@@ -278,18 +280,18 @@ void Scanner::build_cregs(std::map<std::string, Reg_args> &cregs)
 		std::string name = tokens[++i].str;
 
 		if(tokens[++i].kind != Kind::lbrack) {	
-			printf("creg definition is invalid in line %d\n", tokens[i].line);
+			logExit("[%s:%d] creg definition is invalid in line %d", _F_, _L_, tokens[i].line);
 		}
 
 		csize = tokens[++i].val;
-		regs.min = cpos;
-		regs.max = csize;
+		regs.pos = cpos;
+		regs.size = csize;
 
 		cregs.insert(make_pair(name, regs));
 		cpos += csize;
 
 		if(tokens[++i].kind != Kind::rbrack) {	
-			printf("creg definition is invalid in line %d\n", tokens[i].line);
+			logExit("[%s:%d] creg definition is invalid in line %d", _F_, _L_, tokens[i].line);
 		}
 	}
 }
@@ -346,11 +348,7 @@ void Scanner::get_utokens(std::vector<Token> source, std::vector<Token> &stmt, i
 
 void Scanner::show(void) {
 	for(auto t : tokens) {
-	#if 0
 		t.show();
-	#else
-		t.show_human();
-	#endif
 	}
 	printf("\n");
 }

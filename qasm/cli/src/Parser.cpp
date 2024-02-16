@@ -1,30 +1,106 @@
 #include "Parser.h"
 #include "Cal.h"
 
+/***************************************************************
+  A. execution flow
+
+     1) Parser::parse()
+        - tokinzing qasm codes
+        - build qreg, creg list
+        - build user gates map
+        - build gate statements for calling simulator
+
+     2) Parser::run()  
+        - call gate command in the STMT list in order
+
+  B. QASM code & Memory example
+
+     1) sample code
+
+        OPENQASM 2.0;
+        include "qelib1.inc";
+
+        qreg q[4];
+        creg c[4];
+
+        gate mygate (r1) a b {
+            h a;
+            u1 (r1) b;
+        }
+
+        x q[0];
+        cx q[0], q[1];
+        mygate (pi) q[0], q[2];
+
+        measure q -> c;
+
+        if (c == 0) x q[1];
+
+     2) decomposed tokens (Scanner::vector<Token> Tokens)
+
+        OPENQASM 2.00 ;
+        include qelib1.inc ;
+        qreg q [ 4 ] ;
+        creg c [ 4 ] ;
+        gate mygate ( r1 ) a b {
+        h a ;
+        u1 ( r1 ) b ;
+        }
+        x q [ 0 ] ;
+        cx q [ 0 ] , q [ 1 ] ;
+        mygate ( pi ) q [ 0 ] , q [ 2 ] ;
+        measure q -> c ;
+        if ( c == 0 ) x q [ 1 ] ;
+
+     3) statement lists (Parser::vector<STMT> stmts)
+
+        stmt[0] : x 0 
+        stmt[1] : cx 0 1 
+        stmt[2] : h 0 
+        stmt[3] : u1 3.14 2 
+        stmt[4] : measure 0 1 2 3  -> 0 1 2 3 
+        stmt[5] : if c == 0 x 1 
+ ***************************************************************/
+
 void Parser::parse(void) 
 {
 	std::vector<Token> tokens;
 	int pos = 0;
 
-	/* toknizing */
+	/*******************************************/
+	/* step1: toknizing all QASM codes         */
+	/*******************************************/
 	scanner->scan();
 	
-	/* build user defined gates */
-	scanner->build_ugates(ugates);
-
-	/* build registers */
+	/*******************************************/
+	/* step2: build qreg, creg list            */
+	/*******************************************/
 	numQubits = 0;
-	numCbits = 0;
+	numCubits = 0;
 	scanner->build_qregs(qregs);
 	scanner->build_cregs(cregs);
-	for(auto q : qregs) numQubits += q.second.max;
-	for(auto c : cregs) numCbits += c.second.max;
-	for(int i=0; i<numCbits; i++) creg_measure.push_back(0);
+	for(auto q : qregs) numQubits += q.second.size;
+	for(auto c : cregs) numCubits += c.second.size;
+	for(int i=0; i<numCubits; i++) creg_measure.push_back(0);
 
-	/* check angle arguments */
-	scanner->check_args();
+	if(numQubits == 0) {
+		logExit("[%s:%d] qreg is not defined", _F_, _L_);
+	}
 
-	/* build stmts */
+#if 0
+	if(numCubits == 0) {
+		logExit("[%s:%d] creg is not defined", _F_, _L_);
+	}
+#endif
+
+	/*******************************************/
+	/* step3: build user defined gates         */
+	/*******************************************/
+	scanner->build_ugates(ugates);
+
+	/*******************************************/
+	/* step4: build stmts                      */
+	/*******************************************/
 	while(1) {
 		scanner->get_tokens(tokens, pos);
 		if(tokens.size() == 0) {
@@ -32,7 +108,7 @@ void Parser::parse(void)
 		}
 
 		if(tokens[0].kind != Kind::str) {
-			logExit("[%s:%d] does not start with invalid gate in line %d", _F_, _L_, tokens[0].line);
+			logExit("[%s:%d] does not start with invalid command in line %d", _F_, _L_, tokens[0].line);
 		}
 
 		if(gates.find(tokens[0].str) != gates.end()) {
@@ -46,12 +122,55 @@ void Parser::parse(void)
 		} else if(tokens[0].str == "barrier") {
 			continue;
 		} else {
-			logExit("[%s:%d] does not start with invalid gate in line %d", _F_, _L_, tokens[0].line);
+			logExit("[%s:%d] does not start with invalid command in line %d", _F_, _L_, tokens[0].line);
 		}
 	}
 
-	/* allocate qregister */
+	/*******************************************/
+	/* step5: allocate qregister               */
+	/*******************************************/
 	QReg = new QRegister(numQubits);
+}
+
+void Parser::run(void) 
+{
+	for(auto stmt : stmts) {
+		if(stmt.type == StmtType::MEASURE) {
+			for(int i=0; i<stmt.qubits.size(); i++) {
+				creg_measure[stmt.cubits[i]] = M(QReg, stmt.qubits[i]);
+			}
+		} else if(stmt.type == StmtType::IF) {
+			std::string lparam = stmt.compare[0].str;
+			Kind kind = stmt.compare[1].kind;
+			int rparam = stmt.compare[2].val;
+			int cuval = 0;
+			bool pass = false;
+
+			get_cregvalue(stmt.compare[0], lparam, cuval);
+
+			if(kind == Kind::eq) {
+				if(cuval == rparam) pass = true;
+			} else if(kind == Kind::lt) {
+				if(cuval < rparam) pass = true;
+			} else if(kind == Kind::lte) {
+				if(cuval <= rparam) pass = true;
+			} else if(kind == Kind::gt) {
+				if(cuval > rparam) pass = true;
+			} else if(kind == Kind::gte) {
+				if(cuval >= rparam) pass = true;
+			}
+
+			if(pass == false) {
+				continue;
+			}
+
+			/* convert stmt type & run */
+			stmt.type = StmtType::GATE;
+			exec_gate(stmt);
+		} else {
+			exec_gate(stmt);
+		}
+	}
 }
 
 void Parser::build_gate_stmt(std::vector<Token> tokens) 
@@ -112,6 +231,11 @@ void Parser::build_gate_stmt(std::vector<Token> tokens)
 	} else {
 		while(tokens[pos].kind != Kind::semicolon) {
 			if(tokens[pos].kind == Kind::lbrack) {	
+				if(tokens[pos+1].kind == Kind::rbrack) {	
+					logExit("[%s:%d] qubit is empty in line %d", _F_, _L_, tokens[0].line);
+				} else if(tokens[pos+1].kind != Kind::number) {	
+					logExit("[%s:%d] qubit is not number type in line %d", _F_, _L_, tokens[0].line);
+				} 
 				get_qubit(tokens[pos], tokens[pos-1].str, tokens[pos+1].val, stmt.qubits);
 			}
 			pos++;
@@ -410,169 +534,102 @@ void Parser::exec_gate(STMT stmt)
 {
 	check_gate_stmt(stmt);
 
-	if(stmt.gate == "id") {
+	if(stmt.gate == "reset") {
 		for(int i=0; i<stmt.qubits.size(); i++) {
-			// printf("ID %d\n", stmt.qubits[i]);
+			initZ(QReg, stmt.qubits[i]);
+		}
+	} else if(stmt.gate == "id") {
+		for(int i=0; i<stmt.qubits.size(); i++) {
 			continue;
 		}
 	} else if(stmt.gate == "x") {
 		for(int i=0; i<stmt.qubits.size(); i++) {
-			// printf("X %d\n", stmt.qubits[i]);
 			X(QReg, stmt.qubits[i]);
 		}
 	} else if(stmt.gate == "y") {
 		for(int i=0; i<stmt.qubits.size(); i++) {
-			// printf("Y %d\n", stmt.qubits[i]);
 			Y(QReg, stmt.qubits[i]);
 		}
 	} else if(stmt.gate == "z") {
 		for(int i=0; i<stmt.qubits.size(); i++) {
-			// printf("Z %d\n", stmt.qubits[i]);
 			Z(QReg, stmt.qubits[i]);
 		}
 	} else if(stmt.gate == "h") {
 		for(int i=0; i<stmt.qubits.size(); i++) {
-			// printf("H %d\n", stmt.qubits[i]);
 			H(QReg, stmt.qubits[i]);
 		}
 	} else if(stmt.gate == "t") {
 		for(int i=0; i<stmt.qubits.size(); i++) {
-			// printf("T %d\n", stmt.qubits[i]);
 			T(QReg, stmt.qubits[i]);
 		}
 	} else if(stmt.gate == "tdg") {
 		for(int i=0; i<stmt.qubits.size(); i++) {
-			// printf("TDG %d\n", stmt.qubits[i]);
 			TDG(QReg, stmt.qubits[i]);
 		}
 	} else if(stmt.gate == "s") {
 		for(int i=0; i<stmt.qubits.size(); i++) {
-			// printf("S %d\n", stmt.qubits[i]);
 			S(QReg, stmt.qubits[i]);
 		}
 	} else if(stmt.gate == "sdg") {
 		for(int i=0; i<stmt.qubits.size(); i++) {
-			// printf("SDG %d\n", stmt.qubits[i]);
 			SDG(QReg, stmt.qubits[i]);
 		}
 	} else if(stmt.gate == "sx") {
 		for(int i=0; i<stmt.qubits.size(); i++) {
-			// printf("SX %d\n", stmt.qubits[i]);
 			SX(QReg, stmt.qubits[i]);
 		}
 	} else if(stmt.gate == "sxdg") {
 		for(int i=0; i<stmt.qubits.size(); i++) {
-			// printf("SXDG %d\n", stmt.qubits[i]);
 			SXDG(QReg, stmt.qubits[i]);
 		}
 	} else if(stmt.gate == "u1") {
 		for(int i=0; i<stmt.qubits.size(); i++) {
-			// printf("U1 (%.2f) %d\n", stmt.args[0], stmt.qubits[i]);
 			U1(QReg, stmt.qubits[i], stmt.args[0]);
 		}
 	} else if(stmt.gate == "u2") {
 		for(int i=0; i<stmt.qubits.size(); i++) {
-			// printf("U2 (%.2f, %.2f) %d\n", stmt.args[0], stmt.args[1], stmt.qubits[i]);
 			U2(QReg, stmt.qubits[i], stmt.args[0], stmt.args[1]);
 		}
 	} else if(stmt.gate == "u3") {
 		for(int i=0; i<stmt.qubits.size(); i++) {
-			// printf("U3 (%.2f, %.2f, %.2f) %d\n", stmt.args[0], stmt.args[1], stmt.args[2], stmt.qubits[i]);
 			U3(QReg, stmt.qubits[i], stmt.args[0], stmt.args[1], stmt.args[3]);
 		}
 	} else if(stmt.gate == "rx") {
 		for(int i=0; i<stmt.qubits.size(); i++) {
-			// printf("RX (%.2f) %d\n", stmt.args[0], stmt.qubits[i]);
 			RX(QReg, stmt.qubits[i], stmt.args[0]);
 		}
 	} else if(stmt.gate == "ry") {
 		for(int i=0; i<stmt.qubits.size(); i++) {
-			// printf("RY (%.2f) %d\n", stmt.args[0], stmt.qubits[i]);
 			RY(QReg, stmt.qubits[i], stmt.args[0]);
 		}
 	} else if(stmt.gate == "rz") {
 		for(int i=0; i<stmt.qubits.size(); i++) {
-			// printf("RZ (%.2f) %d\n", stmt.args[0], stmt.qubits[i]);
 			RZ(QReg, stmt.qubits[i], stmt.args[0]);
 		}
 	} else if(stmt.gate == "cx") {
-		// printf("CX %d, %d\n", stmt.qubits[0], stmt.qubits[1]);
 		CX(QReg, stmt.qubits[0], stmt.qubits[1]);
 	} else if(stmt.gate == "ch") {
-		// printf("CH %d, %d\n", stmt.qubits[0], stmt.qubits[1]);
 		CH(QReg, stmt.qubits[0], stmt.qubits[1]);
 	} else if(stmt.gate == "cy") {
-		// printf("CY %d, %d\n", stmt.qubits[0], stmt.qubits[1]);
 		CY(QReg, stmt.qubits[0], stmt.qubits[1]);
 	} else if(stmt.gate == "cz") {
-		// printf("CZ %d, %d\n", stmt.qubits[0], stmt.qubits[1]);
 		CZ(QReg, stmt.qubits[0], stmt.qubits[1]);
 	} else if(stmt.gate == "crz") {
-		// printf("CRZ (%.2f) %d, %d\n", stmt.args[0], stmt.qubits[0], stmt.qubits[1]);
 		CRZ(QReg, stmt.qubits[0], stmt.qubits[1], stmt.args[0]);
 	} else if(stmt.gate == "cu1") {
-		// printf("CU1 (%.2f) %d, %d\n", stmt.args[0], stmt.qubits[0], stmt.qubits[1]);
 		CU1(QReg, stmt.qubits[0], stmt.qubits[1], stmt.args[0]);
 	} else if(stmt.gate == "cu2") {
-		// printf("CU2 (%.2f, %.2f) %d, %d\n", stmt.args[0], stmt.args[1], stmt.qubits[0], stmt.qubits[1]);
 		CU2(QReg, stmt.qubits[0], stmt.qubits[1], stmt.args[0], stmt.args[1]);
 	} else if(stmt.gate == "cu3") {
-		// printf("CU3 (%.2f, %.2f, %.2f) %d, %d\n", stmt.args[0], stmt.args[1], stmt.args[2], stmt.qubits[0], stmt.qubits[1]);
 		CU3(QReg, stmt.qubits[0], stmt.qubits[1], stmt.args[0], stmt.args[1], stmt.args[2]);
 	} else if(stmt.gate == "swap") {
-		// printf("SWAP %d, %d\n", stmt.qubits[0], stmt.qubits[1]);
 		SWAP(QReg, stmt.qubits[0], stmt.qubits[1]);
 	} else if(stmt.gate == "ccx") {
-		// printf("CCX %d, %d, %d\n", stmt.qubits[0], stmt.qubits[1], stmt.qubits[2]);
 		CCX(QReg, stmt.qubits[0], stmt.qubits[1], stmt.qubits[2]);
 	} else if(stmt.gate == "cwap") {
-		// printf("CSWAP %d, %d, %d\n", stmt.qubits[0], stmt.qubits[1], stmt.qubits[2]);
 		CSWAP(QReg, stmt.qubits[0], stmt.qubits[1], stmt.qubits[2]);
 	} else if(stmt.gate == "iswap") {
-		// printf("iSWAP %d, %d\n", stmt.qubits[0], stmt.qubits[1]);
 		iSWAP(QReg, stmt.qubits[0], stmt.qubits[1]);
-	}
-}
-
-void Parser::run(void) 
-{
-	for(auto stmt : stmts) {
-		if(stmt.type == StmtType::MEASURE) {
-			for(int i=0; i<stmt.qubits.size(); i++) {
-				// printf("M %d -> %d\n", stmt.qubits[i], stmt.cubits[i]);
-				creg_measure[stmt.cubits[i]] = M(QReg, stmt.qubits[i]);
-			}
-		} else if(stmt.type == StmtType::IF) {
-			std::string lparam = stmt.compare[0].str;
-			Kind kind = stmt.compare[1].kind;
-			int rparam = stmt.compare[2].val;
-			int cuval = 0;
-			bool pass = false;
-
-			get_cregvalue(stmt.compare[0], lparam, cuval);
-
-			if(kind == Kind::eq) {
-				if(cuval == rparam) pass = true;
-			} else if(kind == Kind::lt) {
-				if(cuval < rparam) pass = true;
-			} else if(kind == Kind::lte) {
-				if(cuval <= rparam) pass = true;
-			} else if(kind == Kind::gt) {
-				if(cuval > rparam) pass = true;
-			} else if(kind == Kind::gte) {
-				if(cuval >= rparam) pass = true;
-			}
-
-			if(pass == false) {
-				continue;
-			}
-
-			/* convert stmt type & run */
-			stmt.type = StmtType::GATE;
-			exec_gate(stmt);
-		} else {
-			exec_gate(stmt);
-		}
 	}
 }
 
@@ -592,9 +649,14 @@ void Parser::get_qubit(Token tk, std::string qname, int val, std::vector<int> &q
 {
 	auto it = qregs.find(qname);
 	if(it == qregs.end()) {
-		logExit("[%s:%d] invalid qreg line %d", _F_, _L_, tk.line);
+		logExit("[%s:%d] invalid qreg in line %d", _F_, _L_, tk.line);
 	} else {
-		qubits.push_back(it->second.min + val);
+		int qubit = it->second.pos + val;
+		if(qubit <= numQubits) {
+			qubits.push_back(it->second.pos + val);
+		} else {
+			logExit("[%s:%d] qubit is out-of-range in line %d", _F_, _L_, tk.line);
+		}
 	}
 }
 
@@ -602,10 +664,10 @@ void Parser::get_qubits(Token tk, std::string qname, std::vector<int> &qubits)
 {
 	auto it = qregs.find(qname);
 	if(it == qregs.end()) {
-		logExit("[%s:%d] invalid qreg line %d", _F_, _L_, tk.line);
+		logExit("[%s:%d] invalid qreg in line %d", _F_, _L_, tk.line);
 	} else {
-		for(int i=0; i<it->second.max; i++) {
-			qubits.push_back(it->second.min + i);
+		for(int i=0; i<it->second.size; i++) {
+			qubits.push_back(it->second.pos + i);
 		}
 	}
 }
@@ -616,7 +678,12 @@ void Parser::get_cubit(Token tk, std::string cname, int val, std::vector<int> &c
 	if(it == cregs.end()) {
 		logExit("[%s:%d] invalid creg line %d", _F_, _L_, tk.line);
 	} else {
-		cubits.push_back(it->second.min + val);
+		int cubit = it->second.pos + val;
+		if(cubit <= numCubits) {
+			cubits.push_back(it->second.pos + val);
+		} else {
+			logExit("[%s:%d] creg is out-of-range in line %d", _F_, _L_, tk.line);
+		}
 	}
 }
 
@@ -626,8 +693,8 @@ void Parser::get_cubits(Token tk, std::string cname, std::vector<int> &cubits)
 	if(it == cregs.end()) {
 		logExit("[%s:%d] invalid creg line %d", _F_, _L_, tk.line);
 	} else {
-		for(int i=0; i<it->second.max; i++) {
-			cubits.push_back(it->second.min + i);
+		for(int i=0; i<it->second.size; i++) {
+			cubits.push_back(it->second.pos + i);
 		}
 	}
 }
@@ -644,7 +711,7 @@ void Parser::get_cregvalue(Token tk, std::string cname, int &cuval)
 	}
 
 	cuval = 0;
-	for(int i=creg.min; i<(creg.min+creg.max); i++) {
+	for(int i=creg.pos; i<(creg.pos+creg.size); i++) {
 		if(creg_measure[i] != 0) {
 			cuval |= (1 << i);
 		}
@@ -753,6 +820,7 @@ void Parser::check_gate_stmt(STMT stmt)
 
 void Parser::init_gates(void) 
 {
+	gates.insert(make_pair("reset", GateType::G1));
 	gates.insert(make_pair("id", GateType::G1));
 	gates.insert(make_pair("u1", GateType::G4));
 	gates.insert(make_pair("u2", GateType::G5));
