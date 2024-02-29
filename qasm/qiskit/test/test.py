@@ -3,16 +3,11 @@ from qiskit.visualization import plot_histogram
 from qplayer import executeQASM
 import matplotlib.pyplot as plt
 
-#qc = QuantumCircuit(2)
-#qc.h(0)
-#qc.h(1)
-#qc.y(0)
-#qc.cx(0, 1)
-#qc.measure_all()
-
-qc = QuantumCircuit(16)
-for i in range(16):
-    qc.h(i)
+qc = QuantumCircuit(2)
+qc.h(0)
+qc.h(1)
+qc.y(0)
+qc.cx(0, 1)
 qc.measure_all()
 
 qasm = qc.qasm()
