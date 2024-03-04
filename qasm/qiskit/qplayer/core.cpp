@@ -114,6 +114,7 @@ std::string saveStringToTempFile(const std::string& data) {
 
 	// Write the string to the temporary file using C-style functions
 	fwrite(data.c_str(), sizeof(char), data.size(), tempFilePointer);
+	fprintf(tempFilePointer, "\n");
 
 	fclose(tempFilePointer);
 

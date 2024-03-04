@@ -10,9 +10,7 @@ qc.y(0)
 qc.cx(0, 1)
 qc.measure_all()
 
-qasm = qc.qasm()
-
-result = executeQASM(qasm, 1080)
+result = executeQASM(qc, 16)
 figure = plot_histogram(result.get_counts(), figsize=(10, 6))
 
 #case1: store result image to file
