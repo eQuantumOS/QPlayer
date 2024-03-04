@@ -1,7 +1,7 @@
 ![image](https://github.com/eQuantumOS/QPlayer/assets/17871602/3e9517cf-bed6-45b9-8cea-255bf1b84935)
 
-# v2.3-Cougar
-+ release date : Feburary 16, 2024
+# v2.4-Cougar
++ release date : March 4, 2024
 + features
   - optimize toffoli gate
   - support qiskit-compatible python interface
