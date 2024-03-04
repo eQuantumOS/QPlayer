@@ -149,7 +149,7 @@ class CMakeBuild(build_ext):
 
 setup(
     name='QPlayer',
-    version='2.3',
+    version='2.4',
     author='QPlayer development members',
     author_email='ksjin@etri.re.kr',
     description='Qiskit-compatible python interface for QPlayer',
