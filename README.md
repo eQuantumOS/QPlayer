@@ -1,4 +1,4 @@
-# QPlayer v2.3-Cougar 
+# QPlayer v2.4-Cougar 
 ### Light-weight, Scalable and Fast Quantum Simulator
   
 With the rapid evolution of quantum computing, classical quantum simulations
