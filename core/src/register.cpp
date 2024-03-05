@@ -65,6 +65,7 @@ QRegister::QRegister(QRegister *src) {
  * QRegister constructor 
  */
 QRegister::~QRegister(void) {
+	#pragma omp parallel for
 	for(int i=0; i<QSTORE_PARTITION; i++) {
 		for(auto entry : qstore[i]) {
 			delete entry.second;
