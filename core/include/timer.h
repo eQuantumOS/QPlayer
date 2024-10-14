@@ -23,6 +23,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <cstdint>
 #include <time.h>
 
 class QTimer {

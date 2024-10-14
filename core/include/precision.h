@@ -22,6 +22,7 @@
 
 #include <iostream>
 #include <complex>
+#include <cstdint>
 #include <list>
 
 using namespace std;

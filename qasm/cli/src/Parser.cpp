@@ -721,12 +721,12 @@ void Parser::get_cregvalue(Token tk, std::string cname, int &cuval)
 void Parser::get_measure(std::string &str)
 {
 	char buf[1024] = "";
-	int val = 0;
+	uint64_t val = 0;
 
 	str.clear();
 	for(int i=0; i<creg_measure.size(); i++) {
 		if(creg_measure[i] != 0) {
-			val |= (1 << i);
+			val |= (1L << i);
 		}
 	}
 
