@@ -136,6 +136,8 @@ void Parser::run(void)
 {
 	for(auto stmt : stmts) {
 		if(stmt.type == StmtType::MEASURE) {
+			dump(QReg);
+			exit(0);
 			for(int i=0; i<stmt.qubits.size(); i++) {
 				creg_measure[stmt.cubits[i]] = M(QReg, stmt.qubits[i]);
 			}
@@ -221,6 +223,7 @@ void Parser::build_gate_stmt(std::vector<Token> tokens)
 				arg += tokens[pos].str;
 			}
 		}
+		pos++;
 	}
 
 	/***********************************/
@@ -592,7 +595,7 @@ void Parser::exec_gate(STMT stmt)
 		}
 	} else if(stmt.gate == "u3") {
 		for(int i=0; i<stmt.qubits.size(); i++) {
-			U3(QReg, stmt.qubits[i], stmt.args[0], stmt.args[1], stmt.args[3]);
+			U3(QReg, stmt.qubits[i], stmt.args[0], stmt.args[1], stmt.args[2]);
 		}
 	} else if(stmt.gate == "rx") {
 		for(int i=0; i<stmt.qubits.size(); i++) {

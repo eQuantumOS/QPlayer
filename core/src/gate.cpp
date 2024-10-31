@@ -523,28 +523,11 @@ void CZ(QRegister *QReg, int control, int target)
 void CRZ(QRegister *QReg, int control, int target, double angle) 
 {
 	QTimer timer;
-	complex_t M[4];
 
-	M[0] = complex_t(cos(-angle/2), sin(-angle/2));
-	M[1] = 0.0;
-	M[2] = 0.0;
-	M[3] = complex_t(cos(angle/2), sin(angle/2));;
-
-	double n = norm(M[0]);
-	if(n > 10e-9) {
-		complex_t p(M[0].real()/n,M[0].imag()/n);
-		M[0] /= p;
-		M[1] /= p;
-		M[2] /= p;
-		M[3] /= p;
-	} else {
-		double n = norm(M[1]);
-		complex_t p(M[0].real()/n,M[0].imag()/n);
-		M[0] /= p;
-		M[1] /= p;
-		M[2] /= p;
-		M[3] /= p;
-	}
+	complex_t M[] = {
+		complex_t(cos(-angle/2), sin(-angle/2)), 0, 
+		0, complex_t(cos(angle/2), sin(angle/2))
+	};
 
 	timer.start();
 	NMC_DiagonalControlGates(QReg, control, target, QGATE_CRZ, M);
