@@ -136,8 +136,6 @@ void Parser::run(void)
 {
 	for(auto stmt : stmts) {
 		if(stmt.type == StmtType::MEASURE) {
-			dump(QReg);
-			exit(0);
 			for(int i=0; i<stmt.qubits.size(); i++) {
 				creg_measure[stmt.cubits[i]] = M(QReg, stmt.qubits[i]);
 			}
