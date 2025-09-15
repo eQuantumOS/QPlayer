@@ -25,19 +25,12 @@
 int main(int argc, char **argv)
 {
 	QRegister *QReg = new QRegister(4);
-	QTimer timer;
 
-	timer.start();
-	for(int i=0; i<1000; i++) {
-		X(QReg, 0);
-		H(QReg, 1);
-		CX(QReg, 1, 2);
-		M(QReg, 2);
-	};
-	timer.end();
+	H(QReg, 0);
+	CX(QReg, 0, 1);
+	RX(QReg, 0, M_PI/4);
+	RY(QReg, 0, M_PI/4);
 	
-	// dump(QReg);
-
+	dump(QReg);
 	QReg->showQRegStat();
-	printf("%s\n", timer.getTime());
 }
