@@ -1,4 +1,4 @@
-# QPlayer
+# QPlayer-v6-Lynx
 
 > High-performance quantum circuit emulator in C++17 — single API for batch and interactive execution across four backends.
 
