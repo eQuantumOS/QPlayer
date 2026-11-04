@@ -1,0 +1,13 @@
+{
+  "_comment": "sparse_100q.qasm expected values. 100-qubit GHZ-like state keeps two non-zero amplitudes throughout (SparseState invariant). Bit-strings ordered MSB->LSB matching the creg layout. nonzero_amplitude_count is checked separately from counts to catch silent dense fallback (Phase 7).",
+  "qasm_file": "sparse_100q.qasm",
+  "phase_gate": "Phase 7",
+  "kind": "counts_sparse",
+  "nshots": 10000,
+  "tolerance": 0.05,
+  "expected_nonzero_amplitude_count": 2,
+  "expected_counts": {
+    "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000": 0.5,
+    "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111": 0.5
+  }
+}

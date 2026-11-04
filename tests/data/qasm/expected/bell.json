@@ -1,0 +1,12 @@
+{
+  "_comment": "bell.qasm expected values. Schema: kind=counts uses counts/tolerance at given nshots; tolerance is the absolute probability error allowed per bit-string. Reference: acceptance section, ",
+  "qasm_file": "bell.qasm",
+  "phase_gate": "Phase 5",
+  "kind": "counts",
+  "nshots": 10000,
+  "tolerance": 0.05,
+  "expected_counts": {
+    "00": 0.5,
+    "11": 0.5
+  }
+}

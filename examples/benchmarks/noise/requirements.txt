@@ -1,0 +1,20 @@
+# Optional dependencies for the device-noise validation harness.
+#
+# These are BENCHMARK-ONLY dependencies. They are NOT part of QPlayer's core
+# build or runtime. comparison.py imports each backend lazily and reports any
+# missing one as a SKIP / NOTE (never a hard failure). QPlayer itself must be
+# installed (the `qplayer` package).
+#
+# The device JSON files under device_json/ are committed, so the QPlayer side of
+# the validation runs WITHOUT qiskit-ibm-runtime. Only the FakeBackend reference
+# column and device JSON regeneration require the fake-backend provider.
+#
+# The Qiskit test environment is pinned to 2.x.
+qiskit>=2.0
+qiskit-aer>=0.16          # FakeBackend reference (AerSimulator.from_backend)
+qiskit-ibm-runtime        # fake-backend provider (FakeManilaV2 / FakeOslo / FakeGeneva)
+
+# Optional extras (each degrades gracefully if missing):
+#   matplotlib              # T1/T2 decay + distribution PNG plots
+#   scipy                   # exp(-t/T) curve fitting for the T1/T2 decay panels
+#                           # (without scipy the nominal time constant is used)

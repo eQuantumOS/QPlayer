@@ -1,0 +1,13 @@
+{
+  "_comment": "compile_swap.qasm expected values. Coupling map: linear chain 0-1-2-3. transpile() inserts SWAPs to route the logical CX q[0],q[3]. Post-routing the measurement results must be reported on LOGICAL qubits. Logical state after circuit: H q[0]; CX q[0],q[3]; X q[1]; X q[2] -> {|0110>, |1111>} when |q3 q2 q1 q0> ordering follows MSB->LSB on the bit-string -- here the bit-string maps c[3]c[2]c[1]c[0].",
+  "qasm_file": "compile_swap.qasm",
+  "phase_gate": "Phase 8",
+  "kind": "counts",
+  "nshots": 10000,
+  "tolerance": 0.05,
+  "device_coupling_map": [[0, 1], [1, 2], [2, 3]],
+  "expected_counts": {
+    "0110": 0.5,
+    "1111": 0.5
+  }
+}

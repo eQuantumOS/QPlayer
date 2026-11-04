@@ -1,0 +1,113 @@
+# pyproject.toml — Python sdist build backend.
+# Phase 7: promoted from Phase 0 dry-run skeleton to a formal sdist
+# build.  `python -m build --sdist` produces a self-contained source
+# distribution that `pip install` compiles against OpenBLAS + pybind11.
+# PEP 440 numeric `version` field only — codename ("Caracal") appears in
+# `description` and Git tags but never in the version field.
+
+[build-system]
+requires = ["scikit-build-core>=0.7"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "qplayer"
+version = "5.0.0"
+description = "QPlayer (Caracal-v5.0.0 — noise + DeviceModel + Interactive) — high-performance quantum circuit emulator"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "GPL-3.0-or-later OR Commercial" }
+authors = [
+    { name = "Kisung Jin", email = "ksjin@etri.re.kr" },
+    { name = "Guyil Cha", email = "gicha@etri.re.kr" },
+]
+keywords = ["quantum", "simulator", "qasm", "tensor-network"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+[project.urls]
+Homepage   = "https://github.com/xxx/yyy"
+Issues     = "https://github.com/xxx/yyy/issues"
+Repository = "https://github.com/xxx/yyy.git"
+
+# Optional runtime dependency for the Qiskit backend plugin.
+# qiskit >= 1.1 (both 1.x and 2.x): the plugin uses only the BackendV2 + JobV1 +
+# base-class-free duck-typed provider surface, present in 1.1+ and unchanged
+# through 2.x, so the same code runs on either with no version branch. The 1.1
+# floor is BackendSamplerV2/BackendEstimatorV2; the duck-typed provider needs no
+# Provider/ProviderV1 base class (removed in 2.0). The core `import qplayer`
+# never imports qiskit.
+[project.optional-dependencies]
+qiskit = ["qiskit>=1.1"]
+pennylane = ["pennylane>=0.35"]
+# Circuit.draw(output="mpl") image renderer. Optional: the
+# core import and Circuit.draw(output="text") never need matplotlib.
+viz = ["matplotlib>=3.5"]
+
+# Registers QPlayer under the qiskit.providers entry point so tooling can
+# discover it. QPlayerProvider is a duck-typed class (no base).
+[project.entry-points."qiskit.providers"]
+qplayer = "qplayer.qiskit.provider:QPlayerProvider"
+
+# Registers QPlayer as a PennyLane device so qml.device("qplayer.qubit") works
+# Discovered via the pennylane.plugins entry point group.
+[project.entry-points."pennylane.plugins"]
+"qplayer.qubit" = "qplayer.pennylane:QPlayerDevice"
+
+[tool.scikit-build]
+# Phase 7: formal sdist — module is now built.
+minimum-version = "0.7"
+build-dir = "build/{wheel_tag}"
+cmake.args = ["-DQPLAYER_BUILD_PYTHON=ON", "-DQPLAYER_BUILD_TESTS=OFF"]
+# sdist.include: all sources required to compile the extension from scratch.
+# bindings/qplayer/qplayer_bindings.cpp + package dir, all C++ headers (.hpp),
+# GPU sources (.cu/.cuh), cmake helpers, top-level project files.
+sdist.include = [
+    "CMakeLists.txt",
+    "pyproject.toml",
+    "README.md",
+    "INSTALL.md",
+    "QUICKSTART.md",
+    "LICENSE",
+    "NOTICE",
+    "cmake/*.cmake",
+    "include/**/*.hpp",
+    "src/**/*.cpp",
+    "src/**/*.cu",
+    "src/**/*.cuh",
+    "bindings/qplayer/qplayer_bindings.cpp",
+    "bindings/qplayer/*.py",
+    "bindings/plugins/qiskit/*.py",
+    "bindings/plugins/pennylane/*.py",
+]
+# sdist.exclude: build artefacts and dev-only directories must not pollute the
+# source distribution.  Compiled extensions (.so) inside the package tree are
+# development installs and must be stripped out.
+sdist.exclude = [
+    "design/",
+    "tests/",
+    "benchmarks/",
+    "examples/",
+    "build/",
+    "build-py/",
+    "build-gpu/",
+    "dist/",
+    "**/*.so",
+    "**/*.pyc",
+    "**/__pycache__",
+    "**/.pytest_cache",
+    "**/.git",
+    ".gitignore",
+]
+# Plugins live under bindings/plugins/ but install into the qplayer namespace
+# (qplayer.qiskit) — map source dir -> wheel install path (scikit-build-core dict).
+wheel.packages = {qplayer = "bindings/qplayer", "qplayer/qiskit" = "bindings/plugins/qiskit", "qplayer/pennylane" = "bindings/plugins/pennylane"}

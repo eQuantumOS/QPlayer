@@ -1,23 +1,23 @@
 Licensing Information User Manual
-QPlayer v2.3-Cugar
+QPlayer v5-Caracal
 
 This source code is licensed (Dual License: GPL v3 & Commercial) under the license
 found in the LICENSE file in the root directory of this source tree.
 
 ### GPL v3 License
 
-When you copy and distribute the library in object code or executable form, 
-you should accompany it with the complete corresponding machine-readable 
-source code under the GPL v3 license at 
+When you copy and distribute the library in object code or executable form,
+you should accompany it with the complete corresponding machine-readable
+source code under the GPL v3 license at
 
                https://www.gnu.org/licenses/gpl-3.0.html
 
-Unless required by applicable law or agreed to in writing, software distributed 
-under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES 
-OR CONDITIONS OF ANY KIND, either express or implied. See the License for 
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
+OR CONDITIONS OF ANY KIND, either express or implied. See the License for
 the specific language governing permissions and limitations under the License.
 
 ### Commercial License
 
-If you don't want to open your source code in the course of copying and/or distribution, 
+If you don't want to open your source code in the course of copying and/or distribution,
 please consult <gicha@etri.re.kr> to get a permission with applicable conditions.

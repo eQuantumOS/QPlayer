@@ -1,0 +1,11 @@
+{
+  "circuit": "clifford",
+  "num_qubits": 10,
+  "nshots": 1000,
+  "seed": 20250602,
+  "expected_counts": {
+    "0000000000": 492,
+    "1111111111": 508
+  },
+  "exact": true
+}

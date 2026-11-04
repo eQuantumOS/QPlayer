@@ -1,0 +1,9 @@
+{
+  "_comment": "opt_cancel.qasm expected values. Validation runs transpile(circuit, optimization_level=1) only -- no backend execution. After CancelInversePass collapses every self-inverse pair, only the lone H q[0] survives.",
+  "qasm_file": "opt_cancel.qasm",
+  "phase_gate": "Phase 4",
+  "kind": "circuit_metric",
+  "metric": "num_ops_after_transpile",
+  "optimization_level": 1,
+  "expected_value": 1
+}

@@ -1,0 +1,10 @@
+{
+  "circuit": "bell",
+  "num_qubits": 2,
+  "nshots": 10000,
+  "expected_counts": {
+    "00": 5000,
+    "11": 5000
+  },
+  "tolerance": 0.02
+}

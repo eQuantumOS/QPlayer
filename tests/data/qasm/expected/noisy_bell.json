@@ -1,0 +1,13 @@
+{
+  "_comment": "noisy_bell.qasm expected values. Noise model: depolarizing channel applied per gate (p_1q=1e-3, p_2q=5e-3). Bell-state fidelity under depolarizing noise is F = (1+3*(1-p_eff))/4 with p_eff approximated from gate budget. Theory derivation lives in. Tolerance 0.005 at nshots=100000.",
+  "qasm_file": "noisy_bell.qasm",
+  "phase_gate": "Phase 8",
+  "kind": "fidelity",
+  "nshots": 100000,
+  "tolerance": 0.005,
+  "noise_model": {
+    "depolarizing_1q_prob": 1e-3,
+    "depolarizing_2q_prob": 5e-3
+  },
+  "expected_fidelity": 0.987
+}

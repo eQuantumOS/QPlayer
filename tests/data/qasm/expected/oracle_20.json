@@ -1,0 +1,18 @@
+{
+  "_comment": "oracle_20.qasm expected values. 20-qubit deep oracle circuit (30 depths with full-register barrier between layers, initial `h q;` global superposition, exercising all qelib1.inc gates incl. ch/crz/cu1/cu3/cswap/ccx). 2^20 = 1,048,576 basis states; the reference statevector dump is kept in the sibling oracle_20.data file. REGENERATED 2026-06-02: the original user-uploaded.data was a divergent external baseline (mismatched the qelib1 standard at ~3e-2 L2). It was replaced with the qiskit 1.2.4 Statevector of oracle_20.qasm, which QPlayer reproduces to L2=7.55e-15 (machine epsilon, every gate cross-checked vs qelib1). Format now uses %.12e for full precision. See oracle investigation.",
+  "qasm_file": "oracle_20.qasm",
+  "phase_gate": "Phase 5",
+  "kind": "statevector_dump",
+  "num_qubits": 20,
+  "num_states": 1048576,
+  "nshots": 1,
+  "tolerance_l2": 1e-6,
+  "tolerance_per_amplitude": 1e-7,
+  "format": {
+    "storage": "sibling .data file (text dump)",
+    "line_pattern": "[P=<%.6f>] [<%+.12e>, <%+.12e>] |<bitstring>>",
+    "bit_ordering": "MSB->LSB matching qreg layout (q[19]q[18]...q[1]q[0])",
+    "probability_invariant": "P == re*re + im*im (.data file self-check; amplitudes at %.12e full precision)"
+  },
+  "data_file": "oracle_20.data"
+}

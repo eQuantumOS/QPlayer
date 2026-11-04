@@ -1,0 +1,10 @@
+{
+  "_comment": "qft_4.qasm expected values. QFT|0000> = uniform superposition with amplitude 1/sqrt(16) = 0.25 across all 16 basis states. Validation uses L2-norm error on the raw statevector (no sampling). Reference: acceptance section,.",
+  "qasm_file": "qft_4.qasm",
+  "phase_gate": "Phase 5",
+  "kind": "statevector",
+  "nshots": 1,
+  "tolerance_l2": 1e-10,
+  "expected_statevector_uniform_amplitude": 0.25,
+  "expected_state_dimension": 16
+}

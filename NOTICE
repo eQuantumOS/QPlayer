@@ -1,0 +1,68 @@
+QPlayer v5-Caracal — C++17 High-Performance Quantum Circuit Emulator
+Copyright 2026 Electronics and Telecommunications Research Institute (ETRI)
+
+This product is dual-licensed:
+  - GPL v3 License  : https://www.gnu.org/licenses/gpl-3.0.html
+  - Commercial License : contact <gicha@etri.re.kr>
+
+See the LICENSE file in the root of this repository for the dual license
+declaration and conditions.
+
+================================================================================
+Third-Party Software
+================================================================================
+
+This product depends on the following third-party software, which is
+distributed under its respective license. None of these dependencies are
+bundled into this repository; they are fetched at build time via CMake
+FetchContent or linked from the system.
+
+--------------------------------------------------------------------------------
+1. OpenBLAS
+--------------------------------------------------------------------------------
+   Homepage : https://www.openblas.net/
+   License  : BSD 3-Clause License (GPL v3 compatible)
+   Use      : BLAS / LAPACK numerical routines (matrix products, SVD).
+              Used in place of MKL to preserve GPL v3 compatibility
+MKL is excluded because its
+              proprietary Intel Simplified Software License is incompatible
+              with GPL v3's strong copyleft.
+
+--------------------------------------------------------------------------------
+2. pybind11
+--------------------------------------------------------------------------------
+   Homepage : https://github.com/pybind/pybind11
+   License  : BSD 3-Clause License (GPL v3 compatible)
+   Use : C++ ↔ Python bindings. Fetched via CMake FetchContent
+
+
+--------------------------------------------------------------------------------
+3. NVIDIA CUDA Toolkit (optional)
+--------------------------------------------------------------------------------
+   Homepage : https://developer.nvidia.com/cuda-toolkit
+   License  : NVIDIA Software License Agreement (proprietary; linked under
+              the GPL v3 System Library Exception, GPL)
+   Use      : GPU backend (FullState GPU, TensorNetwork GPU). Used via cuBLAS
+              and cuSolver only — no cuTensorNet or cuQuantum dependency
+Required only when QPLAYER_ENABLE_CUDA=ON;
+              CPU-only builds do not link CUDA.
+
+================================================================================
+QASM Acceptance Test Vectors
+================================================================================
+
+The OpenQASM v2 test programs under `tests/data/qasm/` are derived from
+the OpenQASM 2.0 examples and qelib1.inc, which are released by IBM under the
+Apache License, Version 2.0 (Apache 2.0 → GPL v3 is one-way compatible per
+the FSF compatibility matrix). See:
+
+   https://github.com/openqasm/openqasm
+   https://github.com/Qiskit/openqasm
+
+================================================================================
+Test Framework
+================================================================================
+
+The unit/integration test framework under `tests/framework/` is original code
+written specifically for this project. No external test framework (GoogleTest,
+Catch2, doctest, etc.) is used.

@@ -1,0 +1,12 @@
+{
+  "_comment": "ghz_5.qasm expected values. Bit-strings ordered MSB->LSB matching the creg layout (Result::counts() contract, result.hpp).",
+  "qasm_file": "ghz_5.qasm",
+  "phase_gate": "Phase 5",
+  "kind": "counts",
+  "nshots": 10000,
+  "tolerance": 0.05,
+  "expected_counts": {
+    "00000": 0.5,
+    "11111": 0.5
+  }
+}

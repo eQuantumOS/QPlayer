@@ -1,0 +1,30 @@
+# Optional dependencies for the performance comparison harness.
+#
+# These are BENCHMARK-ONLY dependencies. They are NOT part of QPlayer's core
+# build or runtime. comparison.py imports each backend lazily and simply skips
+# any that are missing, so you only need to install the tools you want to
+# compare against. QPlayer itself must be installed (the `qplayer` package).
+#
+# The Qiskit test environment is pinned to 2.x. The harness rejects Qiskit 1.x
+# so it cannot silently produce non-comparable numbers.
+qiskit>=2.0
+
+# CPU-only Aer is pip-installable and tracks Qiskit 2.x:
+#   pip install "qiskit-aer>=0.16"
+#
+# GPU Aer has NO prebuilt wheel for Qiskit 2.x (the PyPI `qiskit-aer-gpu` wheel
+# stopped at 0.15.1, which is 1.x-only and breaks on import under Qiskit 2.x).
+# For GPU measurement, build qiskit-aer 0.17.x from source with CUDA
+# (e.g. H100 = sm_90):
+#
+#   pip uninstall -y qiskit-aer qiskit-aer-gpu
+#   CUDACXX=/usr/local/cuda-<ver>/bin/nvcc \
+#   CUDAFLAGS="-D_AMXTILEINTRIN_H_INCLUDED -D_AMXINT8INTRIN_H_INCLUDED -D_AMXBF16INTRIN_H_INCLUDED" \
+#   PIP_CONSTRAINT=<file containing: cmake<4> \
+#   CMAKE_ARGS="-DAER_THRUST_BACKEND=CUDA -DAER_CUDA_ARCH=9.0" \
+#   pip install --no-binary qiskit-aer "qiskit-aer==0.17.2" -v
+
+# Other optional comparison backends (each skipped if missing):
+#   cirq, qsimcirq                        # Cirq / qsim (CPU + optional GPU build)
+#   cupy-cuda12x, cuquantum-python-cu12   # cuQuantum (cuStateVec, GPU only)
+#   matplotlib                            # PNG plot generation for --report

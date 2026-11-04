@@ -1,0 +1,42 @@
+# ── CMake build trees ───────────────────────────────
+# INSTALL.md uses `cmake -B build`; scikit-build-core uses build/{wheel_tag}
+/build/
+/build-*/
+/cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+CMakeUserPresets.json
+compile_commands.json
+
+# ── Doxygen output (written into the source tree: docs/html) ──
+/docs/html/
+
+# ── C/C++/CUDA objects and binaries ─────────────────
+*.o
+*.obj
+*.a
+*.so
+*.so.*
+*.dylib
+*.ptx
+*.cubin
+*.fatbin
+
+# ── Python ──────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+/dist/
+/wheelhouse/
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# ── Editors / OS ────────────────────────────────────
+.vscode/
+.idea/
+.cache/
+*.swp
+*~
+.DS_Store

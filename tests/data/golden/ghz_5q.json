@@ -1,0 +1,10 @@
+{
+  "circuit": "ghz",
+  "num_qubits": 5,
+  "nshots": 10000,
+  "expected_counts": {
+    "00000": 5000,
+    "11111": 5000
+  },
+  "tolerance": 0.02
+}
