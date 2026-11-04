@@ -1,0 +1,27 @@
+# Collect GitHub traffic statistics (views, clones, referrers, paths) daily.
+# GitHub only keeps the last 14 days of traffic data, so this workflow
+# accumulates it over time and generates an HTML/PDF report with charts
+# covering the full history. Data and reports are committed to the
+# `github-repo-stats` branch.
+#
+# Requires a repository secret named GHRS_GITHUB_API_TOKEN containing a
+# personal access token that can read the traffic API and push to this repo.
+# See https://github.com/jgehrcke/github-repo-stats
+
+name: repo-stats
+
+on:
+  schedule:
+    # Once per day, near the end of the day (UTC).
+    - cron: "0 23 * * *"
+  workflow_dispatch: # Allow manual runs.
+
+jobs:
+  repostats:
+    name: repostats
+    runs-on: ubuntu-latest
+    steps:
+      - name: run-ghrs
+        uses: jgehrcke/github-repo-stats@RELEASE
+        with:
+          ghtoken: ${{ secrets.ghrs_github_api_token }}
