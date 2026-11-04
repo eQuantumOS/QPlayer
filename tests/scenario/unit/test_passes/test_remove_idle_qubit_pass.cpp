@@ -145,7 +145,7 @@ TEST(RemoveIdleQubitPass, ThreeQubits_TwoIdle_BothRemoved) {
 // ── Case 10: opaque GateOp on idle qubit is preserved (-2) ────────
 //
 // Opaque gates have unknown semantics so the pass must never silently delete
-// them even when every operand qubit looks idle. The other eight F-OPT passes
+// them even when every operand qubit looks idle. The other eight optimization passes
 // enforce the same guard; this case pins it for RemoveIdleQubitPass too.
 
 TEST(RemoveIdleQubitPass, OpaqueGate_OnIdleQubit_Preserved) {

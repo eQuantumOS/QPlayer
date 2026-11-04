@@ -1,5 +1,5 @@
 // test_mps_canonical.cpp — MpsState::canonicalize().
-// 1.1, 1.3 (Arrange/Act/Assert).
+// Tests follow the Arrange / Act / Assert layout.
 //
 // Canonicalisation changes the GAUGE, not the state. That is the whole contract,
 // and it is why the decisive assertion here is `to_dense()` invariance: any
@@ -69,7 +69,7 @@ TEST(MpsCanonical, Canonicalize_LeavesTheStateUnchanged) {
     // Assert — gauge moved, state did not.
     const std::vector<Cx> after = st.to_dense();
     EXPECT_EQ(before.size(), after.size());
-    EXPECT_NEAR(max_abs_delta(before, after), 0.0, 1e-12);  // 수식 유도 — 반올림만 허용
+    EXPECT_NEAR(max_abs_delta(before, after), 0.0, 1e-12);  // analytic identity; only rounding is tolerated
 }
 
 // Every centre position has to work, not just the middle one: the sweeps have
@@ -114,7 +114,7 @@ TEST(MpsCanonical, Canonicalize_PutsTheWholeNormOnTheCentre) {
     const auto& node = st.graph().node(2);
     double centre_norm = 0.0;
     for (const Cx& v : node.data) centre_norm += std::norm(v);
-    EXPECT_NEAR(centre_norm, total, 1e-10);      // 수치 오차 허용
+    EXPECT_NEAR(centre_norm, total, 1e-10);      // numerical rounding tolerance
     EXPECT_NEAR(st.squared_norm(), total, 1e-10);
 }
 

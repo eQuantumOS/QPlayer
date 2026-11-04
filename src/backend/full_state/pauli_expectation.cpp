@@ -1,7 +1,7 @@
 /// @file pauli_expectation.cpp
-/// @brief shared host-side <psi|P|psi> primitive (
+/// @brief shared host-side <psi|P|psi> primitive.
 ///
-///). See pauli_expectation.hpp for the contract.
+/// See pauli_expectation.hpp for the contract.
 
 #include "backend/full_state/pauli_expectation.hpp"
 

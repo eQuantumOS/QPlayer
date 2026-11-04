@@ -2,8 +2,8 @@
 /// @brief Inline single-qubit Kraus operator constructors shared
 /// @ingroup noise
 ///
-/// by NoiseModel (channel registration) and T1T2Calculator (T1/T2 -> Kraus,
-///). Header-only so both translation units build the same 2x2 operators
+/// by NoiseModel (channel registration) and T1T2Calculator (T1/T2 -> Kraus).
+/// Header-only so both translation units build the same 2x2 operators
 /// without duplication. detail namespace:
 /// not part of the public API.
 

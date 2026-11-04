@@ -128,7 +128,7 @@ target_compile_options(qplayer_tests PRIVATE
     -Wall -Wextra -Wpedantic
     -Wno-unused-function -Wno-unused-parameter)
 
-# : when CUDA is built, expose QPLAYER_BUILD_GPU to the test TUs so
+# when CUDA is built, expose QPLAYER_BUILD_GPU to the test TUs so
 # test_full_state_gpu.cpp compiles its GPU-kernel cases (factory-probe cases
 # always compile). The kernels themselves live in the qplayer_core archive.
 if(QPLAYER_BUILD_GPU)
@@ -173,6 +173,27 @@ target_compile_definitions(qplayer_acceptance PRIVATE
 target_compile_options(qplayer_acceptance PRIVATE
     -Wall -Wextra -Wpedantic
     -Wno-unused-function -Wno-unused-parameter)
+
+# oracle_20's 2^20-amplitude reference dump (83 MB of text) is stored as a
+# tar.gz to stay under GitHub's file-size warning. It is extracted once at
+# build time into the build tree with CMake's built-in tar, so no extra tool
+# or library is needed, and the source tree stays untouched.
+set(QPLAYER_ACCEPTANCE_EXTRACT_DIR "${CMAKE_CURRENT_BINARY_DIR}/acceptance_data")
+set(_oracle20_archive "${CMAKE_CURRENT_SOURCE_DIR}/data/qasm/expected/oracle_20.data.tar.gz")
+add_custom_command(
+    OUTPUT  "${QPLAYER_ACCEPTANCE_EXTRACT_DIR}/oracle_20.data"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${QPLAYER_ACCEPTANCE_EXTRACT_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E chdir "${QPLAYER_ACCEPTANCE_EXTRACT_DIR}"
+            ${CMAKE_COMMAND} -E tar xzf "${_oracle20_archive}"
+    COMMAND ${CMAKE_COMMAND} -E touch "${QPLAYER_ACCEPTANCE_EXTRACT_DIR}/oracle_20.data"
+    DEPENDS "${_oracle20_archive}"
+    COMMENT "Extracting oracle_20.data acceptance reference"
+    VERBATIM)
+add_custom_target(qplayer_acceptance_data
+    DEPENDS "${QPLAYER_ACCEPTANCE_EXTRACT_DIR}/oracle_20.data")
+add_dependencies(qplayer_acceptance qplayer_acceptance_data)
+target_compile_definitions(qplayer_acceptance PRIVATE
+    QPLAYER_ACCEPTANCE_EXTRACT_DIR="${QPLAYER_ACCEPTANCE_EXTRACT_DIR}")
 
 add_test(NAME qplayer_acceptance COMMAND qplayer_acceptance)
 

@@ -1,5 +1,5 @@
 // test_swap_cancel.cpp — Phase 8 unit tests for SwapCancelPass
-// (F-OPT 2차). Covers the commutation-aware redundant SWAP-pair
+// Covers the commutation-aware redundant SWAP-pair
 // cancellation, the blocking cases (an intervening op touches the swapped
 // pair), order-independence of the pair, and pass-through of unrelated ops.
 

@@ -234,7 +234,7 @@ protected:
         std::uint64_t seed,
         ClassicalBitIndex total_cubits,
         std::vector<std::pair<QubitIndex, ClassicalBitIndex>> measure_map);
-    /// Sparse-mode deferred sampling (개정). The SparseState fast path
+    /// Sparse-mode deferred sampling. The SparseState fast path
     /// passes normalised (basis_index, prob) pairs; counts() draws from the sparse
     /// CDF without densifying (works beyond MAX_DENSE_EXPORT_QUBITS).
     static void result_set_lazy_sampling_sparse(
@@ -288,7 +288,7 @@ bool gpu_runtime_available();
 /// definition discarded it unnamed, so passing a DeviceModel here silently did
 /// nothing (audit #36). Device data reaches the backends through
 /// QRegister::load_device_model() -> NoiseModel and
-/// transpile(device_json) (0120), never through construction.
+/// transpile(device_json), never through construction.
 std::unique_ptr<SimulatorBackend> make_backend(
     SimType  sim_type,
     ProcType proc = ProcType::Auto);

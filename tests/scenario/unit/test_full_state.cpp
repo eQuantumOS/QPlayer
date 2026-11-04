@@ -1,7 +1,7 @@
 // test_full_state.cpp — Unit tests for FullStateCpuBackend and :
-// : SoA state vector allocation, 64B alignment, AoS conversion,
+// SoA state vector allocation, 64B alignment, AoS conversion,
 //         memory budget integration, and pre-init error handling.
-// : gate kernels (1Q, controlled, SWAP, CCX), NaN/norm validation helper.
+// gate kernels (1Q, controlled, SWAP, CCX), NaN/norm validation helper.
 // (Arrange/Act/Assert).
 
 #include "../../framework/test_case.hpp"

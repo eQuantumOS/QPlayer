@@ -6,7 +6,7 @@
 /// Records the logical->physical qubit mapping in CircuitMetadata.layout. The
 /// default is a Trivial identity map (logical i -> physical i); a caller may
 /// supply layout hints (a permutation indexed by logical qubit) to override it.
-/// SABRE-style noise-aware placement was deferred (대안 A) and would
+/// SABRE-style noise-aware placement was deferred and would
 /// arrive as a future IPass subclass — it is intentionally out of scope here.
 ///
 /// The pass does not rewrite op qubit indices; it only stamps the mapping so the

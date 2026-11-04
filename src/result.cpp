@@ -1,7 +1,7 @@
 /// @file result.cpp
 /// @brief Phase 0-S trivial accessors for the Result container
 ///
-/// (+). Backends populate the private members through the
+///. Backends populate the private members through the
 /// `friend class QRegister` / `friend class Interactive` channels (Phase 5+);
 /// the const accessors below simply expose those members.
 ///
@@ -210,7 +210,7 @@ void Result::perform_lazy_sampling() const {
             cdf[k] = acc;
         }
     } else {
-        // Dense CDF build. Two sub-paths (+):
+        // Dense CDF build. Two sub-paths:
         //
         // CPU-resident (P2): read prob[i] directly from the SoA pointers
         // cpu_re_/cpu_im_ without first building an AoS copy. Same double values,
@@ -368,8 +368,8 @@ void Result::perform_lazy_sampling() const {
             // uninit_allocator skips zero-init: the fused loop writes every element
             // before it is read, avoiding the ~480ms page-fault cost of a fresh
             // 1-GiB std::vector::resize(); first-touch is parallel (NUMA-friendly).
-            // : NO 2^n CDF array. Pass 1 keeps block_total[b] (bit-exact vs
-            // : same 2^16 blocks, same fma order) + checkpoints — the running
+            // NO 2^n CDF array. Pass 1 keeps block_total[b] (bit-exact vs
+            // same 2^16 blocks, same fma order) + checkpoints — the running
             // acc at each 4096 sub-block start. The draw re-scans the located <=4096
             // window instead of binary-searching a materialised 2^n CDF. Traffic
             // 3T -> ~2T (the 1T CDF write is gone; checkpoints are ~T/512).

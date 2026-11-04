@@ -423,7 +423,7 @@ TEST(CacheBlocking, EnvAbsent_DefaultIsDisabled) {
 
     const FullStateCpuBackend backend_default;
 
-    // : blocking measured net-negative -> default OFF, opt-in only.
+    // blocking measured net-negative -> default OFF, opt-in only.
     EXPECT_FALSE(backend_default.cache_blocking_enabled());
 }
 

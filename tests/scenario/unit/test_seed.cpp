@@ -2,7 +2,7 @@
 // Covers QRegister::set_seed/current_seed, QPLAYER_SEED env override + lock,
 // and the splitmix64 / thread_seed helpers. Determinism is
 // asserted by property (same input -> same output, distinct inputs -> distinct
-// outputs) rather than magic constants.,.
+// outputs) rather than magic constants.
 
 #include "../../framework/test_case.hpp"
 #include "../../framework/assertions.hpp"

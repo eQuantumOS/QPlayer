@@ -1,7 +1,7 @@
 /// @file noise_model.cpp
 /// @brief NoiseModel channel registration, query, and Kraus operator
 ///
-/// construction (..06). Every add_* method validates its
+/// construction. Every add_* method validates its
 /// parameters immediately (out-of-range -> CircuitError) and lowers the channel
 /// to a list of Kraus operators so backends dispatch uniformly via
 /// channels_for_gate(). load_device() (T1/T2 ->

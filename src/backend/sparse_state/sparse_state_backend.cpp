@@ -1,9 +1,9 @@
 /// @file sparse_state_backend.cpp
 /// @brief SparseState backend full implementation.
 ///
-/// : unordered_map amplitude storage, threshold truncation,
+/// unordered_map amplitude storage, threshold truncation,
 /// init_state(), get_statevector(), get_statevector_raw() permanent error.
-/// : apply_gate() sparse unitary, apply_measure/reset (Born collapse),
+/// apply_gate() sparse unitary, apply_measure/reset (Born collapse),
 /// prepare(), execute() with fast-path and per-shot path,
 /// set_seed() reproducible PRNG.
 /// Noise model unsupported. IdleOp rejected.
@@ -95,7 +95,7 @@ void merge_scratch(PersistentAmplitudeStore& store) {
 // |amp|^2 over all entries (`total`) and over entries whose index has any `mask`
 // bit set (`masked`). Fixed block size makes the result independent of thread
 // count; the sorted input makes it independent of P/machine — so measurement and
-// sampling stay bit-reproducible (0919) while running in parallel.
+// sampling stay bit-reproducible while running in parallel.
 std::pair<double, double> masked_norm_sum(const std::vector<Entry>& sorted,
                                           StateIndex mask) {
     const std::size_t S = sorted.size();
@@ -139,7 +139,7 @@ int popcount_state_index(StateIndex v) {
 
 // Deterministic parallel reduction for <psi|P|psi> over the canonical (sorted)
 // entry vector, mirroring masked_norm_sum's fixed-block scheme so the result is
-// independent of partition and thread count (0919).
+// independent of partition and thread count.
 //
 // P|j> = coeff(j) |j ^ flip_mask| with coeff(j) = i^num_y * (-1)^popcount(j & sign_mask),
 // so <psi|P|psi> = sum_j conj(psi[j ^ flip]) * coeff(j) * psi[j]. Only stored
@@ -338,7 +338,7 @@ namespace {
 
 // Parses QPLAYER_SPARSE_THRESHOLD from env once at construction time.
 // Returns kSparseDefaultThreshold when the var is absent, non-numeric,
-// negative, or non-finite (+ budget_from_env robustness pattern).
+// negative, or non-finite (same robustness pattern as budget_from_env).
 double parse_threshold_from_env() {
     const char* raw = std::getenv("QPLAYER_SPARSE_THRESHOLD");
     if (raw == nullptr) {
@@ -769,7 +769,7 @@ Result SparseStateBackend::execute(const Circuit&     circuit,
         // directly over amplitudes_ enables 100+ qubit simulation.
 
         prepare(circuit);
-        note_peak();  // : capture initial S=1 before evolution.
+        note_peak();  // capture initial S=1 before evolution.
 
         for (const Op& op : circuit.ops()) {
             std::visit([this](auto&& node) {
@@ -796,7 +796,7 @@ Result SparseStateBackend::execute(const Circuit&     circuit,
                     (void)node;
                 }
             }, op);
-            note_peak();  // : track peak non-zero count per op.
+            note_peak();  // track peak non-zero count per op.
         }
 
         // Collect MeasureOps for bitstring construction.
@@ -947,7 +947,7 @@ Result SparseStateBackend::execute(const Circuit&     circuit,
                         (void)node;
                     }
                 }, op);
-                note_peak();  // : track peak within this shot.
+                note_peak();  // track peak within this shot.
             }  // end op loop
 
             // Build bitstring from cubit_vals (MSB-first convention).
@@ -1025,8 +1025,8 @@ RawStateView SparseStateBackend::get_statevector_raw() {
 }
 
 // expectation_value() — <psi|P|psi> for a Pauli string, computed by walking the
-// stored non-zero entries only ( policy table,
-//). Supported at every qubit count: unlike get_statevector() there is no
+// stored non-zero entries only.
+// Supported at every qubit count: unlike get_statevector() there is no
 // MAX_DENSE_EXPORT_QUBITS densify cap, so a 100-qubit sparse state is fine.
 // Semantics match FullStateCpuBackend::expectation_value() exactly — empty
 // string means all-Z, Qiskit qubit order, I/X/Y/Z only.

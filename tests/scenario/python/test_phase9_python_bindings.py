@@ -69,7 +69,7 @@ class TestTensorNetworkRuns(unittest.TestCase):
         np.testing.assert_allclose(tn.get_statevector(), fs.get_statevector(), atol=1e-12)
 
     def test_tn_interactive_is_rejected(self):
-        # : TN has no immediate-mode path.
+        # TN has no immediate-mode path.
         qr = qplayer.QRegister(qplayer.SimType.TensorNetwork)
         with self.assertRaises(qplayer.SimulatorError):
             qr.interactive.initialize(2)
@@ -152,7 +152,7 @@ class TestReducedDensityMatrix(unittest.TestCase):
         np.testing.assert_allclose(rho, rho.conj().T, atol=1e-12)
 
     def test_rdm_is_tensornetwork_only(self):
-        # : dense backends point the caller at get_statevector().
+        # dense backends point the caller at get_statevector().
         qr = qplayer.QRegister(qplayer.SimType.FullState, qplayer.ProcType.CPU)
         qr.run(_ghz(3), 1)
         with self.assertRaises(qplayer.SimulatorError):

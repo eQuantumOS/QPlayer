@@ -1,5 +1,5 @@
-// test_tn_mpo.cpp — Unit tests for the MPO density-matrix path (,
-//). 1.1, 1.3 (Arrange/Act/Assert).
+// test_tn_mpo.cpp — Unit tests for the MPO density-matrix path.
+// Tests follow the Arrange / Act / Assert layout.
 //
 // The MPO path's claim is that it applies a channel EXACTLY — no sampling, no
 // averaging. So the reference here is a dense density matrix evolved longhand in

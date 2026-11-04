@@ -24,7 +24,7 @@ namespace qplayer::detail {
 
 namespace {
 
-// One GiB in bytes — binary unit (product-spec NF-PF uses GiB).
+// One GiB in bytes — binary unit.
 constexpr std::uint64_t kBytesPerGiB = std::uint64_t{1} << 30;
 
 // 80% safety margin (-1): leaving the system 20% headroom keeps the
@@ -192,8 +192,8 @@ void check_memory_budget(std::uint64_t    required_bytes,
         return;
     }
 
-    // Byte-level diagnostic before throwing ( follow-up,
-    //) — the exception message carries the user-facing GiB form.
+    // Byte-level diagnostic before throwing
+    // — the exception message carries the user-facing GiB form.
     log::error("OOM precheck: required=" + std::to_string(required_bytes) +
                " bytes, available=" + std::to_string(available) +
                " bytes (80% budget)");

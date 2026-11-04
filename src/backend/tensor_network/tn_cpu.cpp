@@ -2,10 +2,9 @@
 /// @brief TensorGraph storage and MPS initialisation for the TensorNetwork backend.
 ///
 /// Implements the tensor-graph types declared in tn_backend.hpp
-/// (11.1): node construction, bond wiring with dimension
+/// node construction, bond wiring with dimension
 /// validation, and the |0...0> MPS chain. Gate application, SVD
-/// truncation and contraction ordering arrive
-/// with and.
+/// truncation and contraction ordering live in the other tensor_network sources.
 
 #include "backend/tensor_network/tn_backend.hpp"
 

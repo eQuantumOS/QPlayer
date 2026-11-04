@@ -31,7 +31,7 @@
 /// Identity check: |M - I| < 1e-12 (Frobenius) -> emit nothing (drop the run).
 /// Tolerance for sin(theta/2) near zero or one avoids gimbal-lock in phi/lambda.
 ///
-/// extension,.
+/// extension.
 
 #include "transpiler/passes/optimization/merge_single_qubit_unitary_pass.hpp"
 

@@ -3,7 +3,7 @@
 // (<Z>=cos t, <X>=sin t per qubit), so the weighted Hamiltonian energy is exact
 // and checked at 1e-10. Confirms the facade composes run() + Sum(c_i*<P_i>)
 // correctly across an energy sweep. Exact path -> FullState CPU (SparseState
-// expectation is deferred in Phase 7).,.
+// expectation is deferred in Phase 7).
 
 #include "../../framework/test_case.hpp"
 #include "../../framework/assertions.hpp"

@@ -1,6 +1,6 @@
 // test_tn_fusion.cpp — Unit tests for TN gate fusion and contraction
-// order planning / execution,.
-// 1.1, 1.3 (Arrange/Act/Assert).
+// order planning / execution.
+// Tests follow the Arrange / Act / Assert layout.
 
 #include "../../framework/test_case.hpp"
 #include "../../framework/assertions.hpp"

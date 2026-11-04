@@ -1,5 +1,5 @@
 // test_tn_gpu_svd.cpp — TensorNetwork cuSolver SVD offload.
-// 1.1, 1.3 (Arrange/Act/Assert).
+// Tests follow the Arrange / Act / Assert layout.
 //
 // The offload has one contract and it is not about speed: the GPU must not
 // change the answer. So the claims here are

@@ -1,8 +1,8 @@
 // test_tn.cpp — Unit tests for the TensorNetwork graph types:
 //   TensorIndex / TensorNode / Bond / TensorGraph construction, wiring
-// validation, and MPS |0...0> initialisation (11.1).
-// Gate application and SVD truncation stay unimplemented (+).
-// 1.1, 1.3 (Arrange/Act/Assert).
+// validation, and MPS |0...0> initialisation.
+// Gate application and SVD truncation stay unimplemented.
+// Tests follow the Arrange / Act / Assert layout.
 
 #include "../../framework/test_case.hpp"
 #include "../../framework/assertions.hpp"
@@ -282,7 +282,7 @@ TEST(TensorGraph, TruncationConstants_MatchAdr0931) {
     EXPECT_TRUE(qplayer::kMpsDefaultMaxBond <= qplayer::kMpsMaxBondCeiling);
 }
 
-// ── Backend policy rejections (11.7) ────
+// ── Backend policy rejections ────
 //
 // These are permanent, not "not yet implemented": TN re-contracts site tensors
 // per update, which does not fit Interactive's immediate per-op model, and no

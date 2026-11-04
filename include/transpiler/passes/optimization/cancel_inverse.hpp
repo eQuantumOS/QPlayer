@@ -3,7 +3,7 @@
 /// @ingroup transpiler
 ///
 /// Pairs adjacent inverse gates (H-H, X-X, CX-CX, etc.) and removes them.
-/// One of the Level-1 F-OPT passes registered by transpile().
+/// One of the Level-1 optimization passes registered by transpile().
 
 #pragma once
 

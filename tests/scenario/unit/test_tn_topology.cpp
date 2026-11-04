@@ -1,6 +1,6 @@
 // test_tn_topology.cpp — Unit tests for CircuitTopologyAnalyzer
 //   and the site layout the TensorNetwork backend derives from it.
-// 1.1, 1.3 (Arrange/Act/Assert).
+// Tests follow the Arrange / Act / Assert layout.
 
 #include "../../framework/test_case.hpp"
 #include "../../framework/assertions.hpp"
@@ -68,7 +68,7 @@ TEST(TnTopology, Star_IsNonLinear) {
     // Assert: no ordering of a line can make three qubits all adjacent to one.
     EXPECT_TRUE(a.topology == TnTopology::NonLinear);
     EXPECT_EQ(a.max_degree, static_cast<std::size_t>(3));
-    EXPECT_TRUE(a.is_identity_order());  // : no re-layout unless opted
+    EXPECT_TRUE(a.is_identity_order());  // no re-layout unless opted
 }
 
 TEST(TnTopology, Ring_IsNonLinearDespiteDegreeTwo) {
@@ -420,7 +420,7 @@ TEST(TnTopology, Backend_ScrambledGrid_SamplesTheRightBits) {
     EXPECT_EQ(counts["001000011001"], static_cast<std::uint64_t>(64));
 }
 
-// : the default is the identity. Re-laying out flipped a d=5 surface
+// the default is the identity. Re-laying out flipped a d=5 surface
 // code from 2 s to more than 900 s under the paper-1 willow noise, so nothing
 // moves unless QPLAYER_TN_LAYOUT=minla (or the test setter) asks for it.
 TEST(TnTopology, NonLinearDefault_KeepsIdentityEvenWhenMinlaWouldWalkLess) {

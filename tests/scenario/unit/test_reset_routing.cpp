@@ -1,5 +1,4 @@
 // test_reset_routing.cpp — Reset as a per-shot trigger.
-// 1.1, 1.3.
 //
 // A reset is a measurement plus a conditional X, so it is stochastic. Evolving
 // it once and drawing nshots from the result reports ONE collapse branch nshots

@@ -63,7 +63,7 @@ enum class GateType {
 /// Concrete gate application. duration_ns / noise_channels populate after
 /// transpile() runs against a DeviceModel + NoiseModel.
 /// is_fused / is_opaque flags carry IR-stage state forward into the backend
-/// dispatcher so it can skip redundant work (F-OPT).
+/// dispatcher so it can skip redundant work .
 struct GateOp {
     GateType                  type        = GateType::I;
     std::string               name;             // Canonical lower-case form (e.g. "h", "cx"). Required for opaque GateType::Opaque.
@@ -150,7 +150,7 @@ struct DeclarationOnly {
 /// Kraus bodies are further limited to 1-2 qubits by the Kraus kernels.
 constexpr QubitIndex kMaxOpaqueQubits = 4;
 
-/// Opaque definition stored on the Circuit itself (+).
+/// Opaque definition stored on the Circuit itself.
 /// Body is a 3-variant: declaration-only stub, unitary matrix, or Kraus channel.
 /// Validation (dimension match, unitary / trace-preserving, name collisions)
 /// runs at define_opaque() / declare_opaque() time.

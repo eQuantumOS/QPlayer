@@ -1,7 +1,7 @@
 // test_observable.cpp — Observable weighted Pauli-sum value type
 // Covers construction, chaining, accessors,
 // boundary cases, and Pauli validation (empty / non-I/X/Y/Z -> CircuitError).
-// Pauli qubit order is Qiskit big-endian.,.
+// Pauli qubit order is Qiskit big-endian.
 
 #include "../../framework/test_case.hpp"
 #include "../../framework/assertions.hpp"

@@ -2,12 +2,12 @@
 /// @brief TensorNetworkBackend entry points.
 ///
 /// The Interactive surface, the SoA view and nonzero_amplitudes() are *policy*
-/// rejections that no future phase will implement (,
-/// section 11.7), so they raise SimulatorError rather than a stub marker. The
+/// rejections that no future phase will implement,
+/// so they raise SimulatorError rather than a stub marker. The
 /// execution surface — prepare / execute / get_statevector / expectation_value —
 /// is implemented: the tensor-graph storage arrived in tn_cpu.cpp, the
 /// backend was wired onto it with the MPS path, and the Pauli sweep
-/// tn_expectation.cpp closed expectation_value (section 11.7).
+/// tn_expectation.cpp closed expectation_value.
 
 #include "backend/tensor_network/tn_backend.hpp"
 
@@ -56,7 +56,7 @@ constexpr const char* kNoInteractive = "Interactive mode not supported";
 // Value of classical register `reg` in this shot, LSB first.
 //
 // Same reconstruction the statevector per-shot path performs inline
-// (full_state_cpu.cpp section 12.4), so `if (c == n)` means the same thing on
+// in full_state_cpu.cpp, so `if (c == n)` means the same thing on
 // both backends -- an off-by-one in bit order here would branch on a different
 // number and look like a physics difference.
 std::uint64_t register_value(const ClassicalRegister& reg, const std::vector<int>& cubit_vals) {
@@ -297,7 +297,7 @@ Result TensorNetworkBackend::execute(const Circuit&    circuit,
     // Deferring measurement is exact only while nothing follows it. Once a gate
     // touches a measured qubit again the collapse changes the distribution, so
     // those circuits take the per-shot path — routed by the same predicate the
-    // statevector backends use (section 12.4).
+    // statevector backends use.
     //
     // Reset routes here too: it is a measurement plus a
     // conditional X, so evolving it ONCE and drawing nshots reports one collapse
@@ -767,7 +767,7 @@ Result TensorNetworkBackend::execute_trajectories(const Circuit& circuit,
     std::mutex error_mutex;
     std::string error_msg;
 
-    // : BLAS threads pinned to 1 for the duration of the region.
+    // BLAS threads pinned to 1 for the duration of the region.
     const ScopedSingleThreadedBlas blas_guard;
 
     // Canonical op order: same permutation as FullState CPU/GPU so the
@@ -844,7 +844,7 @@ Result TensorNetworkBackend::execute_trajectories(const Circuit& circuit,
                                               site_of_qubit_[g->qubits[1]]);
                         }
                     }
-                    // Gate-attached channels (..06). The out-parameter
+                    // Gate-attached channels. The out-parameter
                     // overload keeps its capacity across gates.
                     if (noise.has_channels_for_gate(g->name)) {
                         noise.channels_for_gate(g->name, g->qubits, chan_buf);
@@ -873,7 +873,7 @@ Result TensorNetworkBackend::execute_trajectories(const Circuit& circuit,
                         const int outcome = detail::mps_measure_site(
                             state, site_of_qubit_[m->qubit], rng);
                         // Readout confusion flips the REPORTED bit only
-                        //: the collapse is the true one, and a classical
+                        // the collapse is the true one, and a classical
                         // controller reading this register sees the noisy value --
                         // which is exactly what a later IfOp should branch on.
                         int reported = outcome;
@@ -896,7 +896,7 @@ Result TensorNetworkBackend::execute_trajectories(const Circuit& circuit,
                 } else if (const auto* cond = std::get_if<IfOp>(&op)) {
                     // Branch on THIS trajectory's classical bits. The
                     // noise draws and the branch therefore share one shot
-                    // context, which is what section 12.4 requires of a noisy
+                    // context, which is what the per-shot model requires of a noisy
                     // conditional circuit.
                     if (cond->creg >= cregs.size()) continue;
                     if (register_value(cregs[cond->creg], cubit_vals) != cond->value) continue;
@@ -925,7 +925,7 @@ Result TensorNetworkBackend::execute_trajectories(const Circuit& circuit,
                     }
                     // Gate-attached channels fire only when the body actually ran
                     // -- a conditional gate that did not execute cannot have
-                    // decohered the qubit it did not touch (..06).
+                    // decohered the qubit it did not touch.
                     if (noise.has_channels_for_gate(body.name)) {
                         noise.channels_for_gate(body.name, body.qubits, chan_buf);
                         for (const KrausChannel& ch : chan_buf) {
@@ -1221,7 +1221,7 @@ Result TensorNetworkBackend::execute_per_shot(const Circuit& circuit, std::uint3
     std::mutex        error_mutex;
     std::string       error_msg;
 
-    // : BLAS threads pinned to 1 for the duration of the region.
+    // BLAS threads pinned to 1 for the duration of the region.
     const ScopedSingleThreadedBlas blas_guard;
 
 #ifdef _OPENMP
@@ -1640,7 +1640,7 @@ void TensorNetworkBackend::set_tn_use_mpo(bool use_mpo) {
     use_mpo_ = use_mpo;
 }
 
-// Interactive surface — permanent policy rejection (section 8.3 matrix).
+// Interactive surface — permanent policy rejection.
 // TN updates a state by re-contracting site tensors, which does not fit the
 // immediate per-op model Interactive requires.
 void TensorNetworkBackend::init_state(QubitIndex /*num_qubits*/) {
@@ -1666,12 +1666,12 @@ StateVector TensorNetworkBackend::get_statevector() {
     return to_qubit_order(state_->to_dense());
 }
 
-// No SoA buffer exists to view — the state is a tensor graph (section 11.7).
+// No SoA buffer exists to view — the state is a tensor graph.
 RawStateView TensorNetworkBackend::get_statevector_raw() {
     throw SimulatorError{kBackend, "get_statevector_raw is not available on a tensor network"};
 }
 
-// <psi|P|psi> by partial contraction (section 11.7). Supported
+// <psi|P|psi> by partial contraction. Supported
 // every qubit count: the sweep never densifies, so this is the only expectation
 // path available above MAX_DENSE_EXPORT_QUBITS. The Pauli string is parsed by
 // the shared FullState primitive, so "ZZ" means the same thing on both backends

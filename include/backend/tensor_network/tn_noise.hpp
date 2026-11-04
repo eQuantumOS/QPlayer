@@ -128,7 +128,7 @@ std::size_t apply_kraus_channel(MpsState& state, const KrausChannel& channel,
                                 std::mt19937_64& rng);
 
 /// Same as apply_kraus_channel() with the uniform already drawn by the caller
-///: the noise-site hook needs the draw without copying the RNG.
+/// the noise-site hook needs the draw without copying the RNG.
 /// apply_kraus_channel() draws once and calls this, so its stream is unchanged.
 /// @param u01 Uniform in [0, 1); scaled by the branch-weight total inside.
 /// @return The chosen branch.

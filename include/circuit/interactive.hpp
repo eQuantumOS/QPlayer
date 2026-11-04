@@ -5,7 +5,7 @@
 ///
 /// IMPORTANT: This header is included by include/qregister.hpp only. User code
 /// must access the Interactive surface through QRegister::interactive — direct
-/// inclusion is forbidden by CLAUDE.md and.
+/// inclusion is forbidden.
 /// The private constructor + friend QRegister enforces this at compile time
 ///
 

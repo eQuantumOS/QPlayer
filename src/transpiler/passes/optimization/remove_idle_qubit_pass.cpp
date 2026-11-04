@@ -135,7 +135,7 @@ Circuit RemoveIdleQubitPass::run(Circuit circuit) {
             const GateOp& g = std::get<GateOp>(op);
             // Opaque GateOps stay untouched — silent removal would violate the
             // "no silent transformation of opaque gates" rule (-2).
-            // Every other F-OPT pass enforces the same guard.
+            // Every other optimization pass enforces the same guard.
             if (g.is_opaque) {
                 new_ops.push_back(op);
                 continue;

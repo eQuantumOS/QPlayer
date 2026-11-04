@@ -17,7 +17,7 @@
 
 namespace qplayer {
 
-/// Logical-to-physical qubit mapping after F-CC compilation.
+/// Logical-to-physical qubit mapping after coupling-map compilation.
 /// Identity layout is the default — Phase 4 InitialLayoutPass fills the maps
 /// once SwapRouter runs against a device. requires that even the
 /// device-independent transpile() path (full-connectivity) produces an

@@ -75,7 +75,7 @@ void reorder_qubits(double* re, double* im, StateIndex dim,
     const std::size_t align = 64;
     const std::size_t padded = (bytes + align - 1) & ~(align - 1);
 
-    // : new/delete forbidden; use std::aligned_alloc+free.
+    // new/delete forbidden; use std::aligned_alloc+free.
     double* out_re = static_cast<double*>(std::aligned_alloc(align, padded));
     double* out_im = static_cast<double*>(std::aligned_alloc(align, padded));
     if (!out_re || !out_im) {
@@ -88,7 +88,7 @@ void reorder_qubits(double* re, double* im, StateIndex dim,
     // Scatter: out[new_index] = in[old_index].
     // The mapping is a bijection so every output slot is written exactly once
     // — no write conflict across iterations (safe for OpenMP parallel for).
-    // : parallel for over independent indices.
+    // parallel for over independent indices.
 #pragma omp parallel for schedule(static)
     for (StateIndex i = 0; i < dim; ++i) {
         const StateIndex j = permute_index(i, perm);

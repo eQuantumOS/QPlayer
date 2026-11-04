@@ -101,7 +101,7 @@ class OpaqueDeclareAndPromote(unittest.TestCase):
         self.assertIsNotNone(circ.opaque_definition("g").body)
 
     def test_second_define_opaque_is_rejected(self):
-        # : promotion is single-direction and happens exactly once.
+        # promotion is single-direction and happens exactly once.
         circ = qplayer.Circuit(2, 2)
         circ.define_opaque("g", X_2X2)
 
@@ -142,7 +142,7 @@ class OpaqueDefineDispatcher(unittest.TestCase):
         np.testing.assert_allclose(definition.body, CX_4X4, atol=1e-15)
 
     def test_n_qubit_matrix_requires_explicit_num_qubits(self):
-        # : above 2 qubits the width must be stated, so a large
+        # above 2 qubits the width must be stated, so a large
         # accidental array cannot register silently.
         circ = qplayer.Circuit(3, 3)
         identity8 = np.eye(8, dtype=np.complex128)
@@ -291,7 +291,7 @@ class OpaqueQueryAndSerialization(unittest.TestCase):
             circ.opaque_definition("g").body = None
 
     def test_definitions_survive_json_round_trip(self):
-        # : opaque_definitions are part of the serialized circuit.
+        # opaque_definitions are part of the serialized circuit.
         circ = qplayer.Circuit(2, 2)
         circ.define_opaque("g", CX_4X4)
         circ.declare_opaque("stub", 1)

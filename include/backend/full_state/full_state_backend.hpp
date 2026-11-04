@@ -88,7 +88,7 @@ public:
     bool             supports_gpu()   const override;
     std::string_view name()           const override;
 
-    // Host peak model (0308): max no-swap dense qubit count.
+    // Host peak model: max no-swap dense qubit count.
     std::uint32_t max_qubits(detail::WorkingSet ws) const noexcept override;
 
     // Seed the internal PRNG for reproducible measurement sampling.
@@ -141,7 +141,7 @@ public:
 private:
 
     // Shared owner of the CPU-resident SoA buffers (mirrors
-    // state_owner_ in FullStateGpuBackend /). A Result from execute()
+    // state_owner_ in FullStateGpuBackend). A Result from execute()
     // holds a copy so the host state survives the backend's next init_state()
     // for deferred sampling / lazy AoS materialisation. Null before init_state().
     std::shared_ptr<CpuStateBuffers> state_owner_;

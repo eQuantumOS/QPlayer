@@ -1,6 +1,6 @@
 // test_amplitude_api.cpp — QRegister::amplitude() / reduced_density_matrix()
 // Public API tests.
-// 1.1, 1.3 (Arrange/Act/Assert).
+// Tests follow the Arrange / Act / Assert layout.
 
 #include "../../framework/test_case.hpp"
 #include "../../framework/assertions.hpp"

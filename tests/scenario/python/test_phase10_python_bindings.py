@@ -328,7 +328,7 @@ class TrajectoryDiagnostics(unittest.TestCase):
         self.assertEqual(result.norm_drifts(), [])
 
     def test_repeat_run_reproduces_the_record(self):
-        # : the shot index derives the seed, so the same seed
+        # the shot index derives the seed, so the same seed
         # gives the same per-shot record element by element.
         circ = self._midcircuit()
         out = []

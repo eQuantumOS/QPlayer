@@ -1,5 +1,5 @@
 // test_tn_sampling.cpp — Unit tests for native MPS perfect sampling
-// 1.1, 1.3 (Arrange/Act/Assert).
+// Tests follow the Arrange / Act / Assert layout.
 //
 // The sampler's whole claim is that it draws from |psi|^2 exactly, without ever
 // building the 2^n vector. Two failure modes are invisible to a "does it run"

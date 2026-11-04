@@ -50,7 +50,7 @@ class TestInteractiveRegression(unittest.TestCase):
     """Regression: Interactive gate chain must still work after Phase 8 changes."""
 
     def test_interactive_bell_statevector(self):
-        # : qr.interactive chain after initialize(). initialize() returns
+        # qr.interactive chain after initialize(). initialize() returns
         # None (void in C++); subsequent calls chain on the Interactive object.
         qr = qplayer.QRegister(qplayer.SimType.FullState, qplayer.ProcType.CPU)
         qr.interactive.initialize(2)

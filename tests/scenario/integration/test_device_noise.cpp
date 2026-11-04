@@ -118,7 +118,7 @@ TEST(DeviceNoise, IdleNoise_ExcitedIdlingQubitRelaxes) {
     circ.x(1).barrier({0, 1}).h(0).measure(0, 0).measure(1, 1);
 
     // Full device pipeline as transpile() runs it. IdleNoiseInserterPass was the
-    // original per-gate inserter; ALAPSchedulePass replaced it (1010) and
+    // original per-gate inserter; ALAPSchedulePass replaced it and
     // the class was removed in Phase 8-F, so the test drives the production
     // pass instead of a parallel implementation.
     Circuit annotated = DurationAnnotationPass(dev).run(circ);

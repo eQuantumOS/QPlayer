@@ -15,11 +15,8 @@
 ///
 /// if-body restriction: only GateCall is supported as an if-then body in Phase
 /// 3 (Circuit::if_then accepts GateOp only). Measure/Reset as if-body throws
-/// CircuitError. This is noted as a post-Phase-3 open item (
-/// allows the full set; tracked).
-///
-/// References:,,,,,
-///
+/// CircuitError. Lifting this restriction is an open item; the grammar
+/// itself allows the full set.
 
 #include "parser/detail/circuit_builder.hpp"
 

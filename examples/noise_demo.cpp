@@ -2,7 +2,7 @@
 // C++ counterpart of examples/noise_demo.py: same nine cases, same shots/seed,
 // same output layout, so the two files can be diffed side by side.
 //
-// One test case per noise channel (..), a combined multi-channel
+// One test case per noise channel, a combined multi-channel
 // case, and a device-noise case parsed from a JSON *string* (not a file). Each
 // case runs the same circuit twice — once ideal (no noise) and once noisy — and
 // prints the measured probability distributions side by side.
@@ -203,7 +203,7 @@ void build_x_measure(Circuit& c)  { c.x(0).measure(0, 0); }
 void build_hh_measure(Circuit& c) { c.h(0).h(0).measure(0, 0); }
 void build_bell(Circuit& c)       { c.h(0).cx(0, 1).measure(0, 0).measure(1, 1); }
 
-// ── Single-channel cases (..) ────────────────────────────────
+// ── Single-channel cases ────────────────────────────────
 
 // depolarizing channel on X. |1> leaks toward |0>.
 void case_depolarizing() {

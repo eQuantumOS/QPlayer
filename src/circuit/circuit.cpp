@@ -198,7 +198,7 @@ void verify_kraus(const KrausChannel& ch, QubitIndex num_qubits, const std::stri
 }  // namespace
 
 // ── Construction ─────────────────────────────────────────────────────────────
-// : if the caller passes num_cubits > 0 we auto-create a register
+// if the caller passes num_cubits > 0 we auto-create a register
 // named "c" of that width at index 0. num_cubits == 0 leaves the register
 // list empty -- users build their layout with add_creg() instead.
 Circuit::Circuit(QubitIndex num_qubits, ClassicalBitIndex num_cubits)
@@ -408,7 +408,7 @@ Circuit& Circuit::barrier(std::initializer_list<QubitIndex> qubits) {
             b.qubits.push_back(q);
         }
     }
-    // Empty list is preserved as "all qubits" -- frontend section 5.1.
+    // Empty list is preserved as "all qubits".
     ops_.push_back(std::move(b));
     return *this;
 }
@@ -416,7 +416,7 @@ Circuit& Circuit::barrier(std::initializer_list<QubitIndex> qubits) {
 Circuit& Circuit::reset(QubitIndex q) {
     check_qubit(q, num_qubits_, "reset");
     // Reset rides on GateOp{type=Reset} so the Op variant stays at 5 members
-    // (gate_op.hpp header note +).
+    // (see the gate_op.hpp header note).
     ops_.push_back(make_1q(GateType::Reset, "reset", q));
     return *this;
 }
@@ -521,7 +521,7 @@ const std::vector<std::string>& Circuit::expectation_targets() const noexcept {
     return expectation_targets_;
 }
 
-// ── Opaque definitions (+) ─────────────────────────────────
+// ── Opaque definitions ─────────────────────────────────
 // Lookup helper: returns the index into opaque_definitions_, or size() when
 // the name is unknown. Used by every declare/define/has/get path.
 namespace {
@@ -748,7 +748,7 @@ std::size_t            Circuit::num_ops()    const noexcept { return ops_.size()
 const std::vector<Op>& Circuit::ops()        const noexcept { return ops_; }
 const CircuitMetadata& Circuit::metadata()   const noexcept { return metadata_; }
 
-// has_classical_control: true when the circuit needs the section 12.4 per-shot
+// has_classical_control: true when the circuit needs the per-shot
 // path. Triggers:
 //   1. Any IfOp present.
 //   2. A MeasureOp followed by a non-Measure / non-Barrier op on the same

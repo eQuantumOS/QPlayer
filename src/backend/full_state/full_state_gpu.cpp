@@ -27,7 +27,7 @@
 #include <variant>
 #include <vector>
 
-#include "backend/full_state/gate_matrix.hpp"  // ecr/iswap/sqrt_iswap/fsim matrix data (0610)
+#include "backend/full_state/gate_matrix.hpp"  // ecr/iswap/sqrt_iswap/fsim matrix data
 #include "backend/full_state/kraus_apply_2q.hpp"  // detail::apply_kraus_2q
 #include "backend/full_state/pauli_expectation.hpp"  // detail::pauli_expectation
 #include "backend/memory_check.hpp"
@@ -54,7 +54,7 @@ void qplayer_cuda_free_pinned(double* h_re, double* h_im);
 int  qplayer_cuda_download_state(double* h_re, double* h_im,
                                   const double* d_re, const double* d_im,
                                   unsigned long long dim);
-// : stream lifecycle and device-resident gate launchers.
+// stream lifecycle and device-resident gate launchers.
 int  qplayer_cuda_stream_create(unsigned long long* handle_out);
 void qplayer_cuda_stream_destroy(unsigned long long handle);
 int  qplayer_cuda_stream_sync(unsigned long long handle);
@@ -79,14 +79,14 @@ int  qplayer_cuda_apply_ccx_dev(double* d_re, double* d_im,
                                  unsigned int c0, unsigned int c1,
                                  unsigned int target,
                                  unsigned long long stream_handle);
-// : dense 4x4 two-qubit gate (ECR). m32 = 32 doubles, row-major
+// dense 4x4 two-qubit gate (ECR). m32 = 32 doubles, row-major
 // operand-order (qa=operand0/bit0, qb=operand1/bit1); see ecr_matrix_data().
 int  qplayer_cuda_apply_dense2q_dev(double* d_re, double* d_im,
                                      unsigned long long dim,
                                      unsigned int qa, unsigned int qb,
                                      const double* m32,
                                      unsigned long long stream_handle);
-// : fused k-qubit GEMV (on GPU). d_qubits holds k ascending
+// fused k-qubit GEMV (on GPU). d_qubits holds k ascending
 // qubit indices, d_mat holds (2^k)^2 interleaved (re,im) doubles, row-major.
 int  qplayer_cuda_apply_fused_dev(double* d_re, double* d_im,
                                    unsigned long long dim,
@@ -107,13 +107,13 @@ int  qplayer_cuda_download_state_stream(double* h_re, double* h_im,
                                          const double* d_re, const double* d_im,
                                          unsigned long long dim,
                                          unsigned long long stream_handle);
-// : GPU Monte Carlo trajectory cuRAND state init. states_out is
+// GPU Monte Carlo trajectory cuRAND state init. states_out is
 // an opaque device pointer (curandStatePhilox4_32_10 array) kept off this TU.
 int  qplayer_cuda_init_curand_states(void** states_out,
                                      const unsigned long long* h_seeds,
                                      int n_traj);
 void qplayer_cuda_free_curand_states(void* states);
-// : H2D upload for Kraus CPU-apply-then-upload trajectory pattern.
+// H2D upload for Kraus CPU-apply-then-upload trajectory pattern.
 // Copies host pinned buffers h_re/h_im to already-allocated device buffers d_re/d_im.
 int  qplayer_cuda_upload_state(const double* h_re, const double* h_im,
                                double* d_re, double* d_im,
@@ -896,7 +896,7 @@ Result FullStateGpuBackend::execute(const Circuit& circuit,
             std::vector<KrausChannel> chan_buf;
 
             // Gate-attached channels for a gate that just ran on the device
-            // (..06). Factored out because the IfOp body needs the exact
+            // Factored out because the IfOp body needs the exact
             // same treatment as an unconditional gate and used to get none at all
             // — the duplication is what let the two drift.
             const auto apply_gate_channels = [&](const GateOp& g) {

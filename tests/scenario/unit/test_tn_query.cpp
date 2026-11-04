@@ -1,6 +1,6 @@
 // test_tn_query.cpp — Unit tests for TN amplitude and reduced density
-// matrix modes, plus the IdleOp fusion boundary,.
-// 1.1, 1.3 (Arrange/Act/Assert).
+// matrix modes, plus the IdleOp fusion boundary.
+// Tests follow the Arrange / Act / Assert layout.
 
 #include "../../framework/test_case.hpp"
 #include "../../framework/assertions.hpp"
@@ -461,7 +461,7 @@ TEST(TnQuery, Expectation_UnderNonIdentitySiteLayout) {
 
 TEST(TnQuery, Expectation_BeyondTheDenseExportCap) {
     // Arrange: 40 qubits. get_statevector() throws here, so this is the whole
-    // point of computing <P> by contraction (section 11.7 "every qubit count").
+    // point of computing <P> by contraction.
     const QubitIndex n = 40;
     Circuit circ(n, n);
     circ.h(0);

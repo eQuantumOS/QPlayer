@@ -1,5 +1,4 @@
 // test_tn_midcircuit.cpp — Mid-circuit measurement collapse on TensorNetwork
-// 1.1, 1.3.
 //
 // The failure this file defends against is silent, not loud: deferring a
 // measurement produces well-formed counts, so a circuit that reuses a measured

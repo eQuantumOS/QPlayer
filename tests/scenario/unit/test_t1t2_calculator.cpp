@@ -63,7 +63,7 @@ TEST(T1T2Calculator, DephasingLambda_MatchesFormula) {
 }
 
 TEST(T1T2Calculator, Compute_CoherenceDecaysAsExpMinusTOverT2) {
-    // : the assembled amplitude+phase damping must shrink coherence
+    // the assembled amplitude+phase damping must shrink coherence
     // exp(-t/T2). Amplitude damping contributes coherence factor sqrt(1-gamma) =
     // K0[1][1]; phase damping contributes sqrt(1-lambda) = K0[1][1]. Their product
     // is the total coherence multiplier applied to rho_01.

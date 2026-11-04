@@ -1,7 +1,7 @@
 // test_mps.cpp — Unit tests for MpsState: gate application, SVD
 // truncation under the policy, truncation-error accounting, and
 // dense contraction cross-checked against FullState.
-// 1.1, 1.3 (Arrange/Act/Assert).
+// Tests follow the Arrange / Act / Assert layout.
 
 #include "../../framework/test_case.hpp"
 #include "../../framework/assertions.hpp"
@@ -400,7 +400,7 @@ TEST(Mps, Truncation_LargerCapNeverIncreasesError) {
     EXPECT_NEAR(loose, 0.0, 1e-13);
 }
 
-// ── Dense export bound (11.7) ───────────────────────────────
+// ── Dense export bound ───────────────────────────────
 
 TEST(Mps, ToDense_AboveExportCap_Throws) {
     // Arrange: 26 sites is one past the dense export bound.

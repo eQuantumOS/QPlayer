@@ -25,7 +25,7 @@ namespace qplayer {
 
 /// Single arbitrary-dimension complex matrix used as a Kraus operator or an
 /// opaque unitary. The same alias is reused by OpaqueDefinition.body
-/// (+) — kept here so circuit/gate_op.hpp can simply
+/// Kept here so circuit/gate_op.hpp can simply
 /// include noise/noise_model.hpp instead of duplicating the typedef.
 using UnitaryMatrix = std::vector<std::vector<std::complex<double>>>;
 
@@ -81,11 +81,11 @@ public:
     /// Constructs an empty model that registers no channels.
     NoiseModel();
 
-    /// @name Built-in channel registration (..)
+    /// @name Built-in channel registration
     ///
     /// Every function in this group shares one contract: `gate_name` matches
     /// GateOp.name (e.g. "h", "cx"); an empty `qubits` filter applies the channel
-    /// to every operand of the named gate (the F-NS global rule), while a
+    /// to every operand of the named gate (the global gate-noise rule), while a
     /// non-empty one restricts it to those operands; the magnitude argument is
     /// validated immediately, so an out-of-range value throws CircuitError before
     /// the model is mutated; and each returns `*this` so registrations chain.
@@ -252,7 +252,7 @@ private:
     // once perf data lands (Phase 8).
 
     /// A registered channel plus its qubit filter. qubits empty -> applies to
-    /// every operand of the named gate (the F-NS global rule). channel
+    /// every operand of the named gate (the global gate-noise rule). channel
     /// holds the operator template; target_qubit is filled per operand at query.
     struct GateEntry {
         /// Operator template; target_qubit is filled per operand at query time.

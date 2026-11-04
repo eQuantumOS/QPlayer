@@ -97,7 +97,7 @@ public:
     /// Runs the pass pipeline over a circuit — the single compile entry point.
     ///
     /// @param circuit            Circuit to compile (taken by value, returned transformed).
-    /// @param optimization_level 0 (validator only) | 1 (default F-OPT) |
+    /// @param optimization_level 0 (validator only) | 1 (default optimization passes) |
     /// 2 / 3 (TBD — Phase 4 entry gate).
     /// @param device_json        Empty / invalid -> skip layout / routing / scheduling
     ///                           stages and fall back to the member DeviceModel (if any).

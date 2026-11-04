@@ -1,5 +1,4 @@
 // test_tn_noise_parity.cpp — TN Monte Carlo trajectory vs FullState CPU
-// 1.1, 1.3.
 //
 // The claim under test is the one rests on: the SAME NoiseModel object,
 // handed to two backends, produces the same distribution. Anything weaker (TN
@@ -549,7 +548,7 @@ TEST(TnNoiseParity, MpoCounts_ConserveTheShotBudget) {
 }
 
 TEST(TnNoiseParity, MpoCounts_AreIndependentOfThreadCount) {
-    // : the shot seed is derived from the shot INDEX, not drawn from one
+    // the shot seed is derived from the shot INDEX, not drawn from one
     // sequential stream, so the counts must not depend on how many threads drew
     // them. Running the same seed twice cannot show this -- the team size has to
     // actually change between the two runs.

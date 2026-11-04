@@ -35,8 +35,8 @@ inline const char* proc_suffix(::qplayer::ProcType p) {
 // Returns the ordered set of ProcTypes to exercise in the current build and
 // runtime environment. Always contains ProcType::CPU. Adds ProcType::GPU only
 // when QPLAYER_BUILD_GPU is defined and at least one CUDA device is visible
-// (graceful: GPU build on a GPU-less host -> CPU only, consistent with
-//). Calling this from a static initialiser is pre-main safe (CUDA
+// (graceful: GPU build on a GPU-less host -> CPU only, consistent with).
+// Calling this from a static initialiser is pre-main safe (CUDA
 // cudaGetDeviceCount is safe at any point;).
 inline std::vector<::qplayer::ProcType> testable_procs() {
     std::vector<::qplayer::ProcType> procs;

@@ -55,7 +55,7 @@ struct TopologyAnalysis {
     ///
     /// Linear: the path order, which makes every 2Q gate adjacent. NonLinear: the
     /// identity by default; under NonLinearLayout::MinLA a minimum-linear-
-    /// arrangement order when it walks less than the identity (0950).
+    /// arrangement order when it walks less than the identity.
     std::vector<QubitIndex> chain_order;
 
     /// Sum over 2Q interactions of weight x site distance, under chain_order and
@@ -95,7 +95,7 @@ public:
     static TopologyAnalysis analyze(const Circuit& circuit,
                                     NonLinearLayout layout = NonLinearLayout::Identity);
 
-    /// Analyses an explicit coupling list, for the F-CC case where a device
+    /// Analyses an explicit coupling list, for the coupling-map case where a device
     /// coupling map is authoritative rather than the gate pattern.
     /// A pair listed k times weighs k in the NonLinear layout.
     static TopologyAnalysis analyze(const std::vector<std::pair<QubitIndex, QubitIndex>>& coupling,

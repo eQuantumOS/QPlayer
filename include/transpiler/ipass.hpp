@@ -31,7 +31,7 @@ public:
     // Transform the circuit. Takes ownership by value; returns the (possibly
     // modified) Circuit. Implementations that do not modify the circuit must
     // still return the input Circuit unchanged.
-    // F-OPT passes: mutate ops_ and return modified copy.
+    // optimization passes: mutate ops_ and return modified copy.
     // Validation passes: verify and return input unchanged.
     virtual Circuit run(Circuit circuit) = 0;
 

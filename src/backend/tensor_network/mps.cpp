@@ -114,7 +114,7 @@ MpsTruncationConfig MpsTruncationConfig::from_env() {
     double budget = 0.0;
     if (env_double("QPLAYER_MPS_ERROR_BUDGET", &budget)) cfg.error_budget_warn = budget;
 
-    // : the escape hatch back to the pre-gauge split, e.g. to reproduce
+    // the escape hatch back to the pre-gauge split, e.g. to reproduce
     // counts recorded before the gauge was wired.
     if (const char* raw = std::getenv("QPLAYER_MPS_GAUGE"); raw != nullptr && *raw != '\0') {
         const std::string v{raw};
@@ -211,7 +211,7 @@ void MpsState::apply_1q(const std::vector<Cx>& u, QubitIndex qubit) {
 
 double MpsState::apply_2q_adjacent(const std::vector<Cx>& u, QubitIndex site, bool swap_operands,
                                    bool centre_left) {
-    // : a split is globally optimal only when the centre lies inside the
+    // a split is globally optimal only when the centre lies inside the
     // block, because only then are both environments isometries. The walk below
     // leaves it there already, so this moves at most once per user gate.
     if (gauge_active()) {
@@ -238,8 +238,8 @@ double MpsState::apply_2q_adjacent(const std::vector<Cx>& u, QubitIndex site, bo
     // (l*2) x m matrix and B a row-major m x (2*r) one; a row-major matrix read
     // as column-major is its own transpose, so passing both with "T" recovers
     // the intended product and writes it column-major straight into `mat`.
-    // Hand-rolling the four loops instead cost 24.8% of MPS time (
-    // profile) doing scalar work that a blocked, vectorised kernel does far
+    // Hand-rolling the four loops instead cost 24.8% of MPS time in
+    // profiling, doing scalar work that a blocked, vectorised kernel does far
     // better -- and BLAS is already loaded here for zgesvd_.
     std::vector<Cx> mat(static_cast<std::size_t>(rows) * static_cast<std::size_t>(cols), Cx{0, 0});
     {

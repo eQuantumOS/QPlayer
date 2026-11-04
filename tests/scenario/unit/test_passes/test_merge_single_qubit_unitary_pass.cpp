@@ -11,7 +11,7 @@
 // The pass processes all 1Q gate runs of length >= 2 (including rotations).
 // Boundaries: 2Q+ gate, Measure, Barrier, If, Idle, Opaque, Reset.
 //
-// : Arrange / Act / Assert.
+// Arrange / Act / Assert.
 
 #include "../../../framework/test_case.hpp"
 #include "../../../framework/assertions.hpp"

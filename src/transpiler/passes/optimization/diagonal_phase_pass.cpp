@@ -13,7 +13,7 @@
 ///
 /// For RZ: the global phase e^{-iθ/2} is ignored; only the relative phase θ is
 /// accumulated. This is consistent with the "global phase ignored" convention
-/// throughout the F-OPT passes.
+/// throughout the optimization passes.
 ///
 /// Net-phase → gate mapping (mod 2π):
 /// 0                 → identity (op removed)

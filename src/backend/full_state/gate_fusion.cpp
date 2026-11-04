@@ -15,7 +15,7 @@
 
 #include "backend/full_state/gate_fusion.hpp"
 #include "backend/full_state/cpu_dispatcher.hpp"  // select_for_host
-#include "backend/full_state/gate_matrix.hpp"     // ecr/iswap/sqrt_iswap/fsim matrix data (0610)
+#include "backend/full_state/gate_matrix.hpp"     // ecr/iswap/sqrt_iswap/fsim matrix data
 #include "error.hpp"
 #include "log.hpp"
 
@@ -625,7 +625,7 @@ std::vector<FusedOp> fuse_circuit(const std::vector<Op>& ops,
             if constexpr (std::is_same_v<T, GateOp>) {
                 const GateOp& g = node;
 
-                // Non-unitary gate types: flush window then throw (+).
+                // Non-unitary gate types: flush window then throw.
                 if (g.type == GateType::Reset || g.type == GateType::Opaque) {
                     flush();
                     throw SimulatorError{"FullState",

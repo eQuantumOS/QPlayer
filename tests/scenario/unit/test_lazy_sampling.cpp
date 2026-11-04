@@ -4,7 +4,7 @@
 // matches theory, (2) the final state is available without ever sampling,
 // (3) repeated counts() calls are stable (cached), (4) a fixed seed reproduces
 // identical counts through the lazy path, and (5) the per-shot path (IfOp) stays
-// eager and correct.,.
+// eager and correct.
 
 #include "../../framework/test_case.hpp"
 #include "../../framework/assertions.hpp"
@@ -134,9 +134,9 @@ TEST(LazySampling, PerShotPath_IfOp_EagerAndCorrect) {
     EXPECT_EQ(counts.at("11"), static_cast<std::uint64_t>(256));
 }
 
-// ── 개정: GPU (dense) + SparseState (sparse) lazy ──────────────────
+// ── GPU (dense) + SparseState (sparse) lazy ──────────────────
 
-// FullState GPU lazy (dense mode 개정). GPU execute() downloads the
+// FullState GPU lazy (dense mode). GPU execute() downloads the
 // state and attaches |psi> + a lazy snapshot; counts() draws on first call.
 // (Falls back to CPU if no CUDA device — lazy behaviour holds either way.)
 TEST(LazySampling, GPU_DeferredCounts_MatchesAndReproducible) {
@@ -386,12 +386,12 @@ TEST(LazySampling, CpuResident_BufferReuse_ConsecutiveRuns_Independent) {
 // ── : size-gated parallel CDF (large-circuit path) ──────────────────
 
 // Reproducibility: the parallel block-scan path is the default for dimi > 2^18
-// (개정 — contention resilience). We pin it ON explicitly by lowering
+// (contention resilience). We pin it ON explicitly by lowering
 // QPLAYER_PARALLEL_SAMPLE_THRESHOLD to 2048 (> 1024 Golden guard, well below the
 // 24q circuit's 2^24 states), so the test is independent of the default and the
 // dense path provably takes the parallel branch.  The same fixed seed must produce
 // identical count maps on two independent runs regardless of OMP thread count
-//: block boundaries depend only on dimi and kScanBlock (both
+// block boundaries depend only on dimi and kScanBlock (both
 // compile-time constants) — determinism is guaranteed by design.
 // NOTE: "0" does NOT work as a force value — the env guard rejects <= 1024 and
 // falls back to the default (serial). Use a value in (1024, dim).
@@ -438,7 +438,7 @@ TEST(LazySampling, ParallelCdf_LargeCircuit_FixedSeed_Reproducible) {
 // path (large circuit, forced via env) must produce correct total shot counts and
 // non-empty distributions.
 //
-// The default threshold is 2^18 (parallel for >= ~18 qubits 개정); we test
+// The default threshold is 2^18 (parallel for >= ~18 qubits); we test
 // both paths explicitly by overriding the env var rather than relying on the default.
 TEST(LazySampling, ParallelCdf_ThresholdBoundary_CorrectCounts) {
     // Serial path: force threshold to 2^40 (always serial), use a 16-qubit
@@ -487,7 +487,7 @@ TEST(LazySampling, ParallelCdf_ThresholdBoundary_CorrectCounts) {
     }
 }
 
-// ── : CPU dense 샘플링 비트-정확 병렬화 (Phase 7-E) ───────────────────
+// ── CPU dense sampling: bit-exact parallelisation ───────────────────
 
 // The dense prob/normalize build is now OpenMP-parallel while prob_sum and the
 // prefix-sum stay serial so a fixed seed must still give bit-for-bit

@@ -332,7 +332,7 @@ void SemanticValidator::validate_gate_call_in_body(
 
 void SemanticValidator::validate_measure(const MeasureStmt& stmt) {
     // Whole-register measure (e.g. "measure q -> c;") is legal in OpenQASM v2
-    // : shorthand for measure q[i] -> c[i] for each i in [0, size).
+    // shorthand for measure q[i] -> c[i] for each i in [0, size).
     validate_reg_ref_toplevel(stmt.qubit, /*is_qubit=*/true,  /*allow_whole=*/true);
     validate_reg_ref_toplevel(stmt.cbit,  /*is_qubit=*/false, /*allow_whole=*/true);
 

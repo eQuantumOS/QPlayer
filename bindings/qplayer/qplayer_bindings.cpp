@@ -7,19 +7,17 @@
 // MeasureOp / BarrierOp / IfOp / IdleOp), Circuit.ops(), and the
 // Interactive facade (qr.interactive) are added here as a forward-expose
 // of the Interactive-mode feature.
-// : get_statevector_nonzero() exposed on QRegister and Interactive as
+// get_statevector_nonzero() exposed on QRegister and Interactive as
 // list[tuple[int, complex]]. StateIndex (__uint128_t) is converted losslessly
 // to a Python arbitrary-precision int via hi/lo 64-bit decomposition.
 // Phase 8: NoiseModel, DeviceModel, ConnectivityError, GPUError are
-// now exposed. TensorNetwork landed in (amplitude / RDM / truncation_errors)
-// and adds its noise route + truncation knobs. Original note:
-// TensorNetwork lands in (amplitude / RDM / truncation_errors,
-//); opaque definitions and if_then remain deferred
-// to Phase 9/11 as.
+// now exposed. TensorNetwork adds amplitude / RDM / truncation_errors
+// queries plus its noise route and truncation knobs. if_then is not yet
+// exposed to Python.
 //
 // Exception mapping: Phase 8 adds ConnectivityError
-// (CircuitError subtype) and GPUError (SimulatorError subtype,
-//). Full 6-type hierarchy is now registered (arch).
+// (CircuitError subtype) and GPUError (SimulatorError subtype).
+// Full 6-type hierarchy is now registered.
 //
 // numpy integration: StateVector (vector<complex<double>>) is
 // converted to numpy.ndarray(dtype=complex128) via py::array_t copy.
@@ -244,11 +242,10 @@ qplayer::UnitaryMatrix numpy_to_matrix(const py::object& obj, qplayer::QubitInde
 }  // namespace
 
 PYBIND11_MODULE(_qplayer, m) {
-    m.doc() = "QPlayer Python bindings — Phase 8: Batch API + "
-              "FullState CPU/GPU + SparseState + Interactive + "
-              "NoiseModel + DeviceModel + full exception hierarchy. "
-              "TensorNetwork, opaque, and if_then remain deferred "
-              "(Phase 9/11).";
+    m.doc() = "QPlayer Python bindings — Batch API + "
+              "FullState CPU/GPU + SparseState + TensorNetwork + "
+              "Interactive + NoiseModel + DeviceModel + opaque "
+              "definitions + full exception hierarchy.";
 
     register_exceptions(m);
 
@@ -738,8 +735,8 @@ PYBIND11_MODULE(_qplayer, m) {
     // QRegister alive as long as the Interactive reference is held).
     //
     // CPU statevector backends only (FullState CPU, SparseState). FullState
-    // GPU and TensorNetwork throw SimulatorError from initialize() (CLAUDE.md
-    //). Use the batch run() path for those backends.
+    // GPU and TensorNetwork throw SimulatorError from initialize().
+    // Use the batch run() path for those backends.
     //
     // NoiseModel injection into Interactive is deferred to Phase 8.
     py::class_<qplayer::Interactive>(m, "Interactive")

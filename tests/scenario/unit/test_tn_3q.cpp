@@ -1,5 +1,4 @@
 // test_tn_3q.cpp — three-qubit gates on TensorNetwork.
-// 1.1, 1.3.
 //
 // TN used to reject ccx / cswap outright while FullState and SparseState ran
 // them through dedicated kernels, so a gate the parser accepts as first class

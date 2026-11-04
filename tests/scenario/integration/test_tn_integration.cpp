@@ -2,7 +2,7 @@
 // QFT at 50 qubits through the MPS path, truncation-error history
 // over random circuits, the accuracy
 // criteria, and a Greedy vs MinCut contraction-cost comparison.
-// 1.1, 1.3 (Arrange/Act/Assert).
+// Tests follow the Arrange / Act / Assert layout.
 
 #include "../../framework/test_case.hpp"
 #include "../../framework/assertions.hpp"

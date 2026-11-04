@@ -1,5 +1,4 @@
 // test_tn_conditional.cpp — Classical conditionals (IfOp) on TensorNetwork
-// 1.1, 1.3.
 //
 // A conditional cannot be decided ahead of the shot: the register only has a
 // value once that shot's measurements have run, which is why these circuits

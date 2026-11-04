@@ -1,9 +1,9 @@
-// test_basis_gate_translation.cpp — BasisGateTranslationPass (,
-// / /). Verifies logical gates
+// test_basis_gate_translation.cpp — BasisGateTranslationPass.
+// Verifies logical gates
 // decompose into the device native basis {id, rz, sx, x, ecr} (Eagle/ECR-native)
 // and {id, rz, sx, x, cz} (Willow/CZ-native), and that each decomposition is
 // unitarily equivalent (up to global phase) to the original gate, checked via the
-// FullState CPU statevector to 1e-10.,.
+// FullState CPU statevector to 1e-10.
 
 #include "../../../framework/test_case.hpp"
 #include "../../../framework/assertions.hpp"

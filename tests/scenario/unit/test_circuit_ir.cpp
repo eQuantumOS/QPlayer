@@ -111,7 +111,7 @@ TEST(CircuitIR, MeasureOp_HasQubitAndCubitFields) {
 }
 
 TEST(CircuitIR, BarrierOp_EmptyQubitsMeansAll) {
-    // : empty qubits list means "barrier on all".
+    // empty qubits list means "barrier on all".
     BarrierOp b{};
     EXPECT_TRUE(b.qubits.empty());
 }
@@ -166,7 +166,7 @@ TEST(CircuitIR, DeclarationOnly_EqualityIsAlwaysTrue) {
 
 TEST(CircuitIR, GateType_IncludesResetAndOpaqueSentinels) {
     // Reset and Opaque ride the GateType enum so the Op variant width stays
-    // at 5 alternatives (+). A plain enum-to-int cast is
+    // at 5 alternatives. A plain enum-to-int cast is
     // enough to confirm the enumerators exist.
     GateOp reset{};
     reset.type = GateType::Reset;
@@ -194,7 +194,7 @@ TEST(CircuitIR, Parameter_DefaultIsNumericZero) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// : Circuit container behaviour
+// Circuit container behaviour
 // ─────────────────────────────────────────────────────────────────────────────
 
 using qplayer::Circuit;
@@ -440,7 +440,7 @@ TEST(Circuit, CregLookup_FindsByName) {
     EXPECT_EQ(c.creg("a"), static_cast<ClassicalRegisterIndex>(1));
 }
 
-// ── Opaque definitions (+) ─────────────────────────────────
+// ── Opaque definitions ─────────────────────────────────
 
 TEST(Circuit, DeclareOpaque_StoresDeclarationOnlyBody) {
     Circuit c(1, 0);

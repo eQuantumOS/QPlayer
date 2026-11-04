@@ -50,7 +50,7 @@ enum class PauliOp : std::uint8_t { I = 0, X = 1, Y = 2, Z = 3 };
 
 /// Parse + validate a Pauli string into per-qubit factors, indexed by QUBIT:
 /// ops[q] acts on qubit q. Qubit order in the input is Qiskit big-endian
-///: pauli[0] acts on qubit n-1. An empty string means all-Z over every
+/// pauli[0] acts on qubit n-1. An empty string means all-Z over every
 /// qubit.
 ///
 /// Throws CircuitError on an invalid character or a length mismatch.

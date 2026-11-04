@@ -1,7 +1,7 @@
 /// @file interactive.cpp
-/// @brief Real implementation of the Interactive facade (
+/// @brief Real implementation of the Interactive facade.
 ///
-///). Delegates all gate / measure / state-access calls directly to the
+/// Delegates all gate / measure / state-access calls directly to the
 /// bound SimulatorBackend. Typed gate methods are thin wrappers over apply_gate().
 ///
 /// Design decisions:

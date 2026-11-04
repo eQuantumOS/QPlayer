@@ -1,5 +1,4 @@
 // test_tn_qec.cpp — Surface-code syndrome extraction on TensorNetwork
-// 1.1, 1.3.
 //
 // This is the circuit family Phase 10-A exists for. A surface-code round
 // measures every ancilla and resets it for reuse, so it needs all three of
@@ -360,8 +359,8 @@ TEST(TnQec, BondDimensionIsBoundedAndTruncationIsExact) {
     const TnRun b = run_tn(d3.build(3), 32, kSeed, &nm);
     const TnRun c = run_tn(d5.build(2), 32, kSeed, nullptr);
 
-    // Assert: measured 8 / 8 / 32 (peak) under the identity layout (the default,
-    //); 4 / 4 / 16 with QPLAYER_TN_LAYOUT=minla. The bounds are loose enough to survive
+    // Assert: measured 8 / 8 / 32 (peak) under the identity layout (the default);
+    // 4 / 4 / 16 with QPLAYER_TN_LAYOUT=minla. The bounds are loose enough to survive
     // a different site layout and tight enough to fail an exponential blow-up --
     // and they were already written wide enough that correcting the read from
     // end-of-run to peak did not move them.
@@ -541,7 +540,7 @@ TEST(TnQec, TruncationTotals_AreThreadCountIndependent) {
     omp_set_num_threads(saved);
 
     // Assert: bit-identical, not merely close. EXPECT_EQ refuses doubles by
-    // design (1.3), and EXPECT_NEAR would accept exactly what
+    // design, and EXPECT_NEAR would accept exactly what
     // this test exists to reject, so the comparison is spelled out.
     EXPECT_EQ(one.size(), many.size());
     bool identical = one.size() == many.size();

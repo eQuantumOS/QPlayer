@@ -1,7 +1,6 @@
 /// @file alap_schedule.cpp
-/// @brief ALAPSchedulePass implementation (,
-///
-/// supersedes deferral). Schedules the circuit into time slots from the
+/// @brief ALAPSchedulePass implementation.
+/// Schedules the circuit into time slots from the
 /// per-gate durations stamped by DurationAnnotationPass, then materialises each
 /// qubit's idle windows as IdleOp nodes — the Qiskit ALAPScheduleAnalysis +
 /// PadDelay idiom in one pass. This replaces the per-gate IdleNoiseInserterPass

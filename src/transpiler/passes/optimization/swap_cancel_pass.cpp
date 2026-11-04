@@ -1,5 +1,5 @@
 /// @file swap_cancel_pass.cpp
-/// @brief SwapCancelPass implementation (second F-OPT round).
+/// @brief SwapCancelPass implementation (second optimization round).
 ///
 /// Cancels redundant SWAP pairs left by routing: for each atomic SWAP{a,b}, scan
 /// forward; if the next op that touches a or b is another SWAP on the same

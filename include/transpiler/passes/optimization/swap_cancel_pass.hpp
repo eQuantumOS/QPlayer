@@ -2,14 +2,14 @@
 /// @brief Cancels redundant SWAP pairs left by routing.
 /// @ingroup transpiler
 ///
-/// SwapCancelPass (optimization stage, F-OPT 2차,
-///). Runs in the ⑤ re-optimization stage after SwapRouterPass, while
+/// SwapCancelPass (optimization stage).
+/// Runs in the ⑤ re-optimization stage after SwapRouterPass, while
 /// SWAPs are still atomic GateOp{SWAP} (un-decomposed). Removes redundant SWAP
 /// pairs that routing introduces: two SWAPs on the same physical pair {a,b}
 /// separated only by ops that touch neither a nor b cancel (SWAP·SWAP = I and
 /// commutes past disjoint ops). The leftover single-qubit re-optimization
-/// ("MergeSingleQubit 재적용") is the pipeline's job — transpile() re-runs
-/// the Level-1 F-OPT passes after this one (wired).
+/// (re-applying MergeSingleQubit) is the pipeline's job — transpile() re-runs
+/// the Level-1 optimization passes after this one (wired).
 ///
 /// Immediately-adjacent SWAP·SWAP is already handled by CancelInversePass
 /// (SWAP is self-inverse there); this pass adds the commutation-aware case that

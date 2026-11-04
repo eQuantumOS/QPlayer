@@ -76,7 +76,7 @@ struct TensorIndex {
     std::uint32_t id = 0;
 };
 
-/// A dense tensor node: its index list plus row-major data, placed on CPU or GPU (11.1).
+/// A dense tensor node: its index list plus row-major data, placed on CPU or GPU.
 /// @ingroup backend
 struct TensorNode {
     /// Placement is chosen per tensor size so small tensors stay off the PCIe path.
@@ -102,7 +102,7 @@ struct Bond {
     std::uint32_t index_b = 0;
 };
 
-/// Tensor network storage: an ordered node list plus the bonds contracting them (11.1).
+/// Tensor network storage: an ordered node list plus the bonds contracting them.
 ///
 /// An MPS is a TensorGraph whose nodes form a chain, so one type serves both the
 /// 1D and the general topology instead of duplicating storage.
@@ -356,7 +356,7 @@ private:
     bool                              use_mpo_       = false;
     std::vector<std::uint32_t>        noise_sites_;          // sorted
     bool                              noise_ledger_  = false;
-    // : identity unless QPLAYER_TN_LAYOUT=minla asked otherwise.
+    // identity unless QPLAYER_TN_LAYOUT=minla asked otherwise.
     detail::NonLinearLayout           nonlinear_layout_ = detail::NonLinearLayout::Identity;
     /// Explicit ProcType::GPU was requested, so the two-site SVD may be
     /// offloaded. Resolved once at construction because the factory

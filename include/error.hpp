@@ -75,8 +75,8 @@ public:
 /// backend identifier literal — "FullState", "FullStateGPU", "SparseState",
 /// "TensorNetwork", or "GPU". Member kept as std::string
 /// (not string_view) per decision — callers may construct with a
-/// dynamically built std::string (e.g. "out of memory at trajectory N",
-///), so storing a view would dangle.
+/// dynamically built std::string (e.g. "out of memory at trajectory N"),
+/// so storing a view would dangle.
 class SimulatorError : public QPlayerError {
 public:
     /// Builds the exception, formatting "[backend] msg" as what().
@@ -102,10 +102,9 @@ private:
 
 /// Raised when a CUDA runtime call fails. cuda_code preserves the original
 /// cudaError_t for caller diagnostics — wrap immediately on cudaGetLastError()
-/// (decision lines 54-58). The field uses `int` instead of cudaError_t
+/// The field uses `int` instead of cudaError_t
 /// to avoid pulling cuda_runtime.h into CPU-only builds. cudaError_t
-/// is an enum with integer ABI, so callers pass it implicitly (
-/// meta-box "구현 alias 노트").
+/// is an enum with integer ABI, so callers pass it implicitly.
 class GPUError : public SimulatorError {
 public:
     /// Wraps a failed CUDA runtime call, preserving its status code.

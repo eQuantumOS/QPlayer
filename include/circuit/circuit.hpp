@@ -242,7 +242,7 @@ public:
     /// @return Reference to the target list, in registration order.
     const std::vector<std::string>& expectation_targets() const noexcept;
 
-    /// ── Opaque definitions (+) ──────────────────
+    /// ── Opaque definitions ──────────────────
     /// declare_opaque: register stub (body = DeclarationOnly). Used by the
     ///   QASM parser when it encounters `opaque <name> <qubits>;`. Calling
     ///   define_opaque() afterwards promotes the body in-place exactly once

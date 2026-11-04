@@ -1,5 +1,4 @@
 // test_tn_reset.cpp — Reset on TensorNetwork.
-// 1.1, 1.3.
 //
 // Reset is a measurement plus a conditional X, so it is stochastic even though
 // its result is not. Two things follow, and both are tested here: it must not be

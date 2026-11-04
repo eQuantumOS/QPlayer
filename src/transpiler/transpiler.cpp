@@ -1,7 +1,6 @@
 /// @file transpiler.cpp
 /// @brief Transpiler facade implementing QRegister::transpile()
-///
-/// delegation (+ Level 2/3).
+/// delegation (optimization levels 0-3).
 ///
 /// PassPolicy summary:
 /// Level 0:  ⓪ SemanticValidatorPass only
@@ -16,8 +15,7 @@
 /// ⑤ verify (CouplingValidator) →
 /// ⑥ DurationAnnotation (physical space, when a T1/T2 NoiseModel is
 /// bound) → truncation (QubitTruncation) → ALAPSchedule (dense
-/// space, slot-aware idle) stages (, handoff,
-///).
+/// space, slot-aware idle) stages.
 
 #include "transpiler/transpiler.hpp"
 
@@ -107,7 +105,7 @@ Circuit Transpiler::transpile(Circuit            circuit,
     pm.add_pass(std::make_unique<SemanticValidatorPass>());
 
     if (optimization_level >= 1) {
-        // Stage ①: Level-1 F-OPT passes.
+        // Stage ①: Level-1 optimization passes.
         pm.add_pass(std::make_unique<CancelInversePass>());
         pm.add_pass(std::make_unique<CommutationReorderPass>());
         pm.add_pass(std::make_unique<MergeSingleQubitPass>());

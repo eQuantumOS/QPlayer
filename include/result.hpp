@@ -1,6 +1,6 @@
 /// @file result.hpp
 /// @brief Public Result container returned by QRegister::run() and referenced
-/// by interactive.result() (+).
+/// by interactive.result().
 /// @ingroup api
 ///
 /// has_error / error_message are kept trivially false / "" — the current
@@ -104,7 +104,7 @@ public:
     /// Per-step SVD truncation error history.
     /// @return One entry per 2Q truncation STEP, in circuit order — 2Q gates and,
     ///         on the noise path, 2Q Kraus channels too, because a channel-induced
-    /// truncation spends the same accuracy budget (note).
+    /// truncation spends the same accuracy budget.
     ///         1Q channels never truncate. Under nshots trajectories the list
     ///         reported is the WORST trajectory's (largest accumulated error,
     ///         lowest index breaking ties), which is the number that answers
@@ -134,8 +134,8 @@ public:
 
     /// Per-shot PEAK bond dimension — the largest the chain reached at any point
     /// in that shot, not its value at the end.
-    /// @return One entry per shot in shot order (thread-count independent,
-    ///); empty when has_trajectory_diagnostics() is false.
+    /// @return One entry per shot in shot order (thread-count independent);
+    /// empty when has_trajectory_diagnostics() is false.
     ///
     /// The distinction is not pedantry: on rotated surface code d=3/5/7 the peak
     /// is 8/32/64 while the end-of-run value is 4/16/32, because a SWAP round
@@ -179,7 +179,7 @@ public:
 private:
     /// Lazy sampling snapshot. Populated by a backend fast path instead
     /// of drawing nshots eagerly; counts() draws on first call. measure_map holds
-    /// (qubit, cubit) pairs. Two modes (개정):
+    /// (qubit, cubit) pairs. Two modes:
     ///   - dense  (FullState CPU/GPU): sparse_probs empty -> draw from statevector_.
     ///   - sparse (SparseState): sparse_probs holds normalised (basis_index, prob)
     ///     pairs -> draw from the sparse CDF without densifying (works > 25 qubits).

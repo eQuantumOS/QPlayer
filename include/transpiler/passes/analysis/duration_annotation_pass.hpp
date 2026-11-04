@@ -2,8 +2,8 @@
 /// @brief Fills empty GateOp.duration_ns from the DeviceModel timing table.
 /// @ingroup transpiler
 ///
-/// DurationAnnotationPass (analysis stage,
-/// 후속). Fills each GateOp.duration_ns
+/// DurationAnnotationPass (analysis stage).
+/// Fills each GateOp.duration_ns
 /// that is still empty from the DeviceModel gate-duration table so the
 /// downstream ALAPSchedulePass (scheduling ⑥) has per-gate timing.
 ///

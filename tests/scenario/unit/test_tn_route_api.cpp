@@ -1,6 +1,6 @@
 // test_tn_route_api.cpp — QRegister::set_tn_noise_path() / set_mps_truncation() /
 // set_mpo_truncation() Public API tests.
-// 1.1, 1.3 (Arrange/Act/Assert).
+// Tests follow the Arrange / Act / Assert layout.
 //
 // The facade owns three things here and each is a separate claim: that the route
 // string actually reaches the backend and changes which physics runs, that a bad

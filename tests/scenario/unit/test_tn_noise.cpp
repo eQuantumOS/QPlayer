@@ -1,5 +1,5 @@
 // test_tn_noise.cpp — Unit tests for Kraus operator application on an MPS chain
-// 1.1, 1.3 (Arrange/Act/Assert).
+// Tests follow the Arrange / Act / Assert layout.
 //
 // The contract under test is narrow but easy to break: a Kraus operator is not
 // unitary, and ||K psi|| is the branch probability the trajectory loop

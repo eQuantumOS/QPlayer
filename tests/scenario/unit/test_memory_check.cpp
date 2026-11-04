@@ -36,7 +36,6 @@ namespace {
 constexpr std::uint64_t kBytesPerGiB = std::uint64_t{1} << 30;
 
 // FullState CPU footprint: 2^n complex<double> in SoA = 2^n × 16 bytes
-// (0909).
 std::uint64_t state_vector_bytes(std::uint32_t num_qubits) {
     return (std::uint64_t{1} << num_qubits) * 16ULL;
 }

@@ -82,7 +82,7 @@ QRegister::QRegister(SimType sim_type, ProcType proc)
                   " (source: random_device)");
     }
 
-    // : Interactive's private constructor is friended to QRegister so
+    // Interactive's private constructor is friended to QRegister so
     // the member is default-constructed via the in-class initialiser, then
     // we bind the backend pointer here. Interactive keeps a non-owning
     // pointer — the unique_ptr above owns the storage.
@@ -215,7 +215,7 @@ Result QRegister::run(const Circuit& circuit,
         last_result_ = fallback_to_cpu_and_run();
     }
 
-    // : fill pre-registered expectation targets into the Result.
+    // fill pre-registered expectation targets into the Result.
     //
     // Division of labour: on the stochastic paths ( trajectory,
     // per-shot) each shot ends in a different state, so <P> is the nshot average
@@ -297,8 +297,8 @@ QRegister::reduced_density_matrix(std::vector<QubitIndex> qubits) const {
     return backend_->reduced_density_matrix(std::move(qubits));
 }
 
-// Dump the current statevector in the oracle.data text format (
-// state-access family, nonzero-amplitudes rewrite). Per line:
+// Dump the current statevector in the oracle.data text format.
+// Per line:
 //   [P=%.6f] [%+.8f, %+.8f] |<bitstring>>
 // with P = re*re + im*im and the bitstring MSB->LSB (q[n-1]..q[0]), so the
 // acceptance runner's parse_data_file() reads the dump back unchanged. The
@@ -471,7 +471,7 @@ void QRegister::set_omp_threads(int n) {
 }
 
 // Reports the same verdict resolve_proc() acts on: GPU build + at least one
-// visible CUDA device (0914). The Phase 0-S placeholder returned a
+// visible CUDA device. The Phase 0-S placeholder returned a
 // hardcoded false long after the probe existed in factory.cpp, so this public
 // query answered the opposite of what the constructor had actually chosen —
 // ProcType::Auto selected GPU while gpu_available() said there was none
@@ -501,7 +501,7 @@ SimType QRegister::sim_type() const {
 // is the binding constraint; get_statevector() only adds 1x and is looser.
 // Delegation means the answer tracks the actual backend instance: FullState CPU
 // reports the host peak budget, FullState GPU reports min(VRAM, host), and a GPU
-// request that fell back to CPU (0912) naturally yields the CPU value.
+// request that fell back to CPU naturally yields the CPU value.
 // Sparse and TN report their structural ceiling (128) instead: neither holds
 // 2^n amplitudes, so the dense budget the formula computes describes nothing
 // they do.

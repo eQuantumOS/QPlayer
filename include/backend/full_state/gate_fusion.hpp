@@ -186,7 +186,7 @@ inline constexpr FusionCostModel kGpuFusionCostModel{1.0, 0.02,
 // passed through as-is (never incorporated into a FusedGate).
 //
 // Reset or Opaque GateOps inside ops throw SimulatorError{"FullState", ...}
-// because matrix-form fusion is undefined for non-unitary ops (+).
+// because matrix-form fusion is undefined for non-unitary ops.
 //
 // Each accumulated window is emitted as a dense FusedGate only when it pays for
 // itself under `cost`: sum of per-gate weights > C(k) + h(W, k, num_qubits)
