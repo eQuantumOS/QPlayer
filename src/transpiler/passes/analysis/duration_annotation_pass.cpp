@@ -1,5 +1,5 @@
 // duration_annotation_pass.cpp — DurationAnnotationPass implementation
-// (후속). One linear scan: every GateOp
+// One linear scan: every GateOp
 // with an empty duration_ns gets the DeviceModel's gate duration when the
 // device describes that gate on those operands; pre-set durations and
 // device-unknown gates are left untouched (the fallback path).

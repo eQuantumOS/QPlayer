@@ -1,8 +1,8 @@
 // idle_noise_inserter_pass.cpp — IdleNoiseInserterPass implementation
 // One linear scan: copy each op, and after every
 // timed GateOp insert an IdleOp{q, duration_ns} for each non-participating
-// qubit. Gates without a duration contribute no idle noise (
-// limitation — duration is supplied by DurationAnnotationPass / the device).
+// qubit. Gates without a duration contribute no idle noise
+// (duration is supplied by DurationAnnotationPass / the device).
 // Per-gate model; ALAP slot-grouping deferred.
 
 #include "transpiler/passes/scheduling/idle_noise_inserter_pass.hpp"

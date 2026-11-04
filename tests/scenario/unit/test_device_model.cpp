@@ -170,7 +170,7 @@ TEST(DeviceModel, FromJsonFile_RoundTripsContent) {
     EXPECT_NEAR(dm.T1(0), 50000.0, 1e-9);
 }
 
-// ── Extended schema: basis_gates / two_qubit_gate / readout (1006) ─
+// ── Extended schema: basis_gates / two_qubit_gate / readout ─
 
 // A gen_device_json.py-style superset: native basis, 2Q gate, asymmetric readout.
 static const char* kEagleJson = R"({

@@ -2,7 +2,7 @@
 // unordered_map<StateIndex, complex<double>> storage.
 // No noise, no GPU, no Gate Fusion. Interactive supported.
 // Default truncation threshold: kSparseDefaultThreshold.
-// : gate application, measurement collapse, execute(), set_seed().
+// gate application, measurement collapse, execute(), set_seed().
 
 #pragma once
 
@@ -101,7 +101,7 @@ private:
     // gates and mutated in place (Phase 8-E). Only non-zero entries
     // (above threshold_) are stored. configure(n) sizes the
     // shards once at init_state(); set_ground() seeds |0...0>. Reductions go
-    // through sorted_entries() for reproducibility (0919).
+    // through sorted_entries() for reproducibility.
     PersistentAmplitudeStore amplitudes_;
 
     QubitIndex num_qubits_ = 0;

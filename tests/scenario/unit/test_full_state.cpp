@@ -1,7 +1,7 @@
 // test_full_state.cpp — Unit tests for FullStateCpuBackend and :
-// : SoA state vector allocation, 64B alignment, AoS conversion,
+// SoA state vector allocation, 64B alignment, AoS conversion,
 //         memory budget integration, and pre-init error handling.
-// : gate kernels (1Q, controlled, SWAP, CCX), NaN/norm validation helper.
+// gate kernels (1Q, controlled, SWAP, CCX), NaN/norm validation helper.
 // (Arrange/Act/Assert).
 
 #include "../../framework/test_case.hpp"
@@ -554,7 +554,7 @@ TEST_F(FullStateFixture, VerifyNorm_OnValidState_DoesNotThrow) {
 // API, so instead we verify the "bad norm" path by confirming the helper passes
 // on the ground state, and verify the guard kicks in using RawStateView +
 // a separate backend instance where we write directly through the pointer.
-// This approach avoids reinterpret_cast forbidden by.
+// This approach avoids reinterpret_cast, which the coding rules forbid.
 
 TEST_F(FullStateFixture, VerifyNorm_AfterIdentityGate_DoesNotThrow) {
     // Identity gate leaves the state unchanged; norm must still be 1.

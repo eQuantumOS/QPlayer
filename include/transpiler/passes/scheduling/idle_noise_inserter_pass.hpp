@@ -1,5 +1,5 @@
-// idle_noise_inserter_pass.hpp — IdleNoiseInserterPass (scheduling stage,
-//). For every timed GateOp, inserts an
+// idle_noise_inserter_pass.hpp — IdleNoiseInserterPass (scheduling stage).
+// For every timed GateOp, inserts an
 // IdleOp{q, duration_ns} for each qubit not participating in that gate, so the
 // backend can apply T1/T2 relaxation on idle qubits
 // Per-gate model (ALAP deferred).
@@ -9,7 +9,7 @@
 // That PassManager wiring lands with the device-aware transpile() pipeline
 // the pass itself is unit-tested standalone here. The backend
 // IdleOp Kraus application (apply_idle) is activated with the Monte Carlo
-// trajectory machinery in.
+// trajectory machinery.
 
 #pragma once
 

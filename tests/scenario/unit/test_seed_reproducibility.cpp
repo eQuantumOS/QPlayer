@@ -57,7 +57,7 @@ TEST(SeedReproducibility, NoiselessSampling_SameSeed_Identical) {
     const Counts c1 = bell_counts(seed, nshots, nullptr);
     const Counts c2 = bell_counts(seed, nshots, nullptr);
 
-    // Exact equality — lazy sampling draws from the resolved seed (0305).
+    // Exact equality — lazy sampling draws from the resolved seed.
     EXPECT_TRUE(counts_equal(c1, c2));
 }
 

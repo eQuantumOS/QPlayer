@@ -2,7 +2,7 @@
 // Verifies sparse physical qubit sets are compacted to a dense [0,k) range with
 // num_qubits reduced, that the dense->physical mapping is stamped into metadata,
 // that measurement cubits (user-perspective counts) are preserved, and that
-// already-dense circuits are a no-op.,.
+// already-dense circuits are a no-op.
 
 #include "../../../framework/test_case.hpp"
 #include "../../../framework/assertions.hpp"

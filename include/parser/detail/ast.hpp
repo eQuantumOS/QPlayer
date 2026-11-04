@@ -7,7 +7,7 @@
 // QASMParseError with accurate source locations.
 //
 // ExprNode uses a recursive variant structure. Evaluation of symbolic constants
-// (pi, sin, cos,...) is deferred to the expression evaluator in; the
+// (pi, sin, cos,...) is deferred to the expression evaluator; the
 // parser preserves them as IdentExpr / CallExpr unchanged.
 
 #pragma once

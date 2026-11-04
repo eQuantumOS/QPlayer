@@ -2,7 +2,7 @@
 // FullState CPU/GPU backends call check_memory_budget() inside prepare() before
 // allocating the 2^n state vector. SparseState / TensorNetwork skip the guard
 // because their footprint is circuit-dependent and cannot be bounded ahead of
-// time — they rely on the post-hoc bad_alloc wrap of.
+// time — they rely on the post-hoc bad_alloc wrap.
 
 #include "backend/memory_check.hpp"
 
@@ -167,8 +167,8 @@ void check_memory_budget(std::uint64_t    required_bytes,
         return;
     }
 
-    // Byte-level diagnostic before throwing ( follow-up,
-    //) — the exception message carries the user-facing GiB form.
+    // Byte-level diagnostic before throwing
+    // — the exception message carries the user-facing GiB form.
     log::error("OOM precheck: required=" + std::to_string(required_bytes) +
                " bytes, available=" + std::to_string(available) +
                " bytes (80% budget)");

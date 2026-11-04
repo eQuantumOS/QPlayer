@@ -1,6 +1,6 @@
 // test_noise_model.cpp — Phase 8 unit tests for NoiseModel channel
-// registration, query, and Kraus operator construction (
-// 06). Each built-in channel must produce trace-preserving Kraus
+// registration, query, and Kraus operator construction.
+// Each built-in channel must produce trace-preserving Kraus
 // operators; out-of-range parameters and non-trace-preserving raw channels
 // must throw CircuitError. Also covers the Circuit::define_opaque(KrausChannel)
 // trace-preserving gate.

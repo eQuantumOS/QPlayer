@@ -1,6 +1,6 @@
 // cpu_dispatcher.cpp — CPUID runtime SIMD tier detection implementation
 //
-// GCC >= 11 / Clang >= 13 is guaranteed by, so __builtin_cpu_supports
+// GCC >= 11 / Clang >= 13 is guaranteed by the build, so __builtin_cpu_supports
 // and __builtin_cpu_init are available on all supported compilers.
 // No extra -mavx512f flag is needed here; __builtin_cpu_supports queries CPUID
 // at runtime regardless of the compiler's own SIMD target.

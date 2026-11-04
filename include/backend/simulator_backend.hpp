@@ -64,7 +64,7 @@ public:
 
     // ── Interactive mode (QRegister::interactive path) ───
     // Supported by FullState (CPU / GPU) and SparseState. TensorNetwork
-    // throws SimulatorError on init_state() per the table in.
+    // throws SimulatorError on init_state().
     virtual void init_state  (QubitIndex num_qubits) = 0;
     virtual void apply_gate  (const GateOp& op)      = 0;
     virtual int  apply_measure(QubitIndex qubit)     = 0;
@@ -157,7 +157,7 @@ protected:
         std::uint64_t seed,
         ClassicalBitIndex total_cubits,
         std::vector<std::pair<QubitIndex, ClassicalBitIndex>> measure_map);
-    // Sparse-mode deferred sampling (개정). The SparseState fast path
+    // Sparse-mode deferred sampling. The SparseState fast path
     // passes normalised (basis_index, prob) pairs; counts() draws from the sparse
     // CDF without densifying (works beyond MAX_STATEVECTOR_QUBITS).
     static void result_set_lazy_sampling_sparse(

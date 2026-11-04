@@ -8,7 +8,7 @@
 // Design:
 // Partition key = idx % P (prime modulo, default P=1171). A prime modulus
 //     spreads the 2^k regularity of basis indices across shards, avoiding the
-// top-bit skew of. QPLAYER_SPARSE_PARTITIONS overrides P.
+// top-bit skew of a power-of-two modulus. QPLAYER_SPARSE_PARTITIONS overrides P.
 // The store is sized ONCE (from init_state) and kept across gates; gates
 //     mutate amplitudes in place — no per-gate rebuild, no flatten.
 // Gate application is LOCK-FREE (4): STEP1 reads the store
@@ -82,7 +82,7 @@ inline std::size_t resolve_prime_partition_count() {
 // Deterministic parallel sort of (StateIndex, amp) entries by ascending
 // StateIndex. Keys are unique, so the fully-sorted output is unique —
 // identical regardless of thread count or block split, preserving the canonical
-// reduction order for reproducible sampling/measurement (0919). This
+// reduction order for reproducible sampling/measurement. This
 // replaces the single serial std::sort that dominated large-state measurement and
 // final sampling (surface_d5 final sort 8.2s → parallel). Bottom-up merge sort:
 // sort T contiguous blocks in parallel, then merge with doubling width.
@@ -231,7 +231,7 @@ public:
 
     // Entries flattened and sorted by ascending StateIndex — the canonical order
     // for every reduction feeding sampling/measurement, so results are
-    // independent of P, shard order, and thread count (0919). The
+    // independent of P, shard order, and thread count. The
     // flatten copies each shard into its pre-computed offset slice in parallel
     // (disjoint slices), then a deterministic parallel sort orders the whole.
     [[nodiscard]] std::vector<Entry> sorted_entries() const {

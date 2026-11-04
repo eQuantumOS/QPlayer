@@ -15,7 +15,7 @@
 //
 // Level 2/3 only — not registered in Level 0/1 PassPolicy.
 // Boundary ops (Measure, Barrier, If, Idle) and Opaque GateOps terminate the
-// per-qubit sliding window.,.
+// per-qubit sliding window.
 
 #pragma once
 

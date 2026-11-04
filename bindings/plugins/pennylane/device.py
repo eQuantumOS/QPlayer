@@ -122,7 +122,7 @@ class QPlayerDevice(Device):
 
     def _expval(self, qr, obs, w2q, n):
         # Weighted Pauli sum on the evolved state == qplayer Observable's Sum(c_i <P_i>)
-        # exact path (; QRegister.expectation_value(pauli) reads the state).
+        # exact path (QRegister.expectation_value(pauli) reads the state).
         total = 0.0
         for pauli, coeff in obs_to_pauli_terms(obs, w2q, n):
             ev = 1.0 if set(pauli) == {"I"} else qr.expectation_value(pauli)

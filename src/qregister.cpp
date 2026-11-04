@@ -79,7 +79,7 @@ QRegister::QRegister(SimType sim_type, ProcType proc)
                   " (source: random_device)");
     }
 
-    // : Interactive's private constructor is friended to QRegister so
+    // Interactive's private constructor is friended to QRegister so
     // the member is default-constructed via the in-class initialiser, then
     // we bind the backend pointer here. Interactive keeps a non-owning
     // pointer — the unique_ptr above owns the storage.
@@ -193,7 +193,7 @@ Result QRegister::run(const Circuit& circuit,
         last_result_ = fallback_to_cpu_and_run();
     }
 
-    // : accumulate pre-registered expectation targets into the
+    // accumulate pre-registered expectation targets into the
     // Result. Fast path only in Phase 5 — after execute() the backend
     // state is |ψ_final⟩, so backend_->expectation_value() is well-defined.
     // Per-shot / noisy accumulation (nshot-average) is wired in Phase 8.
@@ -250,8 +250,8 @@ QRegister::get_statevector_nonzero() const {
     return backend_->nonzero_amplitudes();
 }
 
-// Dump the current statevector in the oracle.data text format (
-// state-access family, nonzero-amplitudes rewrite). Per line:
+// Dump the current statevector in the oracle.data text format.
+// Per line:
 //   [P=%.6f] [%+.8f, %+.8f] |<bitstring>>
 // with P = re*re + im*im and the bitstring MSB->LSB (q[n-1]..q[0]), so the
 // acceptance runner's parse_data_file() reads the dump back unchanged. The
@@ -330,7 +330,7 @@ SimType QRegister::sim_type() const {
 // is the binding constraint; get_statevector() only adds 1x and is looser.
 // Delegation means the answer tracks the actual backend instance: FullState CPU
 // reports the host peak budget, FullState GPU reports min(VRAM, host), and a GPU
-// request that fell back to CPU (0912) naturally yields the CPU value.
+// request that fell back to CPU naturally yields the CPU value.
 // Sparse/TN return a dense-equivalent advisory (they hold far more sparsely).
 std::uint32_t QRegister::max_qubits() const noexcept {
     return backend_->max_qubits(qplayer::detail::WorkingSet::Execute);

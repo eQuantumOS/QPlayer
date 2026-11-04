@@ -641,7 +641,7 @@ TEST_F(SparseStateFixture, Feasibility_HighBranchTinyBudget_Infeasible) {
 
 // prepare() rejects an infeasible circuit before evolving when the pre-flight
 // check is enabled (opt-in) and the budget is constrained via
-// QPLAYER_MEMORY_BUDGET_GB (+).
+// QPLAYER_MEMORY_BUDGET_GB.
 TEST_F(SparseStateFixture, Prepare_InsufficientMemory_ThrowsSimulatorError) {
     backend->set_feasibility_check(true);  // is opt-in
     // ~1 KiB budget: a 20-qubit all-H circuit (S=2^20) cannot fit.
@@ -673,7 +673,7 @@ TEST_F(SparseStateFixture, Prepare_GHZUnderTinyBudget_Succeeds) {
     ::unsetenv("QPLAYER_MEMORY_BUDGET_GB");
 }
 
-// : pre-flight feasibility is OFF by default. The same infeasible
+// pre-flight feasibility is OFF by default. The same infeasible
 // circuit + tiny budget that throws when is enabled must NOT throw at
 // prepare() by default — evolution proceeds, leaving overruns to the runtime
 // guard / bad_alloc backstop. prepare() only inits + (skipped) check, so it

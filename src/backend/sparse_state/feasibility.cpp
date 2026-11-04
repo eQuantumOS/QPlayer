@@ -1,5 +1,5 @@
-// feasibility.cpp — SparseState pre-flight feasibility analysis (
-// Phase 7-F). See feasibility.hpp for the contract.
+// feasibility.cpp — SparseState pre-flight feasibility analysis.
+// See feasibility.hpp for the contract.
 
 #include "backend/sparse_state/feasibility.hpp"
 

@@ -263,16 +263,16 @@ TEST(Framework, ExpectNoThrow_WhenThrows_Fails) {
 
 // ── EXPECT_NOT_IMPLEMENTED directly on Phase 0-S stubs ───────────────────────
 
-// : QRegister::parse() now delegates to the Phase 3 Parser facade (no
+// QRegister::parse() now delegates to the Phase 3 Parser facade (no
 // longer a stub). The test name retains the Phase0S suite for historical
-// continuity; the stub contract has been superseded by.
+// continuity; the stub contract has been superseded.
 TEST(Phase0S, ParseStub_NoLongerThrows) {
     qplayer::QRegister qr;
     EXPECT_NO_THROW(qr.parse(
         "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[1];\nh q[0];\n"));
 }
 
-// : QRegister::run() now drives the execution pipeline.
+// QRegister::run() now drives the execution pipeline.
 TEST(Phase0S, RunStub_NoLongerThrows) {
     qplayer::QRegister qr;
     qplayer::Circuit circ(2, 2);
@@ -280,10 +280,10 @@ TEST(Phase0S, RunStub_NoLongerThrows) {
     EXPECT_NO_THROW(qr.run(circ, 100));
 }
 
-// : QRegister::transpile() is now implemented (no longer a stub).
+// QRegister::transpile() is now implemented (no longer a stub).
 // Verify that the default call (optimization_level=1, no device) succeeds and
 // does NOT throw NotImplementedError. The test name retains Phase0S suite for
-// historical continuity -- the stub contract has been superseded by.
+// historical continuity -- the stub contract has been superseded.
 TEST(Phase0S, TranspileStub_NoLongerThrows) {
     qplayer::QRegister qr;
     qplayer::Circuit circ(2, 0);
@@ -292,7 +292,7 @@ TEST(Phase0S, TranspileStub_NoLongerThrows) {
     EXPECT_NO_THROW(qr.transpile(std::move(circ), 1));
 }
 
-// : get_statevector() now delegates to the backend (no longer a stub).
+// get_statevector() now delegates to the backend (no longer a stub).
 // On an uninitialised QRegister it raises SimulatorError ("before init_state"),
 // not NotImplementedError — so the call must not surface the old stub marker.
 TEST(Phase0S, GetStatevectorStub_NoLongerNotImplemented) {
@@ -308,7 +308,7 @@ TEST(Phase0S, GetStatevectorStub_NoLongerNotImplemented) {
     EXPECT_FALSE(threw_not_implemented);
 }
 
-// : parse_file() now delegates to the Parser facade. A missing file no
+// parse_file() now delegates to the Parser facade. A missing file no
 // longer yields NotImplementedError — it surfaces a parse/IO error instead, so
 // the call must throw *something* other than the old stub marker.
 TEST(Phase0S, ParseFileStub_NoLongerNotImplemented) {
@@ -325,7 +325,7 @@ TEST(Phase0S, ParseFileStub_NoLongerNotImplemented) {
 }
 
 TEST(Phase0S, LoadDeviceModel_MissingFile_ThrowsCircuitError) {
-    // : load_device_model() is now fully implemented (stub removed).
+    // load_device_model() is now fully implemented (stub removed).
     // A non-existent file triggers CircuitError from DeviceModel::from_json_file()
     // rather than NotImplementedError. The stub contract is retired.
     qplayer::QRegister qr;

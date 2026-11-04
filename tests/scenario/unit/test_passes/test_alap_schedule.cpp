@@ -1,5 +1,5 @@
-// test_alap_schedule.cpp — unit tests for ALAPSchedulePass (
-// supersedes). The pass list-schedules the circuit from the
+// test_alap_schedule.cpp — unit tests for ALAPSchedulePass.
+// The pass list-schedules the circuit from the
 // device durations stamped by DurationAnnotationPass and inserts one IdleOp per
 // qubit idle gap. The defining property vs the old per-gate IdleNoiseInserter:
 // gates that run in parallel share a time slot, so a bystander qubit idles once

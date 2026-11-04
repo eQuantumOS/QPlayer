@@ -1,14 +1,14 @@
 # QPlayer
 
-> High-performance quantum circuit emulator in C++17 — single API for batch and interactive execution across four backends.
+> High-performance quantum circuit emulator in C++17 — single API for batch and interactive execution across three backends.
 
-QPlayer accepts three input paths (OpenQASM v2 text, C++ native API, Python native API) and lowers them to a common Circuit IR, then executes on the FullState (CPU / GPU), SparseState, or TensorNetwork backend. Both the OpenQASM v2 parser and the unit-test framework are implemented in-house — no external parser or test library dependencies.
+QPlayer accepts three input paths (OpenQASM v2 text, C++ native API, Python native API) and lowers them to a common Circuit IR, then executes on the FullState (CPU / GPU) or SparseState backend. Both the OpenQASM v2 parser and the unit-test framework are implemented in-house — no external parser or test library dependencies.
 
 - **License**: Dual License — GPL v3 (open source) + Commercial License (commercial users, `gicha@etri.re.kr`). See [LICENSE](LICENSE).
-- **Language**: C++17 (core), Python 3.10+ (bindings — progressive introduction from Phase 7).
+- **Language**: C++17 (core), Python 3.10+ (bindings).
 - **Build**: CMake ≥ 3.20 (no external package manager required).
-- **Status**: Phase 8 complete — `Caracal-v5.0.0`. OpenQASM v2 parser, optimizer, FullState CPU/GPU + SparseState backends, Python bindings, and the noise model + DeviceModel + Interactive mode + coupling-map compilation are all in place. TensorNetwork (Phase 9–10) is upcoming. See the milestone roadmap for details.
-- **Documentation**: design documents are in Korean — User-facing documents (this README, [INSTALL.md](INSTALL.md), [NOTICE](NOTICE), Doxygen output) are in English.
+- **Status**: `Caracal-v5.0.0` — OpenQASM v2 parser, optimizer, FullState CPU/GPU + SparseState backends, Python bindings, noise model + DeviceModel, Interactive mode, and coupling-map compilation are all in place. The TensorNetwork backend is not included in this release (see `Lynx-v6.0.0`).
+- **Documentation**: User-facing documents (this README, [INSTALL.md](INSTALL.md), [NOTICE](NOTICE), Doxygen output) are in English.
 
 ---
 
@@ -17,40 +17,39 @@ QPlayer accepts three input paths (OpenQASM v2 text, C++ native API, Python nati
 - **Single entry point API** — `QRegister` exposes both batch execution (`run()`) and interactive execution (`interactive.*`).
 - **Common Circuit IR** — OpenQASM, C++, and Python inputs all lower to the same IR, executed consistently across all backends.
 - **In-house OpenQASM v2 parser** — supports `qelib1.inc` standard gates, custom `gate` / `opaque` definitions, `creg` / `measure` / `reset` / `barrier` / `include` / `if` directives.
-- **Multiple backends** — FullState (CPU / GPU), SparseState, TensorNetwork (MPS), selectable via the same API.
+- **Multiple backends** — FullState (CPU / GPU) and SparseState, selectable via the same API.
 - **High-performance CPU path** — AVX2 / AVX-512 SIMD kernels, OpenMP two-level parallelism, cache blocking, CPUID runtime dispatcher.
 - **GPU path** — CUDA-resident state vector, cuBLAS GEMV / GEMM, CUDA Streams pipelining (Compute Capability sm_75 or higher).
 - **Circuit optimization pipeline** — gate cancellation, commutation reordering, single-qubit merge, gate fusion (up to 4-qubit window).
 - **Noise model** — depolarizing, amplitude / phase damping, bit / phase flip, readout error, and arbitrary Kraus channels.
-- **In-house test framework** — `TEST` / `EXPECT_*` macros (12 in total) implemented under `tests/framework/`. No GoogleTest, Catch2, or doctest dependency.
+- **In-house test framework** — `TEST` / `TEST_F` / `TEST_BACKENDS` / `EXPECT_*` macros (13 in total) implemented under `tests/framework/`, with task-group selection (`--group`) and glob filtering. No GoogleTest, Catch2, or doctest dependency.
 
 ---
 
 ## Backend Capability Matrix
 
-| Feature              | FullState CPU | FullState GPU | SparseState | TensorNetwork |
-|----------------------|:-------------:|:-------------:|:-----------:|:-------------:|
-| Noise model          |       ✓       |       ✓       |      ✗      |       ✓       |
-| GPU acceleration     |       ✗       |       ✓       |      ✗      |       ✓       |
-| Gate fusion (batch)  |       ✓       |       ✓       |      ✗      |       ✓       |
-| Interactive mode     |       ✓       |       ✗       |      ✓      |       ✗       |
-| Cache blocking       |       ◐       |       ✗       |      ✗      |       ✗       |
-| MPS / TN form        |       ✗       |       ✗       |      ✗      |       ✓       |
-| Practical qubit cap  |     ~35       |   ~30 (VRAM)  |    ~100+    |    ~100+      |
+| Feature              | FullState CPU | FullState GPU | SparseState |
+|----------------------|:-------------:|:-------------:|:-----------:|
+| Noise model          |       ✓       |       ✓       |      ✗      |
+| GPU acceleration     |       ✗       |       ✓       |      ✗      |
+| Gate fusion (batch)  |       ✓       |       ✓       |      ✗      |
+| Interactive mode     |       ✓       |       ✗       |      ✓      |
+| Cache blocking       |       ◐       |       ✗       |      ✗      |
+| Practical qubit cap  |     ~35       |   ~30 (VRAM)  |    ~100+    |
 
-Legend: ✓ supported · ✗ not supported · ◐ opt-in (cache blocking defaults OFF — net-negative on modern server CPUs,; enable via `QPLAYER_CACHE_BLOCKING=1` or `set_cache_blocking(true)`). Interactive mode is CPU-statevector only; GPU statevector is reachable through the batch `run()` path.
+Legend: ✓ supported · ✗ not supported · ◐ opt-in (cache blocking defaults OFF — net-negative on modern server CPUs; enable via `QPLAYER_CACHE_BLOCKING=1` or `set_cache_blocking(true)`). Interactive mode is CPU-statevector only; GPU statevector is reachable through the batch `run()` path. `SimType::TensorNetwork` is a placeholder in this release: its calls raise `NotImplementedError`.
 
 ---
 
 ## External Dependencies
 
-Only three external dependencies are permitted. Adding a fourth requires updating `` first.
+QPlayer uses only three external dependencies.
 
 | Dependency      | Purpose                                | Notes                                                                                          |
 |-----------------|----------------------------------------|------------------------------------------------------------------------------------------------|
-| OpenBLAS        | BLAS / LAPACK operations               | GPL v3 incompatibility.                                                     |
-| pybind11 | Python bindings (Phase 7+) | `find_package(pybind11 2.10 QUIET)` with FetchContent v2.11.1 fallback. |
-| CUDA Toolkit | GPU acceleration (optional) | sm_75 (Turing) or higher. cuBLAS / cuRAND / cuSolver used for matrix operations. |
+| OpenBLAS        | BLAS / LAPACK operations               | Intel MKL is not used (incompatible with GPL v3).                                              |
+| pybind11        | Python bindings                        | `find_package(pybind11 2.10 QUIET)` with FetchContent v2.11.1 fallback.                        |
+| CUDA Toolkit    | GPU acceleration (optional)            | sm_75 (Turing) or higher. cuBLAS / cuRAND / cuSolver used for matrix operations.               |
 
 System package installs are described in [INSTALL.md](INSTALL.md).
 
@@ -72,11 +71,11 @@ ctest --test-dir build
 Optional flags:
 
 - `-DQPLAYER_BUILD_GPU=ON` — enable CUDA backend (requires CUDA Toolkit 12.0+).
-- `-DQPLAYER_BUILD_PYTHON=ON` — build pybind11 module (requires Python 3.10+, available from Phase 7).
+- `-DQPLAYER_BUILD_PYTHON=ON` — build pybind11 module (requires Python 3.10+).
 - `-DQPLAYER_BUILD_TESTS=OFF` — skip test targets.
 - `-DQPLAYER_BUILD_EXAMPLES=OFF` — skip the C++ examples (the `run_qasm` CLI is built by default).
 
-See [INSTALL.md ](INSTALL.md) for the smallest end-to-end Bell / GHZ example.
+See [INSTALL.md](INSTALL.md) for the smallest end-to-end Bell / GHZ example.
 
 ---
 
@@ -89,15 +88,15 @@ QPlayer/
 │   ├── transpiler/passes/{validation,layout,routing,translation,optimization,scheduling,analysis}/
 │   └── types.hpp  error.hpp  log.hpp  result.hpp  qregister.hpp  observable.hpp  primitives.hpp
 ├── src/                       # Implementation (C++ + CUDA)
-│   ├── backend/{full_state,sparse_state,tensor_network}/
+│   ├── backend/{full_state,sparse_state,tensor_network}/  # tensor_network: placeholder
 │   ├── circuit/
 │   ├── parser/
 │   ├── transpiler/passes/{validation,layout,routing,translation,optimization,scheduling,analysis}/
 │   └── noise/
-├── bindings/ # Python bindings
-│ ├── qplayer/ # Core pybind11 module (: Phase 7+)
-│ └── plugins/{qiskit,pennylane}/ # Optional framework plugins (0214)
-├── tests/ # In-house test framework + scenario tests + fixtures
+├── bindings/                  # Python bindings
+│   ├── qplayer/               # Core pybind11 module
+│   └── plugins/{qiskit,pennylane}/  # Optional framework plugins
+├── tests/                     # In-house test framework + scenario tests + fixtures
 │   ├── framework/             # Self-implemented TEST / EXPECT_* macros (test engine)
 │   ├── scenario/              # Test code — what is verified
 │   │   ├── unit/              # Per-module unit tests
@@ -113,14 +112,14 @@ QPlayer/
 │   └── benchmarks/{noise,performance}/  # Runnable benchmark harnesses
 ├── cmake/                     # CMake modules (FindOpenBLAS, detect_cache)
 ├── CMakeLists.txt
-└── pyproject.toml # scikit-build-core ≥ 0.7
+└── pyproject.toml             # scikit-build-core ≥ 0.7
 ```
 
 ---
 
 ## Development Status
 
-`Caracal-v5.0.0` is complete: on top of the Ocelot foundation (OpenQASM v2 parser, circuit optimizer, FullState CPU/GPU and SparseState backends, Python bindings), the noise model + DeviceModel, Interactive mode, and coupling-map compilation have all landed. TensorNetwork (MPS/SVD) is the next milestone.
+`Caracal-v5.0.0` is complete. On top of the Ocelot foundation (OpenQASM v2 parser, circuit optimizer, FullState CPU/GPU and SparseState backends, Python bindings), the noise model + DeviceModel, Interactive mode, and coupling-map compilation have all landed. The TensorNetwork (MPS) backend follows in `Lynx-v6.0.0`.
 
 ---
 

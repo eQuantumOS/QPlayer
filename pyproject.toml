@@ -35,9 +35,9 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage   = "https://github.com/xxx/yyy"
-Issues     = "https://github.com/xxx/yyy/issues"
-Repository = "https://github.com/xxx/yyy.git"
+Homepage   = "https://github.com/eQuantumOS/QPlayer"
+Issues     = "https://github.com/eQuantumOS/QPlayer/issues"
+Repository = "https://github.com/eQuantumOS/QPlayer.git"
 
 # Optional runtime dependency for the Qiskit backend plugin.
 # qiskit >= 1.1 (both 1.x and 2.x): the plugin uses only the BackendV2 + JobV1 +

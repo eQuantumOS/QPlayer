@@ -1,5 +1,5 @@
-// duration_annotation_pass.hpp — DurationAnnotationPass (analysis stage,
-// 후속). Fills each GateOp.duration_ns
+// duration_annotation_pass.hpp — DurationAnnotationPass (analysis stage).
+// Fills each GateOp.duration_ns
 // that is still empty from the DeviceModel gate-duration table so the
 // downstream IdleNoiseInserterPass (scheduling ⑥) has per-gate timing.
 //

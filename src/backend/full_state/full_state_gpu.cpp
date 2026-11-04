@@ -25,7 +25,7 @@
 #include <variant>
 #include <vector>
 
-#include "backend/full_state/gate_matrix.hpp"  // ecr/iswap/sqrt_iswap/fsim matrix data (0610)
+#include "backend/full_state/gate_matrix.hpp"  // ecr/iswap/sqrt_iswap/fsim matrix data
 #include "backend/full_state/kraus_apply_2q.hpp"  // detail::apply_kraus_2q
 #include "backend/memory_check.hpp"
 #include "circuit/circuit.hpp"
@@ -50,7 +50,7 @@ void qplayer_cuda_free_pinned(double* h_re, double* h_im);
 int  qplayer_cuda_download_state(double* h_re, double* h_im,
                                   const double* d_re, const double* d_im,
                                   unsigned long long dim);
-// : stream lifecycle and device-resident gate launchers.
+// stream lifecycle and device-resident gate launchers.
 int  qplayer_cuda_stream_create(unsigned long long* handle_out);
 void qplayer_cuda_stream_destroy(unsigned long long handle);
 int  qplayer_cuda_stream_sync(unsigned long long handle);
@@ -75,7 +75,7 @@ int  qplayer_cuda_apply_ccx_dev(double* d_re, double* d_im,
                                  unsigned int c0, unsigned int c1,
                                  unsigned int target,
                                  unsigned long long stream_handle);
-// : dense 4x4 two-qubit gate (ECR). m32 = 32 doubles, row-major
+// dense 4x4 two-qubit gate (ECR). m32 = 32 doubles, row-major
 // operand-order (qa=operand0/bit0, qb=operand1/bit1); see ecr_matrix_data().
 int  qplayer_cuda_apply_dense2q_dev(double* d_re, double* d_im,
                                      unsigned long long dim,
@@ -86,13 +86,13 @@ int  qplayer_cuda_download_state_stream(double* h_re, double* h_im,
                                          const double* d_re, const double* d_im,
                                          unsigned long long dim,
                                          unsigned long long stream_handle);
-// : GPU Monte Carlo trajectory cuRAND state init. states_out is
+// GPU Monte Carlo trajectory cuRAND state init. states_out is
 // an opaque device pointer (curandStatePhilox4_32_10 array) kept off this TU.
 int  qplayer_cuda_init_curand_states(void** states_out,
                                      const unsigned long long* h_seeds,
                                      int n_traj);
 void qplayer_cuda_free_curand_states(void* states);
-// : H2D upload for Kraus CPU-apply-then-upload trajectory pattern.
+// H2D upload for Kraus CPU-apply-then-upload trajectory pattern.
 // Copies host pinned buffers h_re/h_im to already-allocated device buffers d_re/d_im.
 int  qplayer_cuda_upload_state(const double* h_re, const double* h_im,
                                double* d_re, double* d_im,
@@ -105,7 +105,7 @@ namespace qplayer {
 
 namespace {
 
-// kPhase tag for stub methods that remain NotImplemented in.
+// kPhase tag for stub methods that remain NotImplemented.
 constexpr const char* kPhase = "Phase 6 pending";
 
 // Section profiler for the GPU execute()/sampling breakdown.
@@ -681,7 +681,7 @@ void FullStateGpuBackend::apply_gate(const GateOp& op) {
 // 3. cudaDeviceSynchronize
 // 4. D2H download to pinned host buffer
 // 5. Build prob vector, CDF, nshots inverse-CDF sampling on host (same as CPU)
-// per-shot path (IfOp / mid-circuit collapse) is not implemented in.
+// The per-shot path (IfOp / mid-circuit collapse) falls back to the CPU backend.
 Result FullStateGpuBackend::execute(const Circuit& circuit,
                                     std::uint32_t  nshots,
                                     const NoiseModel* noise) {
@@ -1296,7 +1296,7 @@ void FullStateGpuBackend::apply_op(const Op& op) {
 }
 
 // apply_idle() — Phase 8 slot for Amplitude Damping + Dephasing Kraus.
-// No state change in.
+// No state change here.
 void FullStateGpuBackend::apply_idle(const IdleOp& /*op*/) {
 }
 

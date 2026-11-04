@@ -226,7 +226,7 @@ TEST(StatevectorDump, GetNonzeroAmplitudes_FullStateVsSparse_SameIndexSet) {
 }
 
 // Interactive SparseState: get_statevector_nonzero() works on an active session
-// without densifying (+ integration).
+// without densifying.
 TEST(StatevectorDump, Interactive_GetNonzeroAmplitudes_SparseState_30q) {
     // Arrange
     QRegister qr{SimType::SparseState, qplayer::ProcType::CPU};

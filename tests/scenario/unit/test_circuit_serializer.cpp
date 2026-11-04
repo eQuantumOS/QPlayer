@@ -365,7 +365,7 @@ TEST(QasmEmitter, IdleOp_OmittedFromOutput) {
 }
 
 TEST(QasmEmitter, KrausOpaque_Throws) {
-    // : QASM v2 cannot express non-unitary channels.
+    // QASM v2 cannot express non-unitary channels.
     Circuit c(1, 0);
     KrausChannel ch;
     UnitaryMatrix k(2, std::vector<std::complex<double>>(2));

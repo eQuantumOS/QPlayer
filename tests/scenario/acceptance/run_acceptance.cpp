@@ -45,6 +45,11 @@
 #define QPLAYER_ACCEPTANCE_DATA_DIR "tests/data"
 #endif
 
+#ifndef QPLAYER_ACCEPTANCE_EXTRACT_DIR
+// Build-tree directory where archived reference dumps are extracted.
+#define QPLAYER_ACCEPTANCE_EXTRACT_DIR ""
+#endif
+
 namespace qplayer::acceptance {
 
 namespace {
@@ -447,8 +452,8 @@ static bool run_fidelity(const TestCase& tc) {
     return true;
 }
 
-// Verify the counts distribution for a "counts_sparse" kind case (Phase 7,
-//). Identical to run_counts() but runs on the SparseState backend so
+// Verify the counts distribution for a "counts_sparse" kind case.
+// Identical to run_counts() but runs on the SparseState backend so
 // the circuit can exceed the dense statevector ceiling (e.g. 100 qubits). The
 // sparse-amplitude invariant (only a handful of non-zero terms) is implicitly
 // proven by the run completing at all: a dense backend would need 2^n
@@ -568,11 +573,24 @@ static bool run_statevector_dump(const TestCase& tc) {
     std::vector<std::complex<double>> expected;
     const std::string data_file_key = json_get_string(json_text, "data_file");
     if (!data_file_key.empty()) {
-        // Resolve sibling path: same directory as the expected JSON.
+        // Prefer a sibling file next to the expected JSON; large dumps are
+        // shipped as <name>.tar.gz and extracted into the build tree instead.
         const std::filesystem::path json_dir =
             std::filesystem::path(tc.expected_json_path).parent_path();
-        const std::string data_path = (json_dir / data_file_key).string();
-        expected = parse_data_file(data_path);
+        std::filesystem::path data_path = json_dir / data_file_key;
+        if (!std::filesystem::exists(data_path)) {
+            const char* env = std::getenv("QPLAYER_ACCEPTANCE_EXTRACT_DIR");
+            const std::string extract_dir =
+                env != nullptr ? env : QPLAYER_ACCEPTANCE_EXTRACT_DIR;
+            data_path = std::filesystem::path(extract_dir) / data_file_key;
+            if (extract_dir.empty() || !std::filesystem::exists(data_path)) {
+                throw std::runtime_error(
+                    "cannot find data file " + data_file_key + " (expected next to "
+                    + json_dir.string() + " or extracted from " + data_file_key
+                    + ".tar.gz into the build tree by the qplayer_acceptance_data target)");
+            }
+        }
+        expected = parse_data_file(data_path.string());
     } else {
         expected = parse_expected_amplitudes(json_text);
     }
@@ -832,7 +850,7 @@ std::vector<TestCase> default_phase0t_cases() {
     //   oracle_10/oracle_20 are compared against pre-computed reference
     //   baselines; if convention differences exist they are reported as FAIL
     // and the caller is expected to investigate.
-    // : NOT_IMPLEMENTED on expected_fail=true -> counted as PASS.
+    // NOT_IMPLEMENTED on expected_fail=true -> counted as PASS.
     return {
         // Phase 5: counts check -- Bell pair.
         {resolve_data_path("qasm", "bell.qasm"),

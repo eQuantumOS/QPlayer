@@ -1,20 +1,20 @@
 // full_state_cpu.cpp — FullState CPU backend: SoA state vector + gate kernels.
-// : aligned alloc, init_state, get_statevector (AoS conversion),
+// aligned alloc, init_state, get_statevector (AoS conversion),
 //       get_statevector_raw, prepare (memory budget guard), apply_op dispatcher.
-// : gate matrix derivation, apply_gate with 1Q/2Q/3Q unified kernel,
+// gate matrix derivation, apply_gate with 1Q/2Q/3Q unified kernel,
 //       AVX2+AVX-512 SIMD paths via __attribute__((target(...))),
 // NaN/Inf + norm validation helper.
-// : expectation_value (Pauli string, Qiskit qubit order).
-// : apply_measure (Born-rule collapse), apply_reset, execute with
+// expectation_value (Pauli string, Qiskit qubit order).
+// apply_measure (Born-rule collapse), apply_reset, execute with
 // fast path (no classical control) and per-shot path (IfOp present).
 // set_seed() for reproducible sampling.
-// : L2-tiled cache blocking on 1Q/2Q gate kernels. Blocked path chosen
+// L2-tiled cache blocking on 1Q/2Q gate kernels. Blocked path chosen
 //       when cache_blocking_enabled_==true (default). Toggle via
 // set_cache_blocking() or env QPLAYER_CACHE_BLOCKING=0 (benchmark).
 //       Blocked path and unblocked path are numerically identical (same FMA3
 //       body); the only difference is the traversal order of state indices.
 // NOTE: runtime Gate Fusion produces 3Q/4Q fused unitaries that
-// bypass the 1Q/2Q cache-blocked path — trade-off,.
+// bypass the 1Q/2Q cache-blocked path — trade-off.
 
 #include "backend/full_state/full_state_backend.hpp"
 #include "backend/full_state/cpu_dispatcher.hpp"
@@ -63,8 +63,8 @@ namespace {
 // Allocate a 64-byte-aligned array of `count` doubles WITHOUT zero-initialising.
 // 64B alignment satisfies both AVX2 (32B) and AVX-512 (64B) requirements
 //
-// Zero-initialisation is deferred to init_state()'s OpenMP parallel-for (P1,
-//) which also touches padding bytes to prevent uninitialized reads by
+// Zero-initialisation is deferred to init_state()'s OpenMP parallel-for
+// which also touches padding bytes to prevent uninitialized reads by
 // SIMD kernels that over-touch the trailing alignment pad.
 // padded_count is returned via the out-parameter so init_state() can zero the
 // full padded region including alignment tail without duplicating the calc.
@@ -990,7 +990,7 @@ Result FullStateCpuBackend::execute(const Circuit&    circuit,
         if (fusable) {
             // Fused path: merge adjacent gates into k-qubit unitaries.
             // MeasureOp/Barrier are no-ops here; measurement is sampled below
-            // from the final |ψ⟩. Fusion equivalence is verified in.
+            // from the final |ψ⟩. Fusion equivalence is verified by the unit tests.
             apply_fused_program(
                 qplayer::detail::fuse_circuit(circuit.ops(), fusion_max_width_));
         } else {
@@ -1125,7 +1125,7 @@ Result FullStateCpuBackend::execute(const Circuit&    circuit,
             ++counts[bs];
         }  // end shot loop
 
-        // : statevector = state after the last shot.
+        // statevector = state after the last shot.
         if (num_qubits_ > 0) {
             result_set_statevector(r, get_statevector());
         }
@@ -1143,8 +1143,7 @@ Result FullStateCpuBackend::execute(const Circuit&    circuit,
 
 // ── Interactive-mode primitives ───────────────────────────────────────────────
 
-// init_state() — initialise the SoA state to |0...0> (,
-// P1+P2+P3).
+// init_state() — initialise the SoA state to |0...0>.
 //
 // P3 — buffer reuse: when state_owner_ is the sole reference (use_count==1,
 // no live Result holds the previous buffer) and dim matches, we re-use the
@@ -1613,8 +1612,7 @@ void FullStateCpuBackend::apply_op(const Op& op) {
             (void)node;
 
         } else if constexpr (std::is_same_v<T, IfOp>) {
-            // IfOp classical-conditional dispatch implemented in.
-            // execute() handles IfOp inline in the per-shot loop; apply_op()
+                        // execute() handles IfOp inline in the per-shot loop; apply_op()
             // is also called from apply_fused_program() which never sees IfOp
             // (fusion boundaries prevent merging across IfOp).
             // Interactive mode: execute body unconditionally if creg value

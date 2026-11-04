@@ -168,7 +168,7 @@ void emit_op(std::ostringstream& out,
     }
 
     if (std::holds_alternative<IdleOp>(op)) {
-        // : IdleOp has no QASM v2 representation. Omit silently --
+        // IdleOp has no QASM v2 representation. Omit silently --
         // round-trip equivalence is defined under the IdleOp-stripped
         // normalisation.
         return;

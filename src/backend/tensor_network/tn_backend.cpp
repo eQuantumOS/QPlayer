@@ -71,7 +71,7 @@ bool             TensorNetworkBackend::supports_gpu()   const { return true;  }
 std::string_view TensorNetworkBackend::name()           const { return "TensorNetwork"; }
 
 // max_qubits() — TN storage is unbounded; report the dense-equivalent host
-// bound as a densification guidance value (정책 계승).
+// bound as a densification guidance value.
 std::uint32_t TensorNetworkBackend::max_qubits(detail::WorkingSet ws) const noexcept {
     return qplayer::detail::max_qubits_for_budget(ws);
 }

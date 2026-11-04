@@ -93,7 +93,7 @@ struct Mat2x2 {
 // SWAP / CSwap / ECR / ISWAP / SQRT_ISWAP / FSIM / Reset / Opaque are NOT
 // handled here — the caller must dispatch those before calling gate_matrix().
 // ECR/ISWAP/SQRT_ISWAP/FSIM are genuine 4x4; see ecr_matrix_data(),
-// iswap_matrix_data(), sqrt_iswap_matrix_data(), fsim_matrix_data() (0610).
+// iswap_matrix_data(), sqrt_iswap_matrix_data(), fsim_matrix_data().
 // Param order: RX/RY/RZ = [theta], U1 = [lambda], U2 = [phi, lambda],
 // U3 = [theta, phi, lambda] (matches qelib1.inc argument order).
 inline Mat2x2 gate_matrix(GateType type,

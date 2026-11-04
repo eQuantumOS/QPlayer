@@ -4,7 +4,6 @@
 // delegate correctly to the backend.
 // All tests migrated to TEST_BACKENDS: distribution, AoS/SoA
 // consistency, and expectation values hold on both CPU and GPU.
-// .
 
 #include "../../framework/test_case.hpp"
 #include "../../framework/assertions.hpp"
@@ -48,7 +47,7 @@ TEST_BACKENDS(BellState, Batch_Distribution_MatchesTheory) {
     EXPECT_NEAR(frac("10"), 0.0, 1e-9);
 }
 
-// : QRegister::get_statevector (AoS) agrees with get_statevector_raw (SoA).
+// QRegister::get_statevector (AoS) agrees with get_statevector_raw (SoA).
 // Both backends download from the same quantum state, so the two views must be
 // bit-identical (1e-15 tolerance). Runs on both CPU and GPU.
 TEST_BACKENDS(BellState, StateAccess_AoSMatchesRaw) {
@@ -71,7 +70,7 @@ TEST_BACKENDS(BellState, StateAccess_AoSMatchesRaw) {
     EXPECT_NEAR(aos[3].real(), 0.70710678, 1e-6);
 }
 
-// : QRegister::expectation_value delegates to the backend (<ZZ> Bell = 1).
+// QRegister::expectation_value delegates to the backend (<ZZ> Bell = 1).
 // Runs on both CPU and GPU; algebraic result is backend-independent.
 TEST_BACKENDS(BellState, StateAccess_ExpectationZZ) {
     QRegister qr(SimType::FullState, proc);  // proc is CPU or GPU

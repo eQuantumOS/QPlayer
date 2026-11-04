@@ -50,7 +50,7 @@ enum class GateType {
     CCX, CSwap,
     // Non-unitary primitive — collapse target qubit to |0>. Backend dispatches
     // through apply_reset(). Listed under GateType so
-    // the Op variant stays at five alternatives per.
+    // the Op variant stays at five alternatives.
     Reset,
     // User-defined opaque (matrix or Kraus, body lives in Circuit::opaque_definitions)
     Opaque,
@@ -114,7 +114,7 @@ struct IfOp {
     GateOp                 body;
 };
 
-// IR Op variant — five alternatives per.
+// IR Op variant — five alternatives.
 // Reset is encoded as GateOp{type = GateType::Reset, qubits = {q}} so the
 // variant width stays at the design SSOT and backend dispatch flows through
 // the shared apply_gate() path.
@@ -128,7 +128,7 @@ struct DeclarationOnly {
     bool operator==(const DeclarationOnly&) const noexcept { return true; }
 };
 
-// Opaque definition stored on the Circuit itself (+).
+// Opaque definition stored on the Circuit itself.
 // Body is a 3-variant: declaration-only stub, unitary matrix, or Kraus channel.
 // Validation (dimension match, unitary / trace-preserving, name collisions)
 // runs at define_opaque() / declare_opaque() time.

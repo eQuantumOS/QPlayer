@@ -1,5 +1,5 @@
-// basis_gate_translation_pass.cpp — BasisGateTranslationPass (,
-//). Decomposes logical gates into the device native
+// basis_gate_translation_pass.cpp — BasisGateTranslationPass.
+// Decomposes logical gates into the device native
 // basis:
 //   - 1Q non-basis gate -> ZSX Euler: from its 2x2 unitary extract (theta,phi,lam)
 //     and emit RZ(lam)·SX·RZ(theta+pi)·SX·RZ(phi+pi) (trivial RZ dropped). Global

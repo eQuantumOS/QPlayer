@@ -1,14 +1,12 @@
 """QPlayer Python package — re-exports the pybind11 native module.
 
-Phase 8 (Caracal-v5.0.0): Batch API + FullState CPU/GPU + SparseState
-+ Interactive + NoiseModel + DeviceModel + full exception hierarchy.
- early expose: GateType, Op variant types (GateOp, MeasureOp,
-BarrierOp, IfOp, IdleOp), Circuit.ops(), and Interactive facade.
+Caracal-v5.0.0: Batch API + FullState CPU/GPU + SparseState + Interactive +
+NoiseModel + DeviceModel + full exception hierarchy. Also exposes GateType,
+the Op variant types (GateOp, MeasureOp, BarrierOp, IfOp, IdleOp),
+Circuit.ops(), and the Interactive facade.
 
-Deferred to later phases:
-  Phase 9  — TensorNetwork backend, Result.truncation_errors()
-  Phase 10 — TN noise (MPO/Trajectory)
-  Phase 11 — opaque definitions, py.typed, examples, sdist formal verification
+The TensorNetwork backend and opaque definitions are not available in this
+release; they arrive in Lynx-v6.0.0.
 """
 
 from ._qplayer import (

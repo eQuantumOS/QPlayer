@@ -7,16 +7,16 @@
 // MeasureOp / BarrierOp / IfOp / IdleOp), Circuit.ops(), and the
 // Interactive facade (qr.interactive) are added here as a forward-expose
 // of the Interactive-mode feature.
-// : get_statevector_nonzero() exposed on QRegister and Interactive as
+// get_statevector_nonzero() exposed on QRegister and Interactive as
 // list[tuple[int, complex]]. StateIndex (__uint128_t) is converted losslessly
 // to a Python arbitrary-precision int via hi/lo 64-bit decomposition.
 // Phase 8: NoiseModel, DeviceModel, ConnectivityError, GPUError are
 // now exposed. TensorNetwork, opaque definitions, and if_then remain deferred
-// to Phase 9/11 as documented in.
+// to Phase 9/11.
 //
 // Exception mapping: Phase 8 adds ConnectivityError
-// (CircuitError subtype) and GPUError (SimulatorError subtype,
-//). Full 6-type hierarchy is now registered (arch).
+// (CircuitError subtype) and GPUError (SimulatorError subtype).
+// Full 6-type hierarchy is now registered.
 //
 // numpy integration: StateVector (vector<complex<double>>) is
 // converted to numpy.ndarray(dtype=complex128) via py::array_t copy.
@@ -769,7 +769,7 @@ PYBIND11_MODULE(_qplayer, m) {
              "TensorNetwork raises SimulatorError.")
         // expectation_value: pauli="" defaults to all-Z.
         // Cast disambiguates from the Observable overload;
-        // the Observable/Estimator/Sampler bindings land in.
+        // the Observable/Estimator/Sampler bindings are defined below.
         .def("expectation_value",
              static_cast<double (qplayer::QRegister::*)(std::string_view) const>(
                  &qplayer::QRegister::expectation_value),

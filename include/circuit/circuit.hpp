@@ -55,8 +55,8 @@ public:
     Circuit& sdg(QubitIndex q);
     Circuit& t  (QubitIndex q);
     Circuit& tdg(QubitIndex q);
-    Circuit& sx  (QubitIndex q);                                                   // : sqrt(X)
-    Circuit& sxdg(QubitIndex q);                                                   // : sqrt(X) dagger
+    Circuit& sx  (QubitIndex q);                                                   // sqrt(X)
+    Circuit& sxdg(QubitIndex q);                                                   // sqrt(X) dagger
 
     // ── Single-qubit rotations / U gates — qelib1.inc rx, ry, rz, u1, u2, u3 ─
     // Built-in U(theta,phi,lambda) aliases u3 at parse time.
@@ -121,7 +121,7 @@ public:
 
     const std::vector<ClassicalRegister>& classical_registers() const noexcept;
 
-    // Sum of all register widths — synonym for num_cubits() under.
+    // Sum of all register widths — synonym for num_cubits().
     ClassicalBitIndex total_cubits() const noexcept;
 
     // ── Expectation-value targets ──────────────
@@ -135,7 +135,7 @@ public:
     Circuit& add_expectation(std::string_view pauli);
     const std::vector<std::string>& expectation_targets() const noexcept;
 
-    // ── Opaque definitions (+) ──────────────────
+    // ── Opaque definitions ──────────────────
     // declare_opaque: register stub (body = DeclarationOnly). Used by the
     //   QASM parser when it encounters `opaque <name> <qubits>;`. Calling
     //   define_opaque() afterwards promotes the body in-place exactly once

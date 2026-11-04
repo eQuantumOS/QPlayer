@@ -60,7 +60,7 @@ def run_case(title, detail, noise_model, build, num_qubits, num_cubits):
     report(title, detail, ideal, noisy)
 
 
-# ── Single-channel cases (..) ────────────────────────────────
+# ── Single-channel cases ────────────────────────────────
 
 def case_depolarizing():
     """depolarizing channel on X. |1> leaks toward |0>."""

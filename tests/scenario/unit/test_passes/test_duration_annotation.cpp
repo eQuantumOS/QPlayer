@@ -1,5 +1,5 @@
 // test_duration_annotation.cpp — Phase 8 unit tests for
-// DurationAnnotationPass (후속). Three
+// DurationAnnotationPass. Three
 // scenarios from the task spec: partial fill, full fill, and the
 // device-undefined fallback. Plus idempotency (pre-set durations are respected).
 

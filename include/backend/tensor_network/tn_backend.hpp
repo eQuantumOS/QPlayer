@@ -42,7 +42,7 @@ public:
     std::string_view name()           const override;
 
     // TN storage is unbounded; report the dense-equivalent host bound as a
-    // densification guidance value (정책 계승).
+    // densification guidance value.
     std::uint32_t max_qubits(detail::WorkingSet ws) const noexcept override;
 };
 

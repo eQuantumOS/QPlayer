@@ -61,7 +61,7 @@ Both columns compare the **QPlayer noisy run against the FakeBackend** (the IBM 
 ### manila / bell.qasm
 ```text
 # Device-noise validation -- device=manila (FakeManilaV2)  circuit=bell.qasm
-#   device JSON: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/device_json/fake_manila_v2.json
+#   device JSON: examples/benchmarks/noise/device_json/fake_manila_v2.json
 #   shots=1024  seed=512513859  max_sim_qubits=14
 
 # Logical circuit: qubits=2 clbits=2 gates=[measurex2, cxx1, hx1]
@@ -81,7 +81,7 @@ T_phi    |                - |            167,142.8
 
 # T1 fit (us): QPlayer=129.5 IBMQ=130.1  nominal=131.5
 # T2 fit (us): QPlayer=97.7 IBMQ=103.8  nominal=102.2
-# t1t2_plot: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/result/plots-2026-07-28-1741/manila_T1T2.png  (q0 measured decay + exp fit)
+# t1t2_plot: examples/benchmarks/noise/result/plots-2026-07-28-1741/manila_T1T2.png  (q0 measured decay + exp fit)
 
 ## Tier 2 -- measured distribution (probabilities)
 state |     ideal | FakeBcknd |   QPlayer
@@ -100,7 +100,7 @@ FakeBackend vs QPlayer (key) |            0.99823 |    0.04199
 
 # QPlayer vs IBM (FakeBackend) agreement: 95.80% distribution overlap (1 - TVD)  |  99.82% Hellinger fidelity
 # Higher Hellinger fidelity (-> 1.0) and lower TVD (-> 0.0) on the 'FakeBackend vs QPlayer' row mean QPlayer reproduces the device noise more faithfully. ideal-vs-* rows quantify how far each noisy run departs from the noiseless distribution.
-# plot: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/result/plots-2026-07-28-1741/manila_bell.png
+# plot: examples/benchmarks/noise/result/plots-2026-07-28-1741/manila_bell.png
 ```
 ![manila bell.qasm distribution](plots-2026-07-28-1741/manila_bell.png)
 
@@ -108,7 +108,7 @@ FakeBackend vs QPlayer (key) |            0.99823 |    0.04199
 ### manila / ghz3.qasm
 ```text
 # Device-noise validation -- device=manila (FakeManilaV2)  circuit=ghz3.qasm
-#   device JSON: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/device_json/fake_manila_v2.json
+#   device JSON: examples/benchmarks/noise/device_json/fake_manila_v2.json
 #   shots=1024  seed=512513859  max_sim_qubits=14
 
 # Logical circuit: qubits=3 clbits=3 gates=[measurex3, cxx2, hx1]
@@ -147,7 +147,7 @@ FakeBackend vs QPlayer (key) |            0.99330 |    0.07129
 
 # QPlayer vs IBM (FakeBackend) agreement: 92.87% distribution overlap (1 - TVD)  |  99.33% Hellinger fidelity
 # Higher Hellinger fidelity (-> 1.0) and lower TVD (-> 0.0) on the 'FakeBackend vs QPlayer' row mean QPlayer reproduces the device noise more faithfully. ideal-vs-* rows quantify how far each noisy run departs from the noiseless distribution.
-# plot: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/result/plots-2026-07-28-1741/manila_ghz3.png
+# plot: examples/benchmarks/noise/result/plots-2026-07-28-1741/manila_ghz3.png
 ```
 ![manila ghz3.qasm distribution](plots-2026-07-28-1741/manila_ghz3.png)
 
@@ -155,7 +155,7 @@ FakeBackend vs QPlayer (key) |            0.99330 |    0.07129
 ### manila / ghz5.qasm
 ```text
 # Device-noise validation -- device=manila (FakeManilaV2)  circuit=ghz5.qasm
-#   device JSON: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/device_json/fake_manila_v2.json
+#   device JSON: examples/benchmarks/noise/device_json/fake_manila_v2.json
 #   shots=1024  seed=512513859  max_sim_qubits=14
 
 # Logical circuit: qubits=5 clbits=5 gates=[measurex5, cxx4, hx1]
@@ -202,7 +202,7 @@ FakeBackend vs QPlayer (key) |            0.97981 |    0.07617
 
 # QPlayer vs IBM (FakeBackend) agreement: 92.38% distribution overlap (1 - TVD)  |  97.98% Hellinger fidelity
 # Higher Hellinger fidelity (-> 1.0) and lower TVD (-> 0.0) on the 'FakeBackend vs QPlayer' row mean QPlayer reproduces the device noise more faithfully. ideal-vs-* rows quantify how far each noisy run departs from the noiseless distribution.
-# plot: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/result/plots-2026-07-28-1741/manila_ghz5.png
+# plot: examples/benchmarks/noise/result/plots-2026-07-28-1741/manila_ghz5.png
 ```
 ![manila ghz5.qasm distribution](plots-2026-07-28-1741/manila_ghz5.png)
 
@@ -210,7 +210,7 @@ FakeBackend vs QPlayer (key) |            0.97981 |    0.07617
 ### manila / x_relax_q0.qasm
 ```text
 # Device-noise validation -- device=manila (FakeManilaV2)  circuit=x_relax_q0.qasm
-#   device JSON: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/device_json/fake_manila_v2.json
+#   device JSON: examples/benchmarks/noise/device_json/fake_manila_v2.json
 #   shots=1024  seed=512513859  max_sim_qubits=14
 
 # Logical circuit: qubits=1 clbits=1 gates=[measurex1, xx1]
@@ -243,7 +243,7 @@ FakeBackend vs QPlayer (key) |            0.99833 |    0.01465
 
 # QPlayer vs IBM (FakeBackend) agreement: 98.54% distribution overlap (1 - TVD)  |  99.83% Hellinger fidelity
 # Higher Hellinger fidelity (-> 1.0) and lower TVD (-> 0.0) on the 'FakeBackend vs QPlayer' row mean QPlayer reproduces the device noise more faithfully. ideal-vs-* rows quantify how far each noisy run departs from the noiseless distribution.
-# plot: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/result/plots-2026-07-28-1741/manila_x_relax_q0.png
+# plot: examples/benchmarks/noise/result/plots-2026-07-28-1741/manila_x_relax_q0.png
 ```
 ![manila x_relax_q0.qasm distribution](plots-2026-07-28-1741/manila_x_relax_q0.png)
 
@@ -251,7 +251,7 @@ FakeBackend vs QPlayer (key) |            0.99833 |    0.01465
 ### manila / qaoa_5q.qasm
 ```text
 # Device-noise validation -- device=manila (FakeManilaV2)  circuit=qaoa_5q.qasm
-#   device JSON: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/device_json/fake_manila_v2.json
+#   device JSON: examples/benchmarks/noise/device_json/fake_manila_v2.json
 #   shots=4096  seed=512513859  max_sim_qubits=14
 
 # Logical circuit: qubits=5 clbits=5 gates=[cxx8, hx5, measurex5, rxx5, rzx4]
@@ -298,7 +298,7 @@ FakeBackend vs QPlayer (key) |            0.99537 |    0.04492
 
 # QPlayer vs IBM (FakeBackend) agreement: 95.51% distribution overlap (1 - TVD)  |  99.54% Hellinger fidelity
 # Higher Hellinger fidelity (-> 1.0) and lower TVD (-> 0.0) on the 'FakeBackend vs QPlayer' row mean QPlayer reproduces the device noise more faithfully. ideal-vs-* rows quantify how far each noisy run departs from the noiseless distribution.
-# plot: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/result/plots-2026-07-28-1741/manila_qaoa_5q.png
+# plot: examples/benchmarks/noise/result/plots-2026-07-28-1741/manila_qaoa_5q.png
 ```
 ![manila qaoa_5q.qasm distribution](plots-2026-07-28-1741/manila_qaoa_5q.png)
 
@@ -306,7 +306,7 @@ FakeBackend vs QPlayer (key) |            0.99537 |    0.04492
 ### manila / vqe_5q.qasm
 ```text
 # Device-noise validation -- device=manila (FakeManilaV2)  circuit=vqe_5q.qasm
-#   device JSON: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/device_json/fake_manila_v2.json
+#   device JSON: examples/benchmarks/noise/device_json/fake_manila_v2.json
 #   shots=4096  seed=512513859  max_sim_qubits=14
 
 # Logical circuit: qubits=5 clbits=5 gates=[ryx15, cxx8, measurex5]
@@ -353,7 +353,7 @@ FakeBackend vs QPlayer (key) |            0.99387 |    0.05444
 
 # QPlayer vs IBM (FakeBackend) agreement: 94.56% distribution overlap (1 - TVD)  |  99.39% Hellinger fidelity
 # Higher Hellinger fidelity (-> 1.0) and lower TVD (-> 0.0) on the 'FakeBackend vs QPlayer' row mean QPlayer reproduces the device noise more faithfully. ideal-vs-* rows quantify how far each noisy run departs from the noiseless distribution.
-# plot: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/result/plots-2026-07-28-1741/manila_vqe_5q.png
+# plot: examples/benchmarks/noise/result/plots-2026-07-28-1741/manila_vqe_5q.png
 ```
 ![manila vqe_5q.qasm distribution](plots-2026-07-28-1741/manila_vqe_5q.png)
 
@@ -366,7 +366,7 @@ FakeBackend vs QPlayer (key) |            0.99387 |    0.05444
 ### oslo / bell.qasm
 ```text
 # Device-noise validation -- device=oslo (FakeOslo)  circuit=bell.qasm
-#   device JSON: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/device_json/fake_oslo.json
+#   device JSON: examples/benchmarks/noise/device_json/fake_oslo.json
 #   shots=1024  seed=512513859  max_sim_qubits=14
 
 # Logical circuit: qubits=2 clbits=2 gates=[measurex2, cxx1, hx1]
@@ -386,7 +386,7 @@ T_phi    |                - |             97,936.8
 
 # T1 fit (us): QPlayer=146.6 IBMQ=147.3  nominal=148.8
 # T2 fit (us): QPlayer=71.5 IBMQ=74.9  nominal=73.7
-# t1t2_plot: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/result/plots-2026-07-28-1741/oslo_T1T2.png  (q0 measured decay + exp fit)
+# t1t2_plot: examples/benchmarks/noise/result/plots-2026-07-28-1741/oslo_T1T2.png  (q0 measured decay + exp fit)
 
 # NOTE: active width 7q -> distribution tier uses 2048 shots (>= 16 x 2^7) so the spread distribution is sampled above the statistical floor (requested shots=1024 is the floor).
 
@@ -407,7 +407,7 @@ FakeBackend vs QPlayer (key) |            0.99876 |    0.01904
 
 # QPlayer vs IBM (FakeBackend) agreement: 98.10% distribution overlap (1 - TVD)  |  99.88% Hellinger fidelity
 # Higher Hellinger fidelity (-> 1.0) and lower TVD (-> 0.0) on the 'FakeBackend vs QPlayer' row mean QPlayer reproduces the device noise more faithfully. ideal-vs-* rows quantify how far each noisy run departs from the noiseless distribution.
-# plot: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/result/plots-2026-07-28-1741/oslo_bell.png
+# plot: examples/benchmarks/noise/result/plots-2026-07-28-1741/oslo_bell.png
 ```
 ![oslo bell.qasm distribution](plots-2026-07-28-1741/oslo_bell.png)
 
@@ -415,7 +415,7 @@ FakeBackend vs QPlayer (key) |            0.99876 |    0.01904
 ### oslo / ghz3.qasm
 ```text
 # Device-noise validation -- device=oslo (FakeOslo)  circuit=ghz3.qasm
-#   device JSON: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/device_json/fake_oslo.json
+#   device JSON: examples/benchmarks/noise/device_json/fake_oslo.json
 #   shots=1024  seed=512513859  max_sim_qubits=14
 
 # Logical circuit: qubits=3 clbits=3 gates=[measurex3, cxx2, hx1]
@@ -456,7 +456,7 @@ FakeBackend vs QPlayer (key) |            0.99755 |    0.02637
 
 # QPlayer vs IBM (FakeBackend) agreement: 97.36% distribution overlap (1 - TVD)  |  99.76% Hellinger fidelity
 # Higher Hellinger fidelity (-> 1.0) and lower TVD (-> 0.0) on the 'FakeBackend vs QPlayer' row mean QPlayer reproduces the device noise more faithfully. ideal-vs-* rows quantify how far each noisy run departs from the noiseless distribution.
-# plot: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/result/plots-2026-07-28-1741/oslo_ghz3.png
+# plot: examples/benchmarks/noise/result/plots-2026-07-28-1741/oslo_ghz3.png
 ```
 ![oslo ghz3.qasm distribution](plots-2026-07-28-1741/oslo_ghz3.png)
 
@@ -464,7 +464,7 @@ FakeBackend vs QPlayer (key) |            0.99755 |    0.02637
 ### oslo / ghz5.qasm
 ```text
 # Device-noise validation -- device=oslo (FakeOslo)  circuit=ghz5.qasm
-#   device JSON: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/device_json/fake_oslo.json
+#   device JSON: examples/benchmarks/noise/device_json/fake_oslo.json
 #   shots=1024  seed=512513859  max_sim_qubits=14
 
 # Logical circuit: qubits=5 clbits=5 gates=[measurex5, cxx4, hx1]
@@ -513,7 +513,7 @@ FakeBackend vs QPlayer (key) |            0.99135 |    0.02490
 
 # QPlayer vs IBM (FakeBackend) agreement: 97.51% distribution overlap (1 - TVD)  |  99.14% Hellinger fidelity
 # Higher Hellinger fidelity (-> 1.0) and lower TVD (-> 0.0) on the 'FakeBackend vs QPlayer' row mean QPlayer reproduces the device noise more faithfully. ideal-vs-* rows quantify how far each noisy run departs from the noiseless distribution.
-# plot: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/result/plots-2026-07-28-1741/oslo_ghz5.png
+# plot: examples/benchmarks/noise/result/plots-2026-07-28-1741/oslo_ghz5.png
 ```
 ![oslo ghz5.qasm distribution](plots-2026-07-28-1741/oslo_ghz5.png)
 
@@ -521,7 +521,7 @@ FakeBackend vs QPlayer (key) |            0.99135 |    0.02490
 ### oslo / x_relax_q0.qasm
 ```text
 # Device-noise validation -- device=oslo (FakeOslo)  circuit=x_relax_q0.qasm
-#   device JSON: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/device_json/fake_oslo.json
+#   device JSON: examples/benchmarks/noise/device_json/fake_oslo.json
 #   shots=1024  seed=512513859  max_sim_qubits=14
 
 # Logical circuit: qubits=1 clbits=1 gates=[measurex1, xx1]
@@ -556,7 +556,7 @@ FakeBackend vs QPlayer (key) |            0.99962 |    0.00391
 
 # QPlayer vs IBM (FakeBackend) agreement: 99.61% distribution overlap (1 - TVD)  |  99.96% Hellinger fidelity
 # Higher Hellinger fidelity (-> 1.0) and lower TVD (-> 0.0) on the 'FakeBackend vs QPlayer' row mean QPlayer reproduces the device noise more faithfully. ideal-vs-* rows quantify how far each noisy run departs from the noiseless distribution.
-# plot: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/result/plots-2026-07-28-1741/oslo_x_relax_q0.png
+# plot: examples/benchmarks/noise/result/plots-2026-07-28-1741/oslo_x_relax_q0.png
 ```
 ![oslo x_relax_q0.qasm distribution](plots-2026-07-28-1741/oslo_x_relax_q0.png)
 
@@ -564,7 +564,7 @@ FakeBackend vs QPlayer (key) |            0.99962 |    0.00391
 ### oslo / qaoa_7q.qasm
 ```text
 # Device-noise validation -- device=oslo (FakeOslo)  circuit=qaoa_7q.qasm
-#   device JSON: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/device_json/fake_oslo.json
+#   device JSON: examples/benchmarks/noise/device_json/fake_oslo.json
 #   shots=4096  seed=512513859  max_sim_qubits=14
 
 # Logical circuit: qubits=7 clbits=7 gates=[cxx12, hx7, measurex7, rxx7, rzx6]
@@ -611,7 +611,7 @@ FakeBackend vs QPlayer (key) |            0.98058 |    0.08887
 
 # QPlayer vs IBM (FakeBackend) agreement: 91.11% distribution overlap (1 - TVD)  |  98.06% Hellinger fidelity
 # Higher Hellinger fidelity (-> 1.0) and lower TVD (-> 0.0) on the 'FakeBackend vs QPlayer' row mean QPlayer reproduces the device noise more faithfully. ideal-vs-* rows quantify how far each noisy run departs from the noiseless distribution.
-# plot: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/result/plots-2026-07-28-1741/oslo_qaoa_7q.png
+# plot: examples/benchmarks/noise/result/plots-2026-07-28-1741/oslo_qaoa_7q.png
 ```
 ![oslo qaoa_7q.qasm distribution](plots-2026-07-28-1741/oslo_qaoa_7q.png)
 
@@ -619,7 +619,7 @@ FakeBackend vs QPlayer (key) |            0.98058 |    0.08887
 ### oslo / vqe_7q.qasm
 ```text
 # Device-noise validation -- device=oslo (FakeOslo)  circuit=vqe_7q.qasm
-#   device JSON: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/device_json/fake_oslo.json
+#   device JSON: examples/benchmarks/noise/device_json/fake_oslo.json
 #   shots=4096  seed=512513859  max_sim_qubits=14
 
 # Logical circuit: qubits=7 clbits=7 gates=[ryx21, cxx12, measurex7]
@@ -666,7 +666,7 @@ FakeBackend vs QPlayer (key) |            0.98325 |    0.08960
 
 # QPlayer vs IBM (FakeBackend) agreement: 91.04% distribution overlap (1 - TVD)  |  98.33% Hellinger fidelity
 # Higher Hellinger fidelity (-> 1.0) and lower TVD (-> 0.0) on the 'FakeBackend vs QPlayer' row mean QPlayer reproduces the device noise more faithfully. ideal-vs-* rows quantify how far each noisy run departs from the noiseless distribution.
-# plot: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/result/plots-2026-07-28-1741/oslo_vqe_7q.png
+# plot: examples/benchmarks/noise/result/plots-2026-07-28-1741/oslo_vqe_7q.png
 ```
 ![oslo vqe_7q.qasm distribution](plots-2026-07-28-1741/oslo_vqe_7q.png)
 
@@ -679,7 +679,7 @@ FakeBackend vs QPlayer (key) |            0.98325 |    0.08960
 ### geneva / bell.qasm
 ```text
 # Device-noise validation -- device=geneva (FakeGeneva)  circuit=bell.qasm
-#   device JSON: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/device_json/fake_geneva.json
+#   device JSON: examples/benchmarks/noise/device_json/fake_geneva.json
 #   shots=1024  seed=512513859  max_sim_qubits=14
 
 # Logical circuit: qubits=2 clbits=2 gates=[measurex2, cxx1, hx1]
@@ -699,7 +699,7 @@ T_phi    |                - |            581,900.7
 
 # T1 fit (us): QPlayer=480.5 IBMQ=482.7  nominal=487.9
 # T2 fit (us): QPlayer=348.6 IBMQ=370.3  nominal=364.5
-# t1t2_plot: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/result/plots-2026-07-28-1741/geneva_T1T2.png  (q0 measured decay + exp fit)
+# t1t2_plot: examples/benchmarks/noise/result/plots-2026-07-28-1741/geneva_T1T2.png  (q0 measured decay + exp fit)
 
 # NOTE: device width 27q exceeds max_sim_qubits 14; QubitTruncationPass compresses the circuit onto its 2 active physical qubits (dense [0,k)), so QPlayer simulates 2^2 and run() projects each qubit's own device noise onto that range. Aer prunes idle qubits itself.
 
@@ -720,7 +720,7 @@ FakeBackend vs QPlayer (key) |            0.99970 |    0.01660
 
 # QPlayer vs IBM (FakeBackend) agreement: 98.34% distribution overlap (1 - TVD)  |  99.97% Hellinger fidelity
 # Higher Hellinger fidelity (-> 1.0) and lower TVD (-> 0.0) on the 'FakeBackend vs QPlayer' row mean QPlayer reproduces the device noise more faithfully. ideal-vs-* rows quantify how far each noisy run departs from the noiseless distribution.
-# plot: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/result/plots-2026-07-28-1741/geneva_bell.png
+# plot: examples/benchmarks/noise/result/plots-2026-07-28-1741/geneva_bell.png
 ```
 ![geneva bell.qasm distribution](plots-2026-07-28-1741/geneva_bell.png)
 
@@ -728,7 +728,7 @@ FakeBackend vs QPlayer (key) |            0.99970 |    0.01660
 ### geneva / ghz3.qasm
 ```text
 # Device-noise validation -- device=geneva (FakeGeneva)  circuit=ghz3.qasm
-#   device JSON: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/device_json/fake_geneva.json
+#   device JSON: examples/benchmarks/noise/device_json/fake_geneva.json
 #   shots=1024  seed=512513859  max_sim_qubits=14
 
 # Logical circuit: qubits=3 clbits=3 gates=[measurex3, cxx2, hx1]
@@ -769,7 +769,7 @@ FakeBackend vs QPlayer (key) |            0.99547 |    0.03516
 
 # QPlayer vs IBM (FakeBackend) agreement: 96.48% distribution overlap (1 - TVD)  |  99.55% Hellinger fidelity
 # Higher Hellinger fidelity (-> 1.0) and lower TVD (-> 0.0) on the 'FakeBackend vs QPlayer' row mean QPlayer reproduces the device noise more faithfully. ideal-vs-* rows quantify how far each noisy run departs from the noiseless distribution.
-# plot: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/result/plots-2026-07-28-1741/geneva_ghz3.png
+# plot: examples/benchmarks/noise/result/plots-2026-07-28-1741/geneva_ghz3.png
 ```
 ![geneva ghz3.qasm distribution](plots-2026-07-28-1741/geneva_ghz3.png)
 
@@ -777,7 +777,7 @@ FakeBackend vs QPlayer (key) |            0.99547 |    0.03516
 ### geneva / ghz5.qasm
 ```text
 # Device-noise validation -- device=geneva (FakeGeneva)  circuit=ghz5.qasm
-#   device JSON: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/device_json/fake_geneva.json
+#   device JSON: examples/benchmarks/noise/device_json/fake_geneva.json
 #   shots=1024  seed=512513859  max_sim_qubits=14
 
 # Logical circuit: qubits=5 clbits=5 gates=[measurex5, cxx4, hx1]
@@ -826,7 +826,7 @@ FakeBackend vs QPlayer (key) |            0.97841 |    0.03516
 
 # QPlayer vs IBM (FakeBackend) agreement: 96.48% distribution overlap (1 - TVD)  |  97.84% Hellinger fidelity
 # Higher Hellinger fidelity (-> 1.0) and lower TVD (-> 0.0) on the 'FakeBackend vs QPlayer' row mean QPlayer reproduces the device noise more faithfully. ideal-vs-* rows quantify how far each noisy run departs from the noiseless distribution.
-# plot: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/result/plots-2026-07-28-1741/geneva_ghz5.png
+# plot: examples/benchmarks/noise/result/plots-2026-07-28-1741/geneva_ghz5.png
 ```
 ![geneva ghz5.qasm distribution](plots-2026-07-28-1741/geneva_ghz5.png)
 
@@ -834,7 +834,7 @@ FakeBackend vs QPlayer (key) |            0.97841 |    0.03516
 ### geneva / x_relax_q0.qasm
 ```text
 # Device-noise validation -- device=geneva (FakeGeneva)  circuit=x_relax_q0.qasm
-#   device JSON: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/device_json/fake_geneva.json
+#   device JSON: examples/benchmarks/noise/device_json/fake_geneva.json
 #   shots=1024  seed=512513859  max_sim_qubits=14
 
 # Logical circuit: qubits=1 clbits=1 gates=[measurex1, xx1]
@@ -869,7 +869,7 @@ FakeBackend vs QPlayer (key) |            0.99988 |    0.00293
 
 # QPlayer vs IBM (FakeBackend) agreement: 99.71% distribution overlap (1 - TVD)  |  99.99% Hellinger fidelity
 # Higher Hellinger fidelity (-> 1.0) and lower TVD (-> 0.0) on the 'FakeBackend vs QPlayer' row mean QPlayer reproduces the device noise more faithfully. ideal-vs-* rows quantify how far each noisy run departs from the noiseless distribution.
-# plot: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/result/plots-2026-07-28-1741/geneva_x_relax_q0.png
+# plot: examples/benchmarks/noise/result/plots-2026-07-28-1741/geneva_x_relax_q0.png
 ```
 ![geneva x_relax_q0.qasm distribution](plots-2026-07-28-1741/geneva_x_relax_q0.png)
 
@@ -877,7 +877,7 @@ FakeBackend vs QPlayer (key) |            0.99988 |    0.00293
 ### geneva / qaoa_12q.qasm
 ```text
 # Device-noise validation -- device=geneva (FakeGeneva)  circuit=qaoa_12q.qasm
-#   device JSON: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/device_json/fake_geneva.json
+#   device JSON: examples/benchmarks/noise/device_json/fake_geneva.json
 #   shots=4096  seed=512513859  max_sim_qubits=14
 
 # Logical circuit: qubits=12 clbits=12 gates=[cxx22, hx12, measurex12, rxx12, rzx11]
@@ -928,7 +928,7 @@ FakeBackend vs QPlayer (key) |            0.96368 |    0.11641
 
 # QPlayer vs IBM (FakeBackend) agreement: 88.36% distribution overlap (1 - TVD)  |  96.37% Hellinger fidelity
 # Higher Hellinger fidelity (-> 1.0) and lower TVD (-> 0.0) on the 'FakeBackend vs QPlayer' row mean QPlayer reproduces the device noise more faithfully. ideal-vs-* rows quantify how far each noisy run departs from the noiseless distribution.
-# plot: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/result/plots-2026-07-28-1741/geneva_qaoa_12q.png
+# plot: examples/benchmarks/noise/result/plots-2026-07-28-1741/geneva_qaoa_12q.png
 ```
 ![geneva qaoa_12q.qasm distribution](plots-2026-07-28-1741/geneva_qaoa_12q.png)
 
@@ -936,7 +936,7 @@ FakeBackend vs QPlayer (key) |            0.96368 |    0.11641
 ### geneva / vqe_12q.qasm
 ```text
 # Device-noise validation -- device=geneva (FakeGeneva)  circuit=vqe_12q.qasm
-#   device JSON: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/device_json/fake_geneva.json
+#   device JSON: examples/benchmarks/noise/device_json/fake_geneva.json
 #   shots=4096  seed=512513859  max_sim_qubits=14
 
 # Logical circuit: qubits=12 clbits=12 gates=[ryx36, cxx22, measurex12]
@@ -987,6 +987,6 @@ FakeBackend vs QPlayer (key) |            0.96401 |    0.09517
 
 # QPlayer vs IBM (FakeBackend) agreement: 90.48% distribution overlap (1 - TVD)  |  96.40% Hellinger fidelity
 # Higher Hellinger fidelity (-> 1.0) and lower TVD (-> 0.0) on the 'FakeBackend vs QPlayer' row mean QPlayer reproduces the device noise more faithfully. ideal-vs-* rows quantify how far each noisy run departs from the noiseless distribution.
-# plot: /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/noise/result/plots-2026-07-28-1741/geneva_vqe_12q.png
+# plot: examples/benchmarks/noise/result/plots-2026-07-28-1741/geneva_vqe_12q.png
 ```
 ![geneva vqe_12q.qasm distribution](plots-2026-07-28-1741/geneva_vqe_12q.png)

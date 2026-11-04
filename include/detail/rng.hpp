@@ -11,8 +11,8 @@
 namespace qplayer::detail {
 
 // SplitMix64 finalizer (Vigna 2015). Bijective avalanche mix of a 64-bit value;
-// used here purely as a seed decorrelator, not as the working PRNG (
-// keeps mt19937_64 for sampling). Pure function — same input, same output.
+// used here purely as a seed decorrelator, not as the working PRNG
+// (sampling keeps mt19937_64). Pure function — same input, same output.
 inline std::uint64_t splitmix64(std::uint64_t x) noexcept {
     x += 0x9E3779B97F4A7C15ULL;
     x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9ULL;

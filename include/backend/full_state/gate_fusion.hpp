@@ -43,7 +43,7 @@ using FusedOp = std::variant<FusedGate, GateOp, MeasureOp, BarrierOp, IfOp, Idle
 // passed through as-is (never incorporated into a FusedGate).
 //
 // Reset or Opaque GateOps inside ops throw SimulatorError{"FullState", ...}
-// because matrix-form fusion is undefined for non-unitary ops (+).
+// because matrix-form fusion is undefined for non-unitary ops.
 //
 // The returned vector is consumed by apply_fused_program() in the backend.
 std::vector<FusedOp> fuse_circuit(const std::vector<Op>& ops,

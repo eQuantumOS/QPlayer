@@ -1,5 +1,5 @@
 // transpiler.cpp — Transpiler facade implementing QRegister::transpile()
-// delegation (+ Level 2/3).
+// delegation (optimization levels 0-3).
 //
 // PassPolicy summary:
 //   Level 0:  ⓪ SemanticValidatorPass only
@@ -14,8 +14,7 @@
 // ⑤ verify (CouplingValidator) →
 //             ⑥ DurationAnnotation (physical space, when a T1/T2 NoiseModel is
 //             bound) → truncation (QubitTruncation) → ALAPSchedule (dense
-// space, slot-aware idle) stages (, handoff,
-//).
+// space, slot-aware idle) stages.
 
 #include "transpiler/transpiler.hpp"
 

@@ -195,7 +195,7 @@ TEST(Transpiler, OpaqueDeclarationOnly_Throws_CircuitError) {
 // ── PassManager::make_default() ─────────────────────────────────────────
 
 TEST(PassManager, MakeDefault_T44_SizeIsThree) {
-    // : make_default() must register exactly 3 Level-1 passes:
+    // make_default() must register exactly 3 Level-1 passes:
     //   CancelInverse, CommutationReorder, MergeSingleQubit.
     PassManager pm = PassManager::make_default();
     EXPECT_EQ(pm.size(), std::size_t{3});

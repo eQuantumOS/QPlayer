@@ -53,7 +53,7 @@ TEST(FullStateGpuFactory, GpuRequestResolvesToFullStateFamily) {
     EXPECT_TRUE(backend->sim_type() == SimType::FullState);
 }
 
-// : ProcType::Auto resolves to the GPU backend when a CUDA device is
+// ProcType::Auto resolves to the GPU backend when a CUDA device is
 // present (GPU build), otherwise falls back to the CPU backend. The resolved
 // backend must always belong to the FullState family (sim_type == FullState).
 // The name is "FullStateGPU" with a GPU device present, "FullState" otherwise.
@@ -71,7 +71,7 @@ TEST(FullStateGpuFactory, AutoResolvesToGpuWhenDevicePresent) {
     EXPECT_TRUE(backend->name() == expected_name);
 }
 
-// : QRegister::max_qubits() delegates to the bound backend. The Auto
+// QRegister::max_qubits() delegates to the bound backend. The Auto
 // backend (CPU or GPU) returns a positive count under the uint64
 // overflow guard (59). On GPU it uses the VRAM dual-budget model.
 TEST(FullStateGpuFactory, MaxQubitsDelegatesToBackendAndIsBounded) {
@@ -112,7 +112,7 @@ TEST(FullStateGpuKernel, DeviceCountIsPositive) {
     EXPECT_TRUE(qplayer_cuda_device_count() > 0);
 }
 
-// : an explicit ProcType::GPU request opts into the GPU backend
+// an explicit ProcType::GPU request opts into the GPU backend
 // ("FullStateGPU") when a device is present, even though execute() is still
 // Phase-6-pending. This is the opt-in path Auto deliberately avoids.
 TEST(FullStateGpuFactory, ExplicitGpuRequestSelectsGpuBackendWhenDevicePresent) {
@@ -217,7 +217,7 @@ TEST(FullStateGpuKernel, CCX_NoopWhenAControlClear) {
     EXPECT_NEAR(re[5], 0.0, 1e-12);  // would-be flipped index if it fired
 }
 
-// : GPU-resident init_state() + the single device->host copy of
+// GPU-resident init_state() + the single device->host copy of
 // get_statevector() must round-trip the |0...0> ground state.
 TEST(FullStateGpuKernel, ResidentInitThenGetStatevector_ReturnsGroundState) {
     if (qplayer_cuda_device_count() <= 0) return;
@@ -529,7 +529,7 @@ TEST(FullStateGpuKernel, CurandStateInitSucceedsAndFrees) {
     qplayer_cuda_free_curand_states(states);  // no crash on free
 }
 
-// : GPU noisy execute() now fully implemented. An empty NoiseModel
+// GPU noisy execute() now fully implemented. An empty NoiseModel
 // selects the Monte Carlo trajectory path; with no channels registered the state
 // evolves noiseless and produces the Bell distribution. Verifies:
 // (a) execute() succeeds without throwing (trajectory body is live in),

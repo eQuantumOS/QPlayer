@@ -3,7 +3,7 @@
 //   1. available_memory_bytes() honours QPLAYER_MEMORY_BUDGET_GB exactly.
 //   2. check_memory_budget() passes a 25-qubit state vector (0.5 GiB) and
 //      rejects a 26-qubit one (1.0 GiB) under a 0.75 GiB budget — the canonical
-// "25 qubits OK / 26 qubits pre-rejected" scenario in.
+// "25 qubits OK / 26 qubits pre-rejected" scenario.
 //   3. An oversized override relaxes the check; an invalid override falls back
 //      to /proc/meminfo without throwing on a trivial request.
 //
@@ -32,7 +32,6 @@ namespace {
 constexpr std::uint64_t kBytesPerGiB = std::uint64_t{1} << 30;
 
 // FullState CPU footprint: 2^n complex<double> in SoA = 2^n × 16 bytes
-// (0909).
 std::uint64_t state_vector_bytes(std::uint32_t num_qubits) {
     return (std::uint64_t{1} << num_qubits) * 16ULL;
 }

@@ -2,7 +2,7 @@
 // add_pass() / size() manage the pass vector; run() chains Circuit values
 // through each registered pass in order and emits debug breadcrumbs
 // make_default() registers the Level-1 default passes
-// (CancelInverse → CommutationReorder → MergeSingleQubit) per.
+// (CancelInverse → CommutationReorder → MergeSingleQubit).
 
 #include "transpiler/pass_manager.hpp"
 

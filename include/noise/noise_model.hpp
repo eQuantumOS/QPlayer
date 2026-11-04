@@ -20,7 +20,7 @@ namespace qplayer {
 
 // Single arbitrary-dimension complex matrix used as a Kraus operator or an
 // opaque unitary. The same alias is reused by OpaqueDefinition.body
-// (+) — kept here so circuit/gate_op.hpp can simply
+// Kept here so circuit/gate_op.hpp can simply
 // include noise/noise_model.hpp instead of duplicating the typedef.
 using UnitaryMatrix = std::vector<std::vector<std::complex<double>>>;
 
@@ -98,7 +98,7 @@ public:
 
     // ── DeviceModel ingestion ──────────────────────
     // Converts T1/T2 + gate duration into Amplitude Damping + Dephasing
-    // Kraus channels per the formula in.
+    // Kraus channels.
     NoiseModel& load_device(const DeviceModel& device);
 
     // Re-key a physical-qubit noise model into the dense [0,k) space produced

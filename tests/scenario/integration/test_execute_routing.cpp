@@ -1,5 +1,5 @@
 // test_execute_routing.cpp — Integration tests for FullStateCpuBackend::execute()
-// : fast path (no classical control) and per-shot path (IfOp
+// fast path (no classical control) and per-shot path (IfOp
 // present), apply_measure collapse, apply_reset, determinism via set_seed.
 // Also covers bitstring MSB-first convention and Σcounts == nshots invariant.
 // (— Gate)

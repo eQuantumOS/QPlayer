@@ -1,10 +1,9 @@
-// test_bell_expectation.cpp — Result.expectation dict accumulation (
-// model A). QRegister::run() fills Result.expectation for each Pauli
+// test_bell_expectation.cpp — Result.expectation dict accumulation.
+// QRegister::run() fills Result.expectation for each Pauli
 // target pre-registered via Circuit::add_expectation (fast path).
 // Non-registered targets are absent (has_expectation == false, expectation()
 // throws). Migrated to TEST_BACKENDS: statevector path and
 // error handling are backend-independent.
-// .
 
 #include "../../framework/test_case.hpp"
 #include "../../framework/assertions.hpp"

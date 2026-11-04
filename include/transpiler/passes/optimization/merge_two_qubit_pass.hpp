@@ -9,7 +9,7 @@
 // Level 2/3 only — not registered in Level 0/1 PassPolicy.
 // Boundary ops (Measure, Barrier, If, Idle) and 1Q GateOps between a 2Q gate
 // and its candidate partner terminate the merge window for that qubit pair.
-// Opaque GateOps pass through unchanged.,.
+// Opaque GateOps pass through unchanged.
 
 #pragma once
 

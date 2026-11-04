@@ -1,5 +1,5 @@
 // result.cpp — Phase 0-S trivial accessors for the Result container
-// (+). Backends populate the private members through the
+//. Backends populate the private members through the
 // `friend class QRegister` / `friend class Interactive` channels (Phase 5+);
 // the const accessors below simply expose those members.
 //
@@ -89,7 +89,7 @@ const std::map<std::string, std::uint64_t>& Result::counts() const {
 // perform_lazy_sampling() — inverse-CDF draw deferred from a backend fast path.
 // Mirrors the eager fast-path samplers exactly (same probability formula, RNG
 // stream, and MSB-first bitstring) so a fixed seed reproduces identical counts
-// (Golden invariance). Two modes (개정):
+// (Golden invariance). Two modes:
 //   - sparse (LazySampling::sparse_probs non-empty): draw from the sparse CDF,
 //     basis index taken from the sparse entry (SparseState; no densify).
 //   - dense  (sparse_probs empty): build prob/CDF over statevector_ (FullState
@@ -203,7 +203,7 @@ void Result::perform_lazy_sampling() const {
             cdf[k] = acc;
         }
     } else {
-        // Dense CDF build. Two sub-paths (+):
+        // Dense CDF build. Two sub-paths:
         //
         // CPU-resident (P2): read prob[i] directly from the SoA pointers
         // cpu_re_/cpu_im_ without first building an AoS copy. Same double values,
@@ -212,12 +212,12 @@ void Result::perform_lazy_sampling() const {
         // AoS fallback (statevector_ populated, or GPU-resident after materialize):
         // uses the existing statevector_ complex array path.
         //
-        // Size-gated parallel CDF (개정 2026-06-16):
+        // Size-gated parallel CDF:
         // - dimi <= kParallelSampleThreshold: serial path (bit-exact Golden).
         //   - dimi >  kParallelSampleThreshold: deterministic block inclusive scan
         // (3-phase OpenMP) — single logical pass, no prob_sum/normalize.
         //
-        // DEFAULT IS PARALLEL for dimi > 2^18 (개정 2026-06-16). The value
+        // DEFAULT IS PARALLEL for dimi > 2^18. The value
         // of the parallel block-scan is CONTENTION RESILIENCE, not raw throughput:
         // the serial CDF is single-threaded, so on a busy/shared host a 1-GiB+ scan
         // gets starved by preemption (measured q27 serial 148ms quiet -> 1357ms under
@@ -350,8 +350,8 @@ void Result::perform_lazy_sampling() const {
             // uninit_allocator skips zero-init: the fused loop writes every element
             // before it is read, avoiding the ~480ms page-fault cost of a fresh
             // 1-GiB std::vector::resize(); first-touch is parallel (NUMA-friendly).
-            // : NO 2^n CDF array. Pass 1 keeps block_total[b] (bit-exact vs
-            // : same 2^16 blocks, same fma order) + checkpoints — the running
+            // NO 2^n CDF array. Pass 1 keeps block_total[b] (bit-exact vs
+            // same 2^16 blocks, same fma order) + checkpoints — the running
             // acc at each 4096 sub-block start. The draw re-scans the located <=4096
             // window instead of binary-searching a materialised 2^n CDF. Traffic
             // 3T -> ~2T (the 1T CDF write is gone; checkpoints are ~T/512).

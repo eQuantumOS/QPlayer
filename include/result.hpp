@@ -1,5 +1,5 @@
 // result.hpp — Public Result container returned by QRegister::run() and
-// referenced by interactive.result() (+).
+// referenced by interactive.result().
 // has_error / error_message are kept trivially false / "" — the current
 // partial-failure model throws immediately and never populates
 // these fields. They remain in the API to give the Python binding a stable
@@ -66,7 +66,7 @@ public:
 private:
     // Lazy sampling snapshot. Populated by a backend fast path instead
     // of drawing nshots eagerly; counts() draws on first call. measure_map holds
-    // (qubit, cubit) pairs. Two modes (개정):
+    // (qubit, cubit) pairs. Two modes:
     //   - dense  (FullState CPU/GPU): sparse_probs empty -> draw from statevector_.
     //   - sparse (SparseState): sparse_probs holds normalised (basis_index, prob)
     //     pairs -> draw from the sparse CDF without densifying (works > 25 qubits).

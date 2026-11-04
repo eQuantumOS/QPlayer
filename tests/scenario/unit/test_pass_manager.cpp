@@ -107,14 +107,14 @@ TEST(PassManager, Run_TwoPasses_EachCalledOnce) {
 }
 
 // ── make_default() registers Level-1 passes ───────────────────────────
-// : make_default() registers exactly 3 Level-1 passes:
+// make_default() registers exactly 3 Level-1 passes:
 // CancelInverse → CommutationReorder → MergeSingleQubit.
 // SemanticValidatorPass is NOT included because Transpiler::transpile()
 // inserts it dynamically at position ⓪.
 
 TEST(PassManager, MakeDefault_IsCallable) {
     PassManager pm = PassManager::make_default();
-    // : make_default() registers exactly 3 Level-1 passes.
+    // make_default() registers exactly 3 Level-1 passes.
     EXPECT_EQ(pm.size(), std::size_t{3});
 }
 
@@ -134,7 +134,7 @@ TEST(PassManager, RunWithSemanticValidator_CleanCircuit_NoThrow) {
 // ── CancelInversePass is now real — verify it runs without throwing ────
 
 TEST(PassManager, CancelInversePass_RunsWithoutThrow) {
-    // : CancelInversePass is fully implemented — should no longer throw
+    // CancelInversePass is fully implemented — should no longer throw
     // NotImplementedError. A simple single-qubit circuit must pass through.
     CancelInversePass pass;
     Circuit c(1);
@@ -145,7 +145,7 @@ TEST(PassManager, CancelInversePass_RunsWithoutThrow) {
 // ── ALAPSchedulePass is now real ───────────────────────────
 
 TEST(PassManager, ALAPSchedulePass_RunsWithoutThrow) {
-    // : ALAPSchedulePass is implemented — schedules + inserts slot-aware
+    // ALAPSchedulePass is implemented — schedules + inserts slot-aware
     // idle. An untimed circuit (no device durations) is a no-op pass-through.
     ALAPSchedulePass pass;
     Circuit c(1);

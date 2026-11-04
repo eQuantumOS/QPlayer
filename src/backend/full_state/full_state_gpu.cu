@@ -293,7 +293,7 @@ int qplayer_cuda_download_state(double* h_re, double* h_im,
 
 // Self-contained 1Q launcher. `u8` packs u00,u01,u10,u11 as (re,im) pairs.
 // Returns a cudaError_t (0 == success) so the .cpp caller can wrap it in
-// GPUError once the GPU-resident path lands in.
+// GPUError.
 int qplayer_cuda_apply_1q(double* h_re, double* h_im,
                           unsigned long long dim,
                           unsigned int target,

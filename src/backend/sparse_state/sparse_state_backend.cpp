@@ -1,11 +1,11 @@
 // sparse_state_backend.cpp — SparseState backend full implementation.
-// : unordered_map amplitude storage, threshold truncation,
+// unordered_map amplitude storage, threshold truncation,
 //       init_state(), get_statevector(), get_statevector_raw() permanent error.
-// : apply_gate() sparse unitary, apply_measure/reset (Born collapse),
+// apply_gate() sparse unitary, apply_measure/reset (Born collapse),
 // prepare(), execute() with fast-path and per-shot path,
 // set_seed() reproducible PRNG.
 // Noise model unsupported. IdleOp rejected.
-// expectation_value remains NotImplementedError (+ scope).
+// expectation_value remains NotImplementedError.
 
 #include "backend/sparse_state/sparse_state_backend.hpp"
 
@@ -93,7 +93,7 @@ void merge_scratch(PersistentAmplitudeStore& store) {
 // |amp|^2 over all entries (`total`) and over entries whose index has any `mask`
 // bit set (`masked`). Fixed block size makes the result independent of thread
 // count; the sorted input makes it independent of P/machine — so measurement and
-// sampling stay bit-reproducible (0919) while running in parallel.
+// sampling stay bit-reproducible while running in parallel.
 std::pair<double, double> masked_norm_sum(const std::vector<Entry>& sorted,
                                           StateIndex mask) {
     const std::size_t S = sorted.size();
@@ -280,7 +280,7 @@ namespace {
 
 // Parses QPLAYER_SPARSE_THRESHOLD from env once at construction time.
 // Returns kSparseDefaultThreshold when the var is absent, non-numeric,
-// negative, or non-finite (+ budget_from_env robustness pattern).
+// negative, or non-finite (same robustness pattern as budget_from_env).
 double parse_threshold_from_env() {
     const char* raw = std::getenv("QPLAYER_SPARSE_THRESHOLD");
     if (raw == nullptr) {
@@ -706,7 +706,7 @@ Result SparseStateBackend::execute(const Circuit&     circuit,
         // directly over amplitudes_ enables 100+ qubit simulation.
 
         prepare(circuit);
-        note_peak();  // : capture initial S=1 before evolution.
+        note_peak();  // capture initial S=1 before evolution.
 
         for (const Op& op : circuit.ops()) {
             std::visit([this](auto&& node) {
@@ -732,7 +732,7 @@ Result SparseStateBackend::execute(const Circuit&     circuit,
                     (void)node;
                 }
             }, op);
-            note_peak();  // : track peak non-zero count per op.
+            note_peak();  // track peak non-zero count per op.
         }
 
         // Collect MeasureOps for bitstring construction.
@@ -882,7 +882,7 @@ Result SparseStateBackend::execute(const Circuit&     circuit,
                         (void)node;
                     }
                 }, op);
-                note_peak();  // : track peak within this shot.
+                note_peak();  // track peak within this shot.
             }  // end op loop
 
             // Build bitstring from cubit_vals (MSB-first convention).

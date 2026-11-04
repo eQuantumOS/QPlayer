@@ -11,7 +11,7 @@
 // Only runs of length >= 2 are replaced.  A run of 1 is left unchanged.
 // The pass is registered at optimization_level >= 2, after MergeSingleQubitPass,
 // so Clifford patterns are already collapsed by the earlier pass.
-// extension,.
+// extension.
 
 #pragma once
 

@@ -4,7 +4,7 @@
 > Compared: Qiskit (statevector) · Cirq (qsim) · cuQuantum (cuStateVec, GPU only) · QPlayer
 > Matrix: processor (CPU · GPU) × tool (4); optimize and fusion always ON
 > Metric: 4 sections (compile · execute · sampling · total) median ms -- cross-tool comparison uses TOTAL
-> Circuits under test: `/home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm` (16 of 16 measured)
+> Circuits under test: `examples/benchmarks/performance/qasm` (16 of 16 measured)
 
 ## Environment
 | Item | Value |
@@ -47,11 +47,11 @@
 ```text
 Available backends: Qiskit, Cirq, cuQuantum, QPlayer
 
-# Circuit info -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q09_qpe.qasm
+# Circuit info -- examples/benchmarks/performance/qasm/q09_qpe.qasm
   qubits=9  clbits=6  gate ops=33  measure=6  barrier=3  reset=0
   gate types: cu1×15, h×12, x×3, ccx×2, cz×1
 
-# QPlayer performance comparison -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q09_qpe.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
+# QPlayer performance comparison -- examples/benchmarks/performance/qasm/q09_qpe.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
 # per-section median ms; '-' = not available; compare across tools on TOTAL (sections asymmetric, see docstring)
 
 proc                     Qiskit                                   Cirq                                 cuQuantum                                QPlayer                 
@@ -84,11 +84,11 @@ gpu              x186.61        x63.21        x34.12
 ```text
 Available backends: Qiskit, Cirq, cuQuantum, QPlayer
 
-# Circuit info -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q13_gcm.qasm
+# Circuit info -- examples/benchmarks/performance/qasm/q13_gcm.qasm
   qubits=13  clbits=1  gate ops=3148  measure=1  barrier=0  reset=0
   gate types: rz×1522, sx×858, cx×762, x×6
 
-# QPlayer performance comparison -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q13_gcm.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
+# QPlayer performance comparison -- examples/benchmarks/performance/qasm/q13_gcm.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
 # per-section median ms; '-' = not available; compare across tools on TOTAL (sections asymmetric, see docstring)
 
 proc                     Qiskit                                   Cirq                                 cuQuantum                                QPlayer                 
@@ -121,11 +121,11 @@ gpu               x13.46        x22.73        x24.94
 ```text
 Available backends: Qiskit, Cirq, cuQuantum, QPlayer
 
-# Circuit info -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q15_multiplier.qasm
+# Circuit info -- examples/benchmarks/performance/qasm/q15_multiplier.qasm
   qubits=15  clbits=3  gate ops=70  measure=3  barrier=0  reset=0
   gate types: ccx×36, cx×30, x×4
 
-# QPlayer performance comparison -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q15_multiplier.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
+# QPlayer performance comparison -- examples/benchmarks/performance/qasm/q15_multiplier.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
 # per-section median ms; '-' = not available; compare across tools on TOTAL (sections asymmetric, see docstring)
 
 proc                     Qiskit                                   Cirq                                 cuQuantum                                QPlayer                 
@@ -158,11 +158,11 @@ gpu              x191.84        x49.00        x41.02
 ```text
 Available backends: Qiskit, Cirq, cuQuantum, QPlayer
 
-# Circuit info -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q15_qf21.qasm
+# Circuit info -- examples/benchmarks/performance/qasm/q15_qf21.qasm
   qubits=15  clbits=10  gate ops=73  measure=10  barrier=0  reset=0
   gate types: cu1×45, h×20, ccx×4, x×3, cz×1
 
-# QPlayer performance comparison -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q15_qf21.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
+# QPlayer performance comparison -- examples/benchmarks/performance/qasm/q15_qf21.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
 # per-section median ms; '-' = not available; compare across tools on TOTAL (sections asymmetric, see docstring)
 
 proc                     Qiskit                                   Cirq                                 cuQuantum                                QPlayer                 
@@ -195,11 +195,11 @@ gpu               x97.11        x71.37        x32.75
 ```text
 Available backends: Qiskit, Cirq, cuQuantum, QPlayer
 
-# Circuit info -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q17_qec9xz.qasm
+# Circuit info -- examples/benchmarks/performance/qasm/q17_qec9xz.qasm
   qubits=17  clbits=8  gate ops=53  measure=8  barrier=0  reset=0
   gate types: cx×32, h×21
 
-# QPlayer performance comparison -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q17_qec9xz.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
+# QPlayer performance comparison -- examples/benchmarks/performance/qasm/q17_qec9xz.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
 # per-section median ms; '-' = not available; compare across tools on TOTAL (sections asymmetric, see docstring)
 
 proc                     Qiskit                                   Cirq                                 cuQuantum                                QPlayer                 
@@ -232,11 +232,11 @@ gpu              x100.28        x24.65        x18.22
 ```text
 Available backends: Qiskit, Cirq, cuQuantum, QPlayer
 
-# Circuit info -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q18_bigadder.qasm
+# Circuit info -- examples/benchmarks/performance/qasm/q18_bigadder.qasm
   qubits=16  clbits=9  gate ops=17  measure=9  barrier=0  reset=0
   gate types: cx×4, unmaj×4, majority×3, x×3, add4×2, ccx×1
 
-# QPlayer performance comparison -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q18_bigadder.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
+# QPlayer performance comparison -- examples/benchmarks/performance/qasm/q18_bigadder.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
 # per-section median ms; '-' = not available; compare across tools on TOTAL (sections asymmetric, see docstring)
 
 proc                     Qiskit                                   Cirq                                 cuQuantum                                QPlayer                 
@@ -269,11 +269,11 @@ gpu               x80.45        x23.64        x93.04
 ```text
 Available backends: Qiskit, Cirq, cuQuantum, QPlayer
 
-# Circuit info -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q19_bv.qasm
+# Circuit info -- examples/benchmarks/performance/qasm/q19_bv.qasm
   qubits=19  clbits=18  gate ops=56  measure=18  barrier=0  reset=0
   gate types: h×37, cx×18, x×1
 
-# QPlayer performance comparison -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q19_bv.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
+# QPlayer performance comparison -- examples/benchmarks/performance/qasm/q19_bv.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
 # per-section median ms; '-' = not available; compare across tools on TOTAL (sections asymmetric, see docstring)
 
 proc                     Qiskit                                   Cirq                                 cuQuantum                                QPlayer                 
@@ -306,11 +306,11 @@ gpu               x69.80        x18.70        x13.03
 ```text
 Available backends: Qiskit, Cirq, cuQuantum, QPlayer
 
-# Circuit info -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q20_qram.qasm
+# Circuit info -- examples/benchmarks/performance/qasm/q20_qram.qasm
   qubits=20  clbits=4  gate ops=41  measure=4  barrier=0  reset=0
   gate types: ccx×20, cx×16, x×5
 
-# QPlayer performance comparison -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q20_qram.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
+# QPlayer performance comparison -- examples/benchmarks/performance/qasm/q20_qram.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
 # per-section median ms; '-' = not available; compare across tools on TOTAL (sections asymmetric, see docstring)
 
 proc                     Qiskit                                   Cirq                                 cuQuantum                                QPlayer                 
@@ -343,11 +343,11 @@ gpu               x95.46        x19.47        x14.82
 ```text
 Available backends: Qiskit, Cirq, cuQuantum, QPlayer
 
-# Circuit info -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q21_qft.qasm
+# Circuit info -- examples/benchmarks/performance/qasm/q21_qft.qasm
   qubits=21  clbits=21  gate ops=661  measure=1  barrier=0  reset=0
   gate types: cx×420, rz×210, h×21, swap×10
 
-# QPlayer performance comparison -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q21_qft.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
+# QPlayer performance comparison -- examples/benchmarks/performance/qasm/q21_qft.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
 # per-section median ms; '-' = not available; compare across tools on TOTAL (sections asymmetric, see docstring)
 
 proc                     Qiskit                                   Cirq                                 cuQuantum                                QPlayer                 
@@ -380,11 +380,11 @@ gpu                x9.61         x7.52         x7.55
 ```text
 Available backends: Qiskit, Cirq, cuQuantum, QPlayer
 
-# Circuit info -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q22_cat_state.qasm
+# Circuit info -- examples/benchmarks/performance/qasm/q22_cat_state.qasm
   qubits=22  clbits=22  gate ops=22  measure=22  barrier=0  reset=0
   gate types: cx×21, h×1
 
-# QPlayer performance comparison -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q22_cat_state.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
+# QPlayer performance comparison -- examples/benchmarks/performance/qasm/q22_cat_state.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
 # per-section median ms; '-' = not available; compare across tools on TOTAL (sections asymmetric, see docstring)
 
 proc                     Qiskit                                   Cirq                                 cuQuantum                                QPlayer                 
@@ -417,11 +417,11 @@ gpu               x49.32        x12.95         x7.84
 ```text
 Available backends: Qiskit, Cirq, cuQuantum, QPlayer
 
-# Circuit info -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q23_ghz_state.qasm
+# Circuit info -- examples/benchmarks/performance/qasm/q23_ghz_state.qasm
   qubits=23  clbits=23  gate ops=23  measure=23  barrier=0  reset=0
   gate types: cx×22, h×1
 
-# QPlayer performance comparison -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q23_ghz_state.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
+# QPlayer performance comparison -- examples/benchmarks/performance/qasm/q23_ghz_state.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
 # per-section median ms; '-' = not available; compare across tools on TOTAL (sections asymmetric, see docstring)
 
 proc                     Qiskit                                   Cirq                                 cuQuantum                                QPlayer                 
@@ -454,11 +454,11 @@ gpu               x30.49         x8.36         x5.20
 ```text
 Available backends: Qiskit, Cirq, cuQuantum, QPlayer
 
-# Circuit info -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q25_knn.qasm
+# Circuit info -- examples/benchmarks/performance/qasm/q25_knn.qasm
   qubits=25  clbits=25  gate ops=38  measure=1  barrier=0  reset=0
   gate types: ry×24, cswap×12, h×2
 
-# QPlayer performance comparison -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q25_knn.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
+# QPlayer performance comparison -- examples/benchmarks/performance/qasm/q25_knn.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
 # per-section median ms; '-' = not available; compare across tools on TOTAL (sections asymmetric, see docstring)
 
 proc                     Qiskit                                   Cirq                                 cuQuantum                                QPlayer                 
@@ -491,11 +491,11 @@ gpu                x5.98         x1.33         x1.62
 ```text
 Available backends: Qiskit, Cirq, cuQuantum, QPlayer
 
-# Circuit info -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q25_swap_test.qasm
+# Circuit info -- examples/benchmarks/performance/qasm/q25_swap_test.qasm
   qubits=25  clbits=1  gate ops=38  measure=1  barrier=0  reset=0
   gate types: rx×24, cswap×12, h×2
 
-# QPlayer performance comparison -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q25_swap_test.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
+# QPlayer performance comparison -- examples/benchmarks/performance/qasm/q25_swap_test.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
 # per-section median ms; '-' = not available; compare across tools on TOTAL (sections asymmetric, see docstring)
 
 proc                     Qiskit                                   Cirq                                 cuQuantum                                QPlayer                 
@@ -528,11 +528,11 @@ gpu                x5.98         x1.34         x1.63
 ```text
 Available backends: Qiskit, Cirq, cuQuantum, QPlayer
 
-# Circuit info -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q26_ising.qasm
+# Circuit info -- examples/benchmarks/performance/qasm/q26_ising.qasm
   qubits=26  clbits=26  gate ops=280  measure=26  barrier=0  reset=0
   gate types: rz×152, h×78, cx×50
 
-# QPlayer performance comparison -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q26_ising.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
+# QPlayer performance comparison -- examples/benchmarks/performance/qasm/q26_ising.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
 # per-section median ms; '-' = not available; compare across tools on TOTAL (sections asymmetric, see docstring)
 
 proc                     Qiskit                                   Cirq                                 cuQuantum                                QPlayer                 
@@ -565,11 +565,11 @@ gpu                x1.43        -x1.55         x2.91
 ```text
 Available backends: Qiskit, Cirq, cuQuantum, QPlayer
 
-# Circuit info -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q27_wstate.qasm
+# Circuit info -- examples/benchmarks/performance/qasm/q27_wstate.qasm
   qubits=27  clbits=27  gate ops=105  measure=27  barrier=0  reset=0
   gate types: ry×52, cx×26, cz×26, x×1
 
-# QPlayer performance comparison -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q27_wstate.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
+# QPlayer performance comparison -- examples/benchmarks/performance/qasm/q27_wstate.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
 # per-section median ms; '-' = not available; compare across tools on TOTAL (sections asymmetric, see docstring)
 
 proc                     Qiskit                                   Cirq                                 cuQuantum                                QPlayer                 
@@ -602,11 +602,11 @@ gpu                x1.45        -x2.32         x1.34
 ```text
 Available backends: Qiskit, Cirq, cuQuantum, QPlayer
 
-# Circuit info -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q28_adder.qasm
+# Circuit info -- examples/benchmarks/performance/qasm/q28_adder.qasm
   qubits=28  clbits=28  gate ops=88  measure=28  barrier=0  reset=0
   gate types: cx×51, ccx×24, x×13
 
-# QPlayer performance comparison -- /home/ksjin/github/qrens/QPlayer-Caracal-5.5.0/examples/benchmarks/performance/qasm/q28_adder.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
+# QPlayer performance comparison -- examples/benchmarks/performance/qasm/q28_adder.qasm (shots=1024, repeats=5, optimize=ON, fusion=ON)
 # per-section median ms; '-' = not available; compare across tools on TOTAL (sections asymmetric, see docstring)
 
 proc                     Qiskit                                   Cirq                                 cuQuantum                                QPlayer                 

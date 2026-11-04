@@ -1,5 +1,5 @@
-// qubit_truncation_pass.hpp — QubitTruncationPass (optimization/truncation stage,
-//). After layout/routing/translation place a circuit on a
+// qubit_truncation_pass.hpp — QubitTruncationPass (optimization/truncation stage).
+// After layout/routing/translation place a circuit on a
 // (possibly wide) device, the referenced physical qubits may be sparse (e.g. a
 // 7-qubit circuit mapped onto qubits {0,5,11,...,26} of a 27-qubit device).
 // This pass compacts the actually-referenced physical qubits into a dense
