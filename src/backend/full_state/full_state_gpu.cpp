@@ -1,12 +1,14 @@
-// full_state_gpu.cpp — FullStateGpuBackend: noiseless execute() + gate apply.
-// Drives the GPU-resident SoA state vector through extern "C" launchers defined
-// in full_state_gpu.cu. This .cpp never includes cuda_runtime.h (one-way include
-// policy). adds: CUDA stream lifecycle, device-resident gate launchers,
-// execute() fast path (gate apply on GPU, sampling on host), apply_gate().
-// Dual-budget pre-check (VRAM ∧ host) and max_qubits() per
-// CUDA Streams: single stream per backend instance for in-order async dispatch;
-// gate kernels are serialised by the stream, cudaDeviceSynchronize before D2H
-// transfer. No cross-stream parallelism — shared state vector precludes it.
+/// @file full_state_gpu.cpp
+/// @brief FullStateGpuBackend: noiseless execute() + gate apply.
+///
+/// Drives the GPU-resident SoA state vector through extern "C" launchers defined
+/// in full_state_gpu.cu. This .cpp never includes cuda_runtime.h (one-way include
+/// policy). adds: CUDA stream lifecycle, device-resident gate launchers,
+/// execute() fast path (gate apply on GPU, sampling on host), apply_gate().
+/// Dual-budget pre-check (VRAM ∧ host) and max_qubits()
+/// CUDA Streams: single stream per backend instance for in-order async dispatch;
+/// gate kernels are serialised by the stream, cudaDeviceSynchronize before D2H
+/// transfer. No cross-stream parallelism — shared state vector precludes it.
 
 #include "backend/full_state/full_state_backend.hpp"
 
@@ -27,8 +29,10 @@
 
 #include "backend/full_state/gate_matrix.hpp"  // ecr/iswap/sqrt_iswap/fsim matrix data (0610)
 #include "backend/full_state/kraus_apply_2q.hpp"  // detail::apply_kraus_2q
+#include "backend/full_state/pauli_expectation.hpp"  // detail::pauli_expectation
 #include "backend/memory_check.hpp"
 #include "circuit/circuit.hpp"
+#include "detail/noise_schedule.hpp"  // noise_trajectory_canonical_order
 #include "detail/rng.hpp"
 #include "error.hpp"
 #include "log.hpp"      // qplayer::log — QPLAYER_PROFILE_GPU diagnostics
@@ -82,6 +86,23 @@ int  qplayer_cuda_apply_dense2q_dev(double* d_re, double* d_im,
                                      unsigned int qa, unsigned int qb,
                                      const double* m32,
                                      unsigned long long stream_handle);
+// : fused k-qubit GEMV (on GPU). d_qubits holds k ascending
+// qubit indices, d_mat holds (2^k)^2 interleaved (re,im) doubles, row-major.
+int  qplayer_cuda_apply_fused_dev(double* d_re, double* d_im,
+                                   unsigned long long dim,
+                                   unsigned int k,
+                                   const unsigned int* d_qubits,
+                                   const double* d_mat,
+                                   unsigned long long stream_handle);
+int  qplayer_cuda_alloc_fused_scratch(unsigned int** d_qubits, double** d_mat,
+                                       unsigned long long mat_doubles,
+                                       unsigned long long qubit_count);
+void qplayer_cuda_free_fused_scratch(unsigned int* d_qubits, double* d_mat);
+int  qplayer_cuda_upload_fused(unsigned int* d_qubits, const unsigned int* h_qubits,
+                                unsigned long long qubit_count,
+                                double* d_mat, const double* h_mat,
+                                unsigned long long mat_doubles,
+                                unsigned long long stream_handle);
 int  qplayer_cuda_download_state_stream(double* h_re, double* h_im,
                                          const double* d_re, const double* d_im,
                                          unsigned long long dim,
@@ -105,7 +126,7 @@ namespace qplayer {
 
 namespace {
 
-// kPhase tag for stub methods that remain NotImplemented in.
+// kPhase tag for stub methods that remain NotImplemented.
 constexpr const char* kPhase = "Phase 6 pending";
 
 // Section profiler for the GPU execute()/sampling breakdown.
@@ -261,7 +282,7 @@ std::uint64_t gpu_available_bytes() noexcept {
     return static_cast<std::uint64_t>(static_cast<double>(free_b) * 0.8);
 }
 
-// Shared owner of the GPU-resident SoA buffers. A std::shared_ptr to
+// Shared owner of the GPU-resident SoA buffers. A std::shared_ptr
 // this holder is shared with the Result from execute(); when the last reference
 // drops (backend re-init AND all Results released) the device buffers are freed.
 // This lets a Result keep |psi> on the device for deferred sampling / lazy D2H
@@ -379,6 +400,9 @@ FullStateGpuBackend::~FullStateGpuBackend() {
     // Destroy stream first so any in-flight work completes before the device
     // buffers are freed (stream lifecycle).
     qplayer_cuda_stream_destroy(stream_handle_);
+    // Fused-window scratch is owned outright by this backend (unlike the state
+    // buffers below), so it is freed here.
+    qplayer_cuda_free_fused_scratch(d_fused_qubits_, d_fused_matrix_);
     // Device buffers are freed by state_owner_'s deleter when its last reference
     // drops — a Result from execute() may still hold a reference, so
     // we do NOT free d_re_/d_im_ directly here.
@@ -513,10 +537,105 @@ std::uint32_t FullStateGpuBackend::max_qubits(detail::WorkingSet ws) const noexc
     return best;
 }
 
+// set_fusion() — store the runtime Gate Fusion config.
+// The GPU cap is tighter than the CPU one: above width 5 the per-thread
+// amplitude array spills out of registers and arithmetic intensity passes
+// H100's FP64 ridge point, so the kernel stops being bandwidth-bound and the
+// pass-count saving no longer pays. Clamp rather than throw, for
+// the same reason fuse_circuit() clamps: both arguments are run() defaults.
+void FullStateGpuBackend::set_fusion(bool enable, std::uint32_t max_width) {
+    fusion_enabled_ = enable;
+    if (max_width > kMaxGpuFusionWidth) {
+        if (!fusion_width_warned_) {
+            log::warn("FullState GPU: fusion_max_width " + std::to_string(max_width) +
+                      " exceeds the GPU maximum " + std::to_string(kMaxGpuFusionWidth) +
+                      "; clamping to " + std::to_string(kMaxGpuFusionWidth));
+            fusion_width_warned_ = true;
+        }
+        max_width = kMaxGpuFusionWidth;
+    }
+    fusion_max_width_ = max_width == 0 ? 1u : max_width;
+}
+
+// apply_fused_program_gpu() — run a fused program produced by fuse_circuit().
+// Dense windows go to the fused kernel; gates the cost model declined to fuse
+// and permutation gates fall back to apply_gate(). Only
+// the noiseless fast path calls this, so no boundary op can appear here
+// — fuse_circuit() would have passed them through as their own
+// variants and execute() filters them before this point.
+//
+// Every window's matrix and qubit list is uploaded in ONE H2D transfer before
+// any kernel launches, rather than per window. A per-window upload needs a
+// stream synchronise (the host staging buffer dies at the end of the call), and
+// that serialises the pipeline once per window: measured q13_gcm (3149 ops, many
+// windows, tiny state) took 27.0 ms per-window versus 5.3 ms batched. Launches
+// then run back-to-back on the one stream, which preserves program order
+//
+void FullStateGpuBackend::apply_fused_program_gpu(
+        const std::vector<detail::FusedOp>& prog) {
+    // Pass 1: lay out every window's payload contiguously.
+    //   matrix block  = 2 * (2^k)^2 doubles, interleaved (re, im)
+    //   qubit block   = k unsigned ints, ascending
+    std::vector<double>       host_mat;
+    std::vector<unsigned int> host_q;
+    struct Window { std::size_t mat_off, q_off; std::uint32_t k; };
+    std::vector<Window> windows;
+
+    for (const detail::FusedOp& fop : prog) {
+        if (!std::holds_alternative<detail::FusedGate>(fop)) continue;
+        const detail::FusedGate& g = std::get<detail::FusedGate>(fop);
+        windows.push_back({host_mat.size(), host_q.size(),
+                           static_cast<std::uint32_t>(g.qubits.size())});
+        for (const std::complex<double>& z : g.matrix) {
+            host_mat.push_back(z.real());
+            host_mat.push_back(z.imag());
+        }
+        for (QubitIndex q : g.qubits) {
+            host_q.push_back(static_cast<unsigned int>(q));
+        }
+    }
+
+    if (!windows.empty()) {
+        if (host_mat.size() > fused_matrix_capacity_) {
+            qplayer_cuda_free_fused_scratch(d_fused_qubits_, d_fused_matrix_);
+            d_fused_qubits_ = nullptr;
+            d_fused_matrix_ = nullptr;
+            fused_matrix_capacity_ = 0;
+
+            const int rc = qplayer_cuda_alloc_fused_scratch(
+                &d_fused_qubits_, &d_fused_matrix_,
+                host_mat.size(), host_q.size());
+            if (rc != 0) throw GPUError{rc, "fused program: scratch alloc failed"};
+            fused_matrix_capacity_ = host_mat.size();
+        }
+        const int rc = qplayer_cuda_upload_fused(
+            d_fused_qubits_, host_q.data(), host_q.size(),
+            d_fused_matrix_, host_mat.data(), host_mat.size(), stream_handle_);
+        if (rc != 0) throw GPUError{rc, "fused program: payload H2D failed"};
+    }
+
+    // Pass 2: launch in program order, interleaving the passed-through gates.
+    std::size_t wi = 0;
+    for (const detail::FusedOp& fop : prog) {
+        if (std::holds_alternative<detail::FusedGate>(fop)) {
+            const Window& w = windows[wi++];
+            const int rc = qplayer_cuda_apply_fused_dev(
+                d_re_, d_im_, static_cast<unsigned long long>(dim_), w.k,
+                d_fused_qubits_ + w.q_off, d_fused_matrix_ + w.mat_off,
+                stream_handle_);
+            if (rc != 0) throw GPUError{rc, "fused program: kernel launch failed"};
+        } else if (std::holds_alternative<GateOp>(fop)) {
+            apply_gate(std::get<GateOp>(fop));
+        }
+        // Measure/Barrier/Idle: deferred to sampling, no state change.
+    }
+}
+
 // set_seed() — store the master PRNG seed for reproducible sampling.
 // Mirrors the CPU backend override; the seed is consumed in execute().
 void FullStateGpuBackend::set_seed(std::uint64_t seed) {
     master_seed_ = seed;
+    has_seed_    = true;  // any value, 0 included
 }
 
 // apply_gate() — dispatch a GateOp to the GPU-resident state vector via the
@@ -681,7 +800,7 @@ void FullStateGpuBackend::apply_gate(const GateOp& op) {
 // 3. cudaDeviceSynchronize
 // 4. D2H download to pinned host buffer
 // 5. Build prob vector, CDF, nshots inverse-CDF sampling on host (same as CPU)
-// per-shot path (IfOp / mid-circuit collapse) is not implemented in.
+// per-shot path (IfOp / mid-circuit collapse) is not.
 Result FullStateGpuBackend::execute(const Circuit& circuit,
                                     std::uint32_t  nshots,
                                     const NoiseModel* noise) {
@@ -705,14 +824,19 @@ Result FullStateGpuBackend::execute(const Circuit& circuit,
         // when none are registered. Same helper as the CPU path -> parity.
         const bool readout_active = noise->has_readout_errors();
 
-        const std::uint64_t mseed =
-            master_seed_ != 0
-                ? master_seed_
-                : static_cast<std::uint64_t>(std::random_device{}());
+        // set-ness is the flag, not the value — 0 is a valid seed.
+        const bool          seeded = has_seed_;
+        const std::uint64_t mseed  =
+            seeded ? master_seed_
+                   : static_cast<std::uint64_t>(std::random_device{}());
 
         std::map<std::string, std::uint64_t> counts;
         const unsigned long long dim_ull = static_cast<unsigned long long>(dim_);
         const std::size_t dimz = static_cast<std::size_t>(dim_);
+
+        // Canonical op order shared by all trajectories.
+        const std::vector<std::size_t> traj_op_order =
+            qplayer::detail::noise_trajectory_canonical_order(circuit);
 
         // Allocate one pair of pinned host buffers for D2H/H2D transfers
         // (reused across all trajectories — no repeated alloc/free overhead,
@@ -730,6 +854,16 @@ Result FullStateGpuBackend::execute(const Circuit& circuit,
             ~PinnedGuard() { qplayer_cuda_free_pinned(re, im); }
         } pinned_guard{h_re, h_im};
 
+        // Expectation targets: <P> on a noisy circuit is the
+        // trajectory average, so each trajectory contributes a sample. Compiled
+        // once up front so a malformed Pauli throws before any trajectory runs.
+        // Evaluated on the pinned host buffers that the end-of-trajectory norm
+        // check already populates — no extra D2H.
+        const auto& exp_targets = circuit.expectation_targets();
+        const std::vector<qplayer::detail::PauliSpec> exp_specs =
+            qplayer::detail::compile_targets(exp_targets, num_qubits_);
+        std::vector<double> exp_acc(exp_specs.size(), 0.0);
+
         for (std::uint32_t traj = 0; traj < nshots; ++traj) {
             // (Re)initialise GPU state to |0...0> for each trajectory.
             rc = qplayer_cuda_init_zero_state(d_re_, d_im_, dim_ull);
@@ -740,16 +874,59 @@ Result FullStateGpuBackend::execute(const Circuit& circuit,
 
             // Per-trajectory RNG seeded reproducibly.
             const std::uint64_t traj_seed =
-                (mseed != 0)
-                    ? qplayer::detail::thread_seed(
-                          mseed, static_cast<std::uint32_t>(traj))
-                    : static_cast<std::uint64_t>(std::random_device{}());
+                seeded ? qplayer::detail::thread_seed(
+                             mseed, static_cast<std::uint32_t>(traj))
+                       : static_cast<std::uint64_t>(std::random_device{}());
             std::mt19937_64 traj_rng(traj_seed);
 
             std::vector<int> cubit_vals(static_cast<std::size_t>(total_c), 0);
-            bool need_kraus_download = false;  // defer D2H until Kraus needed
 
-            for (const Op& op : circuit.ops()) {
+            // True while the pinned host buffers do NOT mirror the device state,
+            // i.e. anything reading h_re/h_im must D2H first. It starts true
+            // because init_zero_state() left |0...0> on the device only: on the
+            // first trajectory h_re/h_im are uninitialized pinned memory, and on
+            // later ones they still hold the previous trajectory's final state.
+            // Starting it false made a leading MeasureOp fold that garbage into
+            // the Born-rule sum and then upload it, destroying |0...0> (the
+            // trajectory then died with "|psi|^2 = 0.000000"). The same flag also
+            // gates the end-of-trajectory norm check below (audit #4).
+            bool host_state_stale = true;
+
+            // Reused channel buffer for this trajectory's noisy gates (audit #27).
+            std::vector<KrausChannel> chan_buf;
+
+            // Gate-attached channels for a gate that just ran on the device
+            // (..06). Factored out because the IfOp body needs the exact
+            // same treatment as an unconditional gate and used to get none at all
+            // — the duplication is what let the two drift.
+            const auto apply_gate_channels = [&](const GateOp& g) {
+                if (!noise->has_channels_for_gate(g.name)) return;
+                const int sync_rc = qplayer_cuda_stream_sync(stream_handle_);
+                if (sync_rc != 0) {
+                    throw GPUError{sync_rc,
+                        "noisy execute(): stream sync before Kraus D2H failed"};
+                }
+                int lrc = qplayer_cuda_download_state_stream(
+                    h_re, h_im, d_re_, d_im_, dim_ull, stream_handle_);
+                if (lrc != 0) {
+                    throw GPUError{lrc, "noisy execute(): D2H for Kraus application failed"};
+                }
+                noise->channels_for_gate(g.name, g.qubits, chan_buf);
+                for (const KrausChannel& ch : chan_buf) {
+                    apply_kraus_channel_host(h_re, h_im, dim_ull, ch, traj_rng);
+                }
+                lrc = qplayer_cuda_upload_state(
+                    h_re, h_im, d_re_, d_im_, dim_ull, stream_handle_);
+                if (lrc != 0) {
+                    throw GPUError{lrc, "noisy execute(): H2D after Kraus application failed"};
+                }
+                // Host and device now hold the same amplitudes, so a following
+                // MeasureOp reads h_re/h_im without another round trip.
+                host_state_stale = false;
+            };
+
+            for (std::size_t traj_op_idx : traj_op_order) {
+                const Op& op = circuit.ops()[traj_op_idx];
                 std::visit([&](auto&& node) {
                     using T = std::decay_t<decltype(node)>;
 
@@ -764,38 +941,10 @@ Result FullStateGpuBackend::execute(const Circuit& circuit,
 
                         // Apply gate on GPU (existing device-resident path).
                         apply_gate(node);
+                        host_state_stale = true;  // gate ran on the device only
 
                         // Apply noise channels (D2H → CPU Kraus → H2D) if needed.
-                        if (noise->has_channels_for_gate(node.name)) {
-                            // Sync stream so gate is complete before D2H.
-                            const int sync_rc = qplayer_cuda_stream_sync(stream_handle_);
-                            if (sync_rc != 0) {
-                                throw GPUError{sync_rc,
-                                    "noisy execute(): stream sync before Kraus D2H failed"};
-                            }
-                            // D2H: download GPU state to pinned host buffers.
-                            rc = qplayer_cuda_download_state_stream(
-                                h_re, h_im, d_re_, d_im_, dim_ull, stream_handle_);
-                            if (rc != 0) {
-                                throw GPUError{rc,
-                                    "noisy execute(): D2H for Kraus application failed"};
-                            }
-                            // Apply Kraus channels on host.
-                            auto chans = noise->channels_for_gate(node.name, node.qubits);
-                            for (const KrausChannel& ch : chans) {
-                                apply_kraus_channel_host(
-                                    h_re, h_im, dim_ull, ch, traj_rng);
-                            }
-                            // H2D: upload modified state back to GPU.
-                            rc = qplayer_cuda_upload_state(
-                                h_re, h_im, d_re_, d_im_, dim_ull, stream_handle_);
-                            if (rc != 0) {
-                                throw GPUError{rc,
-                                    "noisy execute(): H2D after Kraus application failed"};
-                            }
-                            need_kraus_download = false;
-                        }
-                        need_kraus_download = true;  // state changed on GPU
+                        apply_gate_channels(node);
 
                     } else if constexpr (std::is_same_v<T, IdleOp>) {
                         // Apply idle relaxation Kraus channels.
@@ -823,11 +972,12 @@ Result FullStateGpuBackend::execute(const Circuit& circuit,
                                 throw GPUError{rc,
                                     "noisy execute(): H2D after idle Kraus application failed"};
                             }
+                            host_state_stale = false;  // host mirrors the device
                         }
 
                     } else if constexpr (std::is_same_v<T, MeasureOp>) {
                         // D2H if needed to compute Born-rule probabilities on host.
-                        if (need_kraus_download) {
+                        if (host_state_stale) {
                             const int sync_rc = qplayer_cuda_stream_sync(stream_handle_);
                             if (sync_rc != 0) {
                                 throw GPUError{sync_rc,
@@ -839,7 +989,7 @@ Result FullStateGpuBackend::execute(const Circuit& circuit,
                                 throw GPUError{rc,
                                     "noisy execute(): D2H for measure failed"};
                             }
-                            need_kraus_download = false;
+                            host_state_stale = false;
                         }
                         // Born-rule collapse on host.
                         double p1 = 0.0;
@@ -897,7 +1047,10 @@ Result FullStateGpuBackend::execute(const Circuit& circuit,
                         }
                         if (regval == node.value) {
                             apply_gate(node.body);
-                            need_kraus_download = true;
+                            host_state_stale = true;
+                            // A conditional gate that RUNS was a pulse on the
+                            // hardware and decohered like any other.
+                            apply_gate_channels(node.body);
                         }
 
                     } else {
@@ -909,7 +1062,7 @@ Result FullStateGpuBackend::execute(const Circuit& circuit,
 
             // Norm check: verify |ψ|² ≈ 1 at trajectory end.
             // Ensure the latest state is in the pinned host buffers.
-            if (need_kraus_download) {
+            if (host_state_stale) {
                 const int sync_rc = qplayer_cuda_stream_sync(stream_handle_);
                 if (sync_rc != 0) {
                     throw GPUError{sync_rc,
@@ -920,7 +1073,7 @@ Result FullStateGpuBackend::execute(const Circuit& circuit,
                 if (rc != 0) {
                     throw GPUError{rc, "noisy execute(): D2H for norm check failed"};
                 }
-                need_kraus_download = false;
+                host_state_stale = false;
             }
 
             double norm = 0.0;
@@ -941,6 +1094,15 @@ Result FullStateGpuBackend::execute(const Circuit& circuit,
                         static_cast<std::size_t>(total_c - 1u - k)]);
             }
             ++counts[bs];
+
+            // This trajectory's contribution to each registered <P>. h_re/h_im
+            // hold this trajectory's final state (the norm check above refreshed
+            // them). The loop is sequential, so the sum is already in trajectory
+            // order and independent of thread count.
+            for (std::size_t t = 0; t < exp_specs.size(); ++t) {
+                exp_acc[t] += qplayer::detail::pauli_expectation(
+                    h_re, h_im, dim_, exp_specs[t]);
+            }
         }  // end trajectory loop
 
         if (total_c == 0) {
@@ -950,6 +1112,16 @@ Result FullStateGpuBackend::execute(const Circuit& circuit,
         Result r;
         result_set_counts(r, std::move(counts));
         result_set_shots(r, nshots);
+
+        // nshot average of each target.
+        if (!exp_specs.empty()) {
+            std::map<std::string, double> exp_avg;
+            for (std::size_t t = 0; t < exp_specs.size(); ++t) {
+                exp_avg[exp_targets[t]] =
+                    (nshots > 0) ? exp_acc[t] / static_cast<double>(nshots) : 0.0;
+            }
+            result_set_expectations(r, std::move(exp_avg));
+        }
         return r;
     }
 
@@ -963,32 +1135,47 @@ Result FullStateGpuBackend::execute(const Circuit& circuit,
     // and stored in the lazy snapshot; the nshots draw is deferred to
     // Result::counts() (lazy dense mode — reuses the attached AoS state).
     const std::uint64_t seed =
-        master_seed_ != 0
-            ? master_seed_
-            : static_cast<std::uint64_t>(std::random_device{}());
+        has_seed_ ? master_seed_
+                  : static_cast<std::uint64_t>(std::random_device{}());
 
     // ── fast path ────────────────────────────────────────────────────────
     GpuSectionTimer prof{"execute"};
     prepare(circuit);  // memory precheck + init_state (GPU |0...0>)
     prof.lap("prepare");
 
-    // Apply unitary gate ops; skip Measure/Barrier/Idle (deferred to sampling).
+    // Reject ops the GPU fast path cannot express before touching the state, so
+    // fuse_circuit() never sees them either (it throws on Reset/Opaque too, but
+    // with a message that would not name the GPU path).
     for (const Op& op : circuit.ops()) {
-        std::visit([this](auto&& node) {
-            using T = std::decay_t<decltype(node)>;
-            if constexpr (std::is_same_v<T, GateOp>) {
-                if (node.type == GateType::Reset) {
-                    throw NotImplementedError{"FullStateGPU",
-                        "Reset in fast-path GPU execute() not supported"};
-                } else if (node.type == GateType::Opaque) {
-                    throw NotImplementedError{"FullStateGPU",
-                        "Opaque gate not yet supported"};
-                } else {
-                    apply_gate(node);
-                }
+        if (std::holds_alternative<GateOp>(op)) {
+            const GateType t = std::get<GateOp>(op).type;
+            if (t == GateType::Reset) {
+                throw NotImplementedError{"FullStateGPU",
+                    "Reset in fast-path GPU execute() not supported"};
+            }
+            if (t == GateType::Opaque) {
+                throw NotImplementedError{"FullStateGPU",
+                    "Opaque gate not yet supported"};
+            }
+        }
+    }
+
+    // Apply unitary gate ops; skip Measure/Barrier/Idle (deferred to sampling).
+    // Runtime fusion collapses consecutive gates into dense windows,
+    // cutting the number of whole-state passes — the only remaining lever now
+    // that the per-gate kernels sit at ~78% of HBM peak.
+    if (fusion_enabled_) {
+        apply_fused_program_gpu(
+            qplayer::detail::fuse_circuit(circuit.ops(), fusion_max_width_,
+                                          circuit.num_qubits(),
+                                          qplayer::detail::kGpuFusionCostModel));
+    } else {
+        for (const Op& op : circuit.ops()) {
+            if (std::holds_alternative<GateOp>(op)) {
+                apply_gate(std::get<GateOp>(op));
             }
             // MeasureOp / BarrierOp / IdleOp: defer — no state change.
-        }, op);
+        }
     }
 
     prof.lap("gate-dispatch");
@@ -1035,10 +1222,14 @@ void FullStateGpuBackend::apply_reset(QubitIndex /*qubit*/) {
 // The GPU state vector lives on the device; we download it into raw_cache_re_/im_
 // (std::vector host buffers) on every call. The returned view is valid until
 // the next state-mutating call (apply_gate / init_state). This matches the CPU
-// contract: "the next gate invalidates the view" (table). Using
-// pinned memory for the transfer would be faster but requires an extra
-// cudaMallocHost/Free cycle; plain host vectors are sufficient here because
-// get_statevector_raw() is not on the hot path.
+// contract: "the next gate invalidates the view" (table).
+//
+// The previous shape allocated a pinned buffer, copied D2H into it, copied it
+// element-by-element into the vectors, and freed the pinned buffer — a
+// cudaMallocHost/Free cycle plus a serial 2^n copy on every call (audit #30).
+// The download now targets the vector storage directly: the pinned staging was
+// only there to make the destination pointers stable, which the vectors already
+// are (their capacity does not change until the next resize).
 RawStateView FullStateGpuBackend::get_statevector_raw() {
     if (d_re_ == nullptr) {
         throw SimulatorError{"FullStateGPU",
@@ -1052,30 +1243,15 @@ RawStateView FullStateGpuBackend::get_statevector_raw() {
     raw_cache_re_.resize(dimi);
     raw_cache_im_.resize(dimi);
 
-    // Use pinned transfer buffers for the D2H copy, then memcpy into the
-    // std::vector buffers so the returned pointers are stable host memory
-    // that will not be freed until the next resize (contract).
-    double* h_re = nullptr;
-    double* h_im = nullptr;
-    int rc = qplayer_cuda_alloc_pinned(&h_re, &h_im, dim_ull);
+    // Download straight into the vector storage (stream-aware variant handles
+    // in-flight kernels). The pointers stay valid until the next resize, which is
+    // exactly the view contract.
+    const int rc = qplayer_cuda_download_state_stream(
+        raw_cache_re_.data(), raw_cache_im_.data(), d_re_, d_im_, dim_ull,
+        stream_handle_);
     if (rc != 0) {
-        throw GPUError{rc,
-            "get_statevector_raw: cudaMallocHost pinned buffer failed"};
-    }
-    // Flush stream and copy D2H (stream-aware variant handles in-flight kernels).
-    rc = qplayer_cuda_download_state_stream(h_re, h_im, d_re_, d_im_, dim_ull,
-                                            stream_handle_);
-    if (rc != 0) {
-        qplayer_cuda_free_pinned(h_re, h_im);
         throw GPUError{rc, "get_statevector_raw: device->host copy failed"};
     }
-
-    // Transfer into stable std::vector storage, then free the pinned buffer.
-    for (std::size_t i = 0; i < dimi; ++i) {
-        raw_cache_re_[i] = h_re[i];
-        raw_cache_im_[i] = h_im[i];
-    }
-    qplayer_cuda_free_pinned(h_re, h_im);
 
     return RawStateView{raw_cache_re_.data(), raw_cache_im_.data(), dim_};
 }
@@ -1092,75 +1268,12 @@ double FullStateGpuBackend::expectation_value(std::string_view pauli) {
                              "expectation_value called before init_state"};
     }
 
-    // Build the all-Z default when the caller passes an empty string.
-    // The local string outlives the string_view for the duration of this call.
-    std::string all_z;
-    if (pauli.empty()) {
-        all_z.assign(static_cast<std::size_t>(num_qubits_), 'Z');
-        pauli = all_z;
-    }
-    if (pauli.size() != static_cast<std::size_t>(num_qubits_)) {
-        throw CircuitError{
-            "expectation_value: Pauli string length (" +
-            std::to_string(pauli.size()) + ") != num_qubits (" +
-            std::to_string(num_qubits_) + ")"};
-    }
-
     // Download the current device state once (reuse the raw-cache path so the
     // vectors are warmed up; the returned view is only used locally here).
     const RawStateView view = get_statevector_raw();
-    const double* re = view.re;
-    const double* im = view.im;
-
-    // Build flip_mask (X|Y qubits), sign_mask (Y|Z qubits), and num_y (global
-    // phase i^num_y) using Qiskit qubit order: pauli[0] acts on qubit (n-1).
-    StateIndex flip_mask = 0;
-    StateIndex sign_mask = 0;
-    int        num_y     = 0;
-    for (std::size_t k = 0; k < pauli.size(); ++k) {
-        const QubitIndex q =
-            num_qubits_ - 1u - static_cast<QubitIndex>(k);  // Qiskit order
-        switch (pauli[k]) {
-            case 'I': break;
-            case 'X': flip_mask |= (StateIndex{1} << q); break;
-            case 'Y': flip_mask |= (StateIndex{1} << q);
-                      sign_mask |= (StateIndex{1} << q); ++num_y; break;
-            case 'Z': sign_mask |= (StateIndex{1} << q); break;
-            default:
-                throw CircuitError{
-                    std::string("expectation_value: invalid Pauli char '") +
-                    pauli[k] + "' (only I/X/Y/Z allowed)"};
-        }
-    }
-
-    // Global phase i^num_y from Y factors.
-    double ph_re = 1.0, ph_im = 0.0;
-    switch (num_y & 3) {
-        case 0: ph_re =  1.0; ph_im =  0.0; break;
-        case 1: ph_re =  0.0; ph_im =  1.0; break;
-        case 2: ph_re = -1.0; ph_im =  0.0; break;
-        case 3: ph_re =  0.0; ph_im = -1.0; break;
-    }
-
-    // Accumulate <psi|P|psi> = sum_j conj(psi[j^flip]) * coeff(j) * psi[j].
-    // Hermitian P => imaginary part is numerical noise; return the real part.
-    const std::int64_t idim = static_cast<std::int64_t>(dim_);
-    double acc_re = 0.0;
-    for (std::int64_t jj = 0; jj < idim; ++jj) {
-        const StateIndex j  = static_cast<StateIndex>(jj);
-        const StateIndex jp = j ^ flip_mask;
-        const int parity = __builtin_popcountll(
-            static_cast<std::uint64_t>(j & sign_mask)) & 1;
-        const double sgn  = parity ? -1.0 : 1.0;
-        const double c_re = sgn * ph_re;
-        const double c_im = sgn * ph_im;
-        const double bj_re = re[j],   bj_im = im[j];
-        const double cp_re = re[jp],  cp_im = -im[jp];  // conj(psi[jp])
-        const double t1_re = c_re * bj_re - c_im * bj_im;
-        const double t1_im = c_re * bj_im + c_im * bj_re;
-        acc_re += cp_re * t1_re - cp_im * t1_im;
-    }
-    return acc_re;
+    return qplayer::detail::pauli_expectation(
+        view.re, view.im, dim_,
+        qplayer::detail::compile_pauli(pauli, num_qubits_));
 }
 
 // nonzero_amplitudes() — enumerate (index, amplitude) pairs with |amp| >=
@@ -1192,6 +1305,25 @@ FullStateGpuBackend::nonzero_amplitudes() const {
     return result;
 }
 
+// Single amplitude. Delegates to the host download like
+// nonzero_amplitudes() does — GPU statevectors are <=30 qubits so a D2H copy is
+// affordable, and a device-side single-element read would need its own kernel.
+std::complex<double> FullStateGpuBackend::amplitude(StateIndex basis) const {
+    auto* self = const_cast<FullStateGpuBackend*>(this);
+    const StateVector sv = self->get_statevector();
+    if (basis >= sv.size()) {
+        throw SimulatorError{"FullStateGPU", "amplitude basis index out of range"};
+    }
+    return sv[static_cast<std::size_t>(basis)];
+}
+
+// TensorNetwork-only.
+std::vector<std::complex<double>>
+FullStateGpuBackend::reduced_density_matrix(std::vector<QubitIndex>) const {
+    throw SimulatorError{"FullStateGPU",
+        "reduced_density_matrix is TensorNetwork-only; partial-trace get_statevector() instead"};
+}
+
 // num_qubits() — active qubit count (0 before init_state). Used by
 // dump_statevector() to format bitstring width without densifying.
 QubitIndex FullStateGpuBackend::num_qubits() const {
@@ -1220,6 +1352,16 @@ std::uint32_t FullStateGpuBackend::max_qubits(detail::WorkingSet ws) const noexc
 }
 void FullStateGpuBackend::set_seed(std::uint64_t seed) {
     master_seed_ = seed;  // store even in CPU-only build (header access)
+    has_seed_    = true;  // any value, 0 included
+}
+
+// Same contract as the CUDA build: store the config. In a CPU-only
+// build this backend cannot run at all, but the symbol must exist for the vtable
+// to link and the stored values keep the two builds' state identical.
+void FullStateGpuBackend::set_fusion(bool enable, std::uint32_t max_width) {
+    fusion_enabled_   = enable;
+    fusion_max_width_ = std::min(max_width == 0 ? 1u : max_width,
+                                 kMaxGpuFusionWidth);
 }
 
 // Gate-application stubs (CPU-only build; GPU path not compiled).
@@ -1250,6 +1392,18 @@ double FullStateGpuBackend::expectation_value(std::string_view /*p*/) {
 }
 std::vector<std::pair<StateIndex, std::complex<double>>>
 FullStateGpuBackend::nonzero_amplitudes() const {
+    throw NotImplementedError{"FullStateGPU",
+        "GPU backend not built (QPLAYER_BUILD_GPU=OFF)"};
+}
+
+// GPU build disabled — same stub policy as the rest of this variant.
+std::complex<double> FullStateGpuBackend::amplitude(StateIndex) const {
+    throw NotImplementedError{"FullStateGPU",
+        "GPU backend not built (QPLAYER_BUILD_GPU=OFF)"};
+}
+
+std::vector<std::complex<double>>
+FullStateGpuBackend::reduced_density_matrix(std::vector<QubitIndex>) const {
     throw NotImplementedError{"FullStateGPU",
         "GPU backend not built (QPLAYER_BUILD_GPU=OFF)"};
 }
@@ -1296,7 +1450,7 @@ void FullStateGpuBackend::apply_op(const Op& op) {
 }
 
 // apply_idle() — Phase 8 slot for Amplitude Damping + Dephasing Kraus.
-// No state change in.
+// No state change.
 void FullStateGpuBackend::apply_idle(const IdleOp& /*op*/) {
 }
 

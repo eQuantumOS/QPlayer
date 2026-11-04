@@ -1,20 +1,22 @@
-// alap_schedule.cpp — ALAPSchedulePass implementation (,
-// supersedes deferral). Schedules the circuit into time slots from the
-// per-gate durations stamped by DurationAnnotationPass, then materialises each
-// qubit's idle windows as IdleOp nodes — the Qiskit ALAPScheduleAnalysis +
-// PadDelay idiom in one pass. This replaces the per-gate IdleNoiseInserterPass
-// in the device-noise pipeline: gates that run in parallel share a time slot, so
-// a bystander qubit idles once for the slot span instead of once per foreign
-// gate (which double-counted idle in deep parallel circuits — sc17-willow d=3
-// measured a 5.0x inflation of the per-cycle logical error, 68% of it idle).
-//
-// Model: a list schedule assigns each op a start = max over its qubits of their
-// current free time (ASAP); the op occupies [start, start+duration]. A qubit's
-// idle gap before an op it joins, and its trailing gap up to a barrier / the
-// circuit makespan, each become one IdleOp{q, gap}. Barriers (and the circuit
-// end) are full synchronisation points. Gates without a duration contribute no
-// time, so an untimed circuit schedules to makespan 0 and no idle is inserted
-// (limitation preserved: idle needs device durations).
+/// @file alap_schedule.cpp
+/// @brief ALAPSchedulePass implementation (,
+///
+/// supersedes deferral). Schedules the circuit into time slots from the
+/// per-gate durations stamped by DurationAnnotationPass, then materialises each
+/// qubit's idle windows as IdleOp nodes — the Qiskit ALAPScheduleAnalysis +
+/// PadDelay idiom in one pass. This replaces the per-gate IdleNoiseInserterPass
+/// in the device-noise pipeline: gates that run in parallel share a time slot, so
+/// a bystander qubit idles once for the slot span instead of once per foreign
+/// gate (which double-counted idle in deep parallel circuits — sc17-willow d=3
+/// measured a 5.0x inflation of the per-cycle logical error, 68% of it idle).
+///
+/// Model: a list schedule assigns each op a start = max over its qubits of their
+/// current free time (ASAP); the op occupies [start, start+duration]. A qubit's
+/// idle gap before an op it joins, and its trailing gap up to a barrier / the
+/// circuit makespan, each become one IdleOp{q, gap}. Barriers (and the circuit
+/// end) are full synchronisation points. Gates without a duration contribute no
+/// time, so an untimed circuit schedules to makespan 0 and no idle is inserted
+/// (limitation preserved: idle needs device durations).
 
 #include "transpiler/passes/scheduling/alap_schedule.hpp"
 

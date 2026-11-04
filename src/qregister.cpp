@@ -1,20 +1,23 @@
-// qregister.cpp — Phase 0-S implementation of the sole user-facing entry
-// point.
-//
-// Phase 0-S responsibilities:
-//   1. Construct the backend via make_backend() and bind it to the Interactive
-//      member. Backend constructors are trivial (no resource allocation), so
-//      this path stays exception-free even though every prepare/execute call
-//      later throws NotImplementedError.
-// 2. Provide trivial seed accessors. std::random_device seeds
-//      master_seed_ on construction; set_seed() overrides it explicitly.
-//   3. Forward every Phase-3+ API to NotImplementedError with the appropriate
-//      phase tag so callers and Python bindings see a uniform stub message.
-//   4. sim_type()/result()/gpu_available() are real because tests can inspect
-//      them right away.
+/// @file qregister.cpp
+/// @brief Phase 0-S implementation of the sole user-facing entry
+///
+/// point.
+///
+/// Phase 0-S responsibilities:
+/// 1. Construct the backend via make_backend() and bind it to the Interactive
+/// member. Backend constructors are trivial (no resource allocation), so
+/// this path stays exception-free even though every prepare/execute call
+/// later throws NotImplementedError.
+/// 2. Provide trivial seed accessors. std::random_device seeds
+/// master_seed_ on construction; set_seed() overrides it explicitly.
+/// 3. Forward every Phase-3+ API to NotImplementedError with the appropriate
+/// phase tag so callers and Python bindings see a uniform stub message.
+/// 4. sim_type()/result()/gpu_available() are real because tests can inspect
+/// them right away.
 
 #include "qregister.hpp"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
@@ -58,7 +61,7 @@ bool seed_from_env(std::uint64_t& out) {
 }  // namespace
 
 QRegister::QRegister(SimType sim_type, ProcType proc)
-    : backend_(make_backend(sim_type, proc, /*device_model=*/nullptr)),
+    : backend_(make_backend(sim_type, proc)),
       sim_type_(sim_type),
       proc_type_(proc) {
     // Seed bootstrap. Priority: QPLAYER_SEED env > random_device.
@@ -84,6 +87,7 @@ QRegister::QRegister(SimType sim_type, ProcType proc)
     // we bind the backend pointer here. Interactive keeps a non-owning
     // pointer — the unique_ptr above owns the storage.
     interactive.bind_backend(backend_.get());
+    interactive.bind_owner(this);
 
     // Seed the backend with the resolved master seed so the interactive path is
     // reproducible from construction even when set_seed() is never called (the
@@ -98,7 +102,7 @@ QRegister::~QRegister() = default;
 // ── Device model ingestion ───────
 // Loads the device JSON, stores it as a member for transpile() fallback
 // then ingests T1/T2 relaxation into the NoiseModel so
-// IdleNoiseInserterPass can build per-qubit Kraus channels.
+// ALAPSchedulePass can build per-qubit Kraus channels.
 void QRegister::load_device_model(std::string_view json_path) {
     device_model_ = std::make_unique<DeviceModel>(
         DeviceModel::from_json_file(std::string(json_path)));
@@ -139,7 +143,7 @@ Circuit QRegister::transpile(Circuit          circuit,
 }
 
 // ── Run (Batch execution) ──────────────────────────────────────
-// Propagates the master seed and runtime fusion config to
+// Propagates the master seed and runtime fusion config
 // the backend, then runs the / pipeline. The returned
 // Result is cached so result() can re-expose it. NoiseModel is forwarded only
 // when set; FullState ignores it until Phase 8.
@@ -149,7 +153,7 @@ Result QRegister::run(const Circuit& circuit,
                       std::uint32_t  fusion_max_width) {
     const NoiseModel* noise = has_noise_model_ ? &noise_model_ : nullptr;
 
-    // Dense-space noise handoff. When transpile()
+    // Dense-space noise handoff (Consequences). When transpile()
     // truncated the circuit onto a dense [0,k) qubit range, its operands are
     // dense but noise_model_ is keyed by physical qubit. Project the model into
     // dense space so each qubit's device T1/T2 / gate error / readout binds to
@@ -164,6 +168,23 @@ Result QRegister::run(const Circuit& circuit,
 
     backend_->set_seed(master_seed_);
     backend_->set_fusion(enable_fusion, fusion_max_width);
+
+    // Interventions address noise draws, so they need a noise model and a backend
+    // that runs noise trajectories. FullState GPU needs no check:
+    // it hands every noisy circuit to the CPU backend below.
+    if (!noise_interventions_.empty()) {
+        if (noise == nullptr) {
+            throw SimulatorError{std::string(backend_->name()),
+                "noise interventions need a noise model: without one a trajectory "
+                "makes no noise draw to intervene on"};
+        }
+        if (sim_type_ == SimType::SparseState) {
+            throw SimulatorError{"SparseState",
+                "noise interventions need a noise trajectory backend "
+                "(FullState CPU or TensorNetwork)"};
+        }
+    }
+    backend_->set_noise_interventions(noise_interventions_, noise_draw_ledger_);
 
     // Runtime GPU->CPU fallback. The GPU execute() handles only the
     // noiseless end-measure fast path; circuits it rejects (IfOp/noise/Reset/
@@ -180,6 +201,7 @@ Result QRegister::run(const Circuit& circuit,
         interactive.bind_backend(backend_.get());
         backend_->set_seed(master_seed_);
         backend_->set_fusion(enable_fusion, fusion_max_width);
+        backend_->set_noise_interventions(noise_interventions_, noise_draw_ledger_);
         return backend_->execute(circuit, nshots, noise);
     };
 
@@ -193,20 +215,31 @@ Result QRegister::run(const Circuit& circuit,
         last_result_ = fallback_to_cpu_and_run();
     }
 
-    // : accumulate pre-registered expectation targets into the
-    // Result. Fast path only in Phase 5 — after execute() the backend
-    // state is |ψ_final⟩, so backend_->expectation_value() is well-defined.
-    // Per-shot / noisy accumulation (nshot-average) is wired in Phase 8.
+    // : fill pre-registered expectation targets into the Result.
+    //
+    // Division of labour: on the stochastic paths ( trajectory,
+    // per-shot) each shot ends in a different state, so <P> is the nshot average
+    // and only the backend can accumulate it — it does so inside its shot loop
+    // and hands back a populated dict. On the fast path a single final
+    // state exists, so one evaluation here suffices. A non-empty dict is the
+    // signal that the backend already did the work.
     const auto& targets = circuit.expectation_targets();
-    if (!targets.empty()) {
-        if (!circuit.has_classical_control() && !has_noise_model_) {
+    if (!targets.empty() && last_result_.expectations_.empty()) {
+        if (!circuit.requires_per_shot() && !has_noise_model_) {
             for (const auto& pauli : targets) {
                 // QRegister is a friend of Result — fill the dict.
                 last_result_.expectations_[pauli] = backend_->expectation_value(pauli);
             }
         } else {
-            log::warn("expectation targets registered but accumulation on the "
-                      "per-shot/noisy path is deferred to Phase 8; skipped");
+            // Reached only by a backend whose stochastic path does not yet
+            // accumulate (SparseState / TensorNetwork). Reporting the last
+            // shot's value here would silently return a different quantity
+            // than the documented nshot average, so the dict
+            // is left empty and Result::expectation() throws.
+            log::warn(std::string("expectation targets registered but backend '") +
+                      std::string(backend_->name()) +
+                      "' does not accumulate them on the per-shot/noisy path; "
+                      "Result.expectation() will report them as unavailable");
         }
     }
     return last_result_;
@@ -218,7 +251,7 @@ const Result& QRegister::result() const {
 
 // ── State access ──────────────────
 // Thin delegation to the active backend. Per-backend support + error policy
-// (e.g. SparseState raw always throws SimulatorError, >MAX_STATEVECTOR_QUBITS
+// (e.g. SparseState raw always throws SimulatorError, >MAX_DENSE_EXPORT_QUBITS
 // AoS throws) lives in the backend (table).
 StateVector QRegister::get_statevector() const {
     return backend_->get_statevector();
@@ -250,6 +283,20 @@ QRegister::get_statevector_nonzero() const {
     return backend_->nonzero_amplitudes();
 }
 
+// Single amplitude. Pure delegation: the index convention is
+// the backend's, and routing it through here would only add a second place for
+// that convention to drift.
+std::complex<double> QRegister::amplitude(StateIndex basis) const {
+    return backend_->amplitude(basis);
+}
+
+// Reduced density matrix. TensorNetwork only; the other
+// backends throw with a pointer at get_statevector().
+std::vector<std::complex<double>>
+QRegister::reduced_density_matrix(std::vector<QubitIndex> qubits) const {
+    return backend_->reduced_density_matrix(std::move(qubits));
+}
+
 // Dump the current statevector in the oracle.data text format (
 // state-access family, nonzero-amplitudes rewrite). Per line:
 //   [P=%.6f] [%+.8f, %+.8f] |<bitstring>>
@@ -257,7 +304,7 @@ QRegister::get_statevector_nonzero() const {
 // acceptance runner's parse_data_file() reads the dump back unchanged. The
 // %.8f precision (1e-8 absolute) clears the per-amplitude 1e-7 tolerance.
 // Uses nonzero_amplitudes() + num_qubits() instead of get_statevector() to
-// avoid densifying — SparseState now works beyond MAX_STATEVECTOR_QUBITS=25.
+// avoid densifying — SparseState now works beyond MAX_DENSE_EXPORT_QUBITS=25.
 // Header trails the listing (same order as before; non-breaking).
 void QRegister::dump_statevector(std::ostream& os) const {
     const auto entries    = backend_->nonzero_amplitudes();
@@ -305,20 +352,144 @@ void QRegister::set_noise_model(const NoiseModel& model) {
     has_noise_model_ = true;
 }
 
+// noise_model() — read-only view. Deliberately does not touch has_noise_model_ so
+// verification harnesses can inspect the model without changing execution
+// routing.
+const NoiseModel& QRegister::noise_model() const {
+    return noise_model_;
+}
+
+// mutable_noise_model() — mutable access for registering manual channels on top
+// of a device model. Arms the noisy path on call (conservative: we do not track
+// whether the caller actually registered anything through the reference).
+NoiseModel& QRegister::mutable_noise_model() {
+    has_noise_model_ = true;
+    return noise_model_;
+}
+
+// The thread count the OpenMP runtime started with (OMP_NUM_THREADS or its own
+// default). Captured on first use, which is read before this call changes
+// anything, so it survives later set_omp_threads(n) calls. omp_get_max_threads()
+// alone cannot serve as "the default": after set_omp_threads(8) it returns 8, so
+// a subsequent restore would pin 8 forever instead of the original value.
+static int initial_omp_max_threads() {
+    static const int initial = omp_get_max_threads();
+    return initial;
+}
+
 // Sets the OpenMP thread count for the backend's parallel kernels.
-// n <= 0 restores OpenMP's default (omp_set_num_threads ignores non-positive on
-// some runtimes, so we clamp to >=1 and log the effective value).
+// n <= 0 restores the runtime's original default. The previous implementation
+// clamped to 1, which serialised every kernel — the exact opposite of the
+// documented contract and a silent ~100x slowdown on this class of machine
+// (audit #11). Passing a non-positive value to omp_set_num_threads() is
+// undefined, so the default is resolved explicitly rather than forwarded.
+// TensorNetwork noise route and truncation knobs. All three forward
+// to backend virtuals whose default implementations are no-ops, so the facade's
+// job is to name the route, reject a route it does not know, and say out loud
+// when the current backend cannot honour the call. Range validation stays with
+// the backend config types — duplicating the bounds
+// here would give two places to change when a ceiling moves.
+namespace {
+
+// The backend's own literal, not a new vocabulary: SimulatorError already
+// identifies backends by these strings.
+const char* sim_type_literal(SimType sim) {
+    switch (sim) {
+        case SimType::FullState:      return "FullState";
+        case SimType::SparseState:    return "SparseState";
+        case SimType::TensorNetwork:  return "TensorNetwork";
+    }
+    return "unknown";
+}
+
+// Warned per call rather than once per process: a sweep over backends should
+// hear it for each knob it set on the wrong one.
+void warn_knob_ignored(const char* what, SimType sim) {
+    log::warn(std::string(what) + " applies to the TensorNetwork backend only; "
+              "this QRegister holds " + sim_type_literal(sim) +
+              " and the call had no effect");
+}
+
+}  // namespace
+
+void QRegister::set_tn_noise_path(std::string_view path) {
+    // Validated before the backend check so a typo is caught even on a backend
+    // that would have ignored the value — otherwise the bug hides until someone
+    // runs the same script on TensorNetwork.
+    bool use_mpo = false;
+    if (path == "mc") {
+        use_mpo = false;
+    } else if (path == "mpo") {
+        use_mpo = true;
+    } else {
+        throw CircuitError{"set_tn_noise_path: unknown route '" + std::string(path) +
+                           "' (expected \"mc\" or \"mpo\")"};
+    }
+    if (sim_type_ != SimType::TensorNetwork) {
+        warn_knob_ignored("set_tn_noise_path", sim_type_);
+        return;
+    }
+    backend_->set_tn_use_mpo(use_mpo);
+}
+
+void QRegister::set_noise_interventions(std::vector<std::uint32_t> sites) {
+    std::sort(sites.begin(), sites.end());
+    sites.erase(std::unique(sites.begin(), sites.end()), sites.end());
+    noise_interventions_ = std::move(sites);
+}
+
+const std::vector<std::uint32_t>& QRegister::noise_interventions() const noexcept {
+    return noise_interventions_;
+}
+
+void QRegister::set_noise_draw_ledger(bool on) {
+    noise_draw_ledger_ = on;
+}
+
+void QRegister::set_mps_truncation(std::uint32_t max_bond, double cutoff) {
+    if (sim_type_ != SimType::TensorNetwork) {
+        warn_knob_ignored("set_mps_truncation", sim_type_);
+        return;
+    }
+    backend_->set_mps_truncation(max_bond, cutoff);
+}
+
+void QRegister::set_mpo_truncation(std::uint32_t max_bond, double cutoff) {
+    if (sim_type_ != SimType::TensorNetwork) {
+        warn_knob_ignored("set_mpo_truncation", sim_type_);
+        return;
+    }
+    backend_->set_mpo_truncation(max_bond, cutoff);
+}
+
 void QRegister::set_omp_threads(int n) {
-    const int threads = (n > 0) ? n : 1;
+    const int fallback = initial_omp_max_threads();  // read before we change it
+    const int threads  = (n > 0) ? n : fallback;
     omp_set_num_threads(threads);
-    log::info("OpenMP threads set to " + std::to_string(threads));
+    log::info("OpenMP threads set to " + std::to_string(threads) +
+              (n > 0 ? "" : " (OpenMP default restored)"));
+}
+
+// Reports the same verdict resolve_proc() acts on: GPU build + at least one
+// visible CUDA device (0914). The Phase 0-S placeholder returned a
+// hardcoded false long after the probe existed in factory.cpp, so this public
+// query answered the opposite of what the constructor had actually chosen —
+// ProcType::Auto selected GPU while gpu_available() said there was none
+// (audit #6 Context).
+// Permanent swap to a CPU FullState backend for Interactive. Mirrors
+// the run() fallback: rebuild, rebind, re-apply the seed, so every later
+// state access observes one backend and never a stale GPU state.
+void QRegister::switch_to_cpu_backend_for_interactive() {
+    log::warn("Interactive mode is CPU-only; switching the auto-selected GPU "
+              "backend to FullState CPU. Construct with "
+              "ProcType::CPU to select it explicitly.");
+    backend_ = make_backend(SimType::FullState, ProcType::CPU);
+    interactive.bind_backend(backend_.get());
+    backend_->set_seed(master_seed_);
 }
 
 bool QRegister::gpu_available() {
-    // Phase 0-S: no CUDA runtime probe yet (Phase 6 wires it up via
-    // cudaGetDeviceCount). The conservative default is false so call sites
-    // that gate on gpu_available() pick the CPU path during early bring-up.
-    return false;
+    return qplayer::detail::gpu_runtime_available();
 }
 
 SimType QRegister::sim_type() const {
@@ -331,7 +502,9 @@ SimType QRegister::sim_type() const {
 // Delegation means the answer tracks the actual backend instance: FullState CPU
 // reports the host peak budget, FullState GPU reports min(VRAM, host), and a GPU
 // request that fell back to CPU (0912) naturally yields the CPU value.
-// Sparse/TN return a dense-equivalent advisory (they hold far more sparsely).
+// Sparse and TN report their structural ceiling (128) instead: neither holds
+// 2^n amplitudes, so the dense budget the formula computes describes nothing
+// they do.
 std::uint32_t QRegister::max_qubits() const noexcept {
     return backend_->max_qubits(qplayer::detail::WorkingSet::Execute);
 }

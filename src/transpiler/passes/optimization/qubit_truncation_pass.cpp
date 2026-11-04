@@ -1,9 +1,11 @@
-// qubit_truncation_pass.cpp — QubitTruncationPass. Compacts
-// the physical qubits actually referenced by the circuit into a dense [0, k)
-// range, rewrites every op's qubit operands, reduces Circuit::num_qubits to k,
-// and stamps the dense->physical mapping into CircuitMetadata.qubit_truncation
-// for noise synthesis. No-op when the referenced qubits are already
-// the dense set [0, num_qubits).
+/// @file qubit_truncation_pass.cpp
+/// @brief QubitTruncationPass. Compacts
+///
+/// the physical qubits actually referenced by the circuit into a dense [0, k)
+/// range, rewrites every op's qubit operands, reduces Circuit::num_qubits to k,
+/// and stamps the dense->physical mapping into CircuitMetadata.qubit_truncation
+/// for noise synthesis. No-op when the referenced qubits are already
+/// the dense set [0, num_qubits).
 
 #include "transpiler/passes/optimization/qubit_truncation_pass.hpp"
 

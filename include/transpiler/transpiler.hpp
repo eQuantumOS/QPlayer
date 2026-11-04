@@ -1,7 +1,10 @@
-// transpiler.hpp — Facade behind QRegister::transpile().
-// Internally assembles a PassManager based on optimization_level and the
-// device_json / DeviceModel fallback. The Transpiler instance is lightweight
-// and constructed per call inside QRegister.
+/// @file transpiler.hpp
+/// @brief Facade behind QRegister::transpile().
+/// @ingroup transpiler
+///
+/// Internally assembles a PassManager based on optimization_level and the
+/// device_json / DeviceModel fallback. The Transpiler instance is lightweight
+/// and constructed per call inside QRegister.
 
 #pragma once
 
@@ -14,14 +17,16 @@ namespace qplayer {
 class DeviceModel;
 class NoiseModel;
 
+/// Single compilation entry point that assembles and runs the pass pipeline.
+/// @ingroup transpiler
 class Transpiler {
 public:
     Transpiler();
     ~Transpiler();
 
-    // Single compile entry point matching QRegister::transpile() signature
-    // device_model / noise_model are optional fallbacks
-    // used when device_json is empty / invalid.
+    /// Single compile entry point matching QRegister::transpile() signature
+    /// device_model / noise_model are optional fallbacks
+    /// used when device_json is empty / invalid.
     Circuit transpile(Circuit            circuit,
                       int                optimization_level = 1,
                       std::string_view   device_json        = "",

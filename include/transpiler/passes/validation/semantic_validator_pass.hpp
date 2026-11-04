@@ -1,14 +1,18 @@
-// semantic_validator_pass.hpp — IR-level opaque gate validator pass
-// (⓪).
-// Runs as the first pass in PassManager regardless of optimization_level
-// Distinct from the parser-level SemanticValidator
-// which validates QASM syntax; this pass validates the Circuit IR after
-// the QASM parse-and-build stage is complete.
-//
-// Invariant enforced: every GateOp with is_opaque==true must have a concrete
-// OpaqueDefinition body (UnitaryMatrix or KrausChannel) registered on the
-// Circuit — DeclarationOnly stubs are rejected here to prevent silent identity
-// or mis-dispatch in the backend.
+/// @file semantic_validator_pass.hpp
+/// @brief IR-level validator that rejects opaque gates lacking a concrete definition.
+/// @ingroup transpiler
+///
+/// IR-level opaque gate validator pass
+/// (⓪).
+/// Runs as the first pass in PassManager regardless of optimization_level
+/// Distinct from the parser-level SemanticValidator
+/// which validates QASM syntax; this pass validates the Circuit IR after
+/// the QASM parse-and-build stage is complete.
+///
+/// Invariant enforced: every GateOp with is_opaque==true must have a concrete
+/// OpaqueDefinition body (UnitaryMatrix or KrausChannel) registered on the
+/// Circuit — DeclarationOnly stubs are rejected here to prevent silent identity
+/// or mis-dispatch in the backend.
 
 #pragma once
 
@@ -18,6 +22,8 @@ namespace qplayer {
 
 class Circuit;
 
+/// First pass at every optimization level; enforces that each is_opaque GateOp carries a UnitaryMatrix or KrausChannel body.
+/// @ingroup transpiler
 class SemanticValidatorPass : public IPass {
 public:
     SemanticValidatorPass() = default;

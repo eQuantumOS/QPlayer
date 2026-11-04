@@ -20,9 +20,10 @@ There are two kinds of example:
 |------|----------|---------|
 | `run_qasm.cpp` | C++ | CLI: parse an OpenQASM v2 file → optional transpile → run → inspect (counts, statevector, expectation values, gate fusion, threads, backend, circuit diagram). Full public-surface tour. |
 | `run_qasm.py` | Python | Python twin of `run_qasm.cpp` — same flags, same output, plus `--draw-image` (matplotlib). |
-| `python_demo.py` | Python | Build circuits **in code** with the native `Circuit` builder (`circ.h(0).cx(0,1)`), run on FullState CPU, read counts. Bell / GHZ(5) / biased qubit / expectation value. |
-| `noise_demo.py` | Python | One case per noise channel (..07) + a combined case + a device-noise case from a JSON string. Runs each circuit ideal vs. noisy and prints the two distributions side by side. |
-| `estimator_demo.py` | Python | Qiskit-compatible primitives: `Observable` (weighted Pauli sum), `Estimator` (exact `<H>`), `Sampler` (counts). Bell energy + a mini VQE energy sweep. |
+| `python_demo.py` | Python | Build circuits **in code** with the native `Circuit` builder (`circ.h(0).cx(0,1)`), run, read counts. Bell / GHZ(5) / biased qubit / expectation value. `--backend` / `--proc` select the simulator. |
+| `noise_demo.cpp` | C++ | One case per noise channel (..07) + a combined case + a device-noise case from a JSON string. Runs each circuit ideal vs. noisy and prints the two distributions side by side. `--backend` / `--proc` select the simulator. |
+| `noise_demo.py` | Python | Python twin of `noise_demo.cpp` — same nine cases, same shots/seed, byte-identical output. |
+| `estimator_demo.py` | Python | Qiskit-compatible primitives: `Observable` (weighted Pauli sum), `Estimator` (exact `<H>`), `Sampler` (counts). Bell energy + a mini VQE energy sweep. `--backend` / `--proc` select the simulator. |
 | `qiskit_plugin_demo.py` | Python | QPlayer as a **Qiskit backend** — `transpile(qc, backend) + backend.run()`, `BackendSamplerV2`, `BackendEstimatorV2`. Circuits stay 100% pure Qiskit. |
 | `pennylane_plugin_demo.py` | Python | QPlayer as a **PennyLane device** (`qml.device("qplayer.qubit", ...)`) — sampling, VQE `<H>`, parameter-shift gradient. QNodes stay pure PennyLane. |
 | `benchmarks/performance/` | Python | Standalone harness (`comparison.py`) that times the same QASM circuit on QPlayer vs. Qiskit / Cirq / cuQuantum. See its own README. |
@@ -37,20 +38,24 @@ measurement runners, not part of the CTest suite.
 
 ## 2. C++ — Compile & Run
 
-The C++ example is **not** built by default. Enable it with the CMake option
-`QPLAYER_BUILD_EXAMPLES=ON`; it links the `qplayer_core` static library.
+The C++ examples are **not** built by default. Enable them with the CMake option
+`QPLAYER_BUILD_EXAMPLES=ON`; they link the `qplayer_core` static library.
 
 ```bash
 # From the repository root
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DQPLAYER_BUILD_EXAMPLES=ON
 cmake --build build --target run_qasm
+cmake --build build --target noise_demo
 ```
 
-The executable lands at `build/examples/run_qasm`.
+The executables land at `build/examples/run_qasm` and `build/examples/noise_demo`.
 
 ```bash
 # Bell circuit, 1000 shots, fixed seed
 ./build/examples/run_qasm tests/data/qasm/bell.qasm --shots 1000 --seed 1
+
+# Every noise channel, ideal vs. noisy, on the MPS backend
+./build/examples/noise_demo --backend tn
 ```
 
 When `QPLAYER_BUILD_TESTS=ON` (the default), the example is also registered as
@@ -79,6 +84,19 @@ exercises it automatically.
 **Exit codes** (so shell callers can branch): `0` OK · `1` parse/circuit/verify
 failure · `2` bad command line · `3` unsupported backend / feature.
 
+### CLI options (`noise_demo.cpp` / `noise_demo.py`)
+
+Both twins take the same two flags and print the same output.
+
+| Option | Description |
+|--------|-------------|
+| `--backend NAME` | `fullstate` \| `tn` (default `fullstate`). `sparse` parses but **exits 3** with a reason: SparseState is noiseless by construction, so it has nothing to demonstrate here. It stays a valid value so that naming an existing backend stays distinguishable from a typo — exit `3` unsupported vs. exit `2` bad command line |
+| `--proc PROC` | `cpu` \| `gpu` \| `auto` processor (default `cpu`). FullState honours all three — the GPU noisy path routes Kraus application through the host; `tn` accepts an explicit `gpu` to offload SVD and stays on CPU under `auto` |
+| `-h`, `--help` | show help |
+
+Shots (8192) and seed (42) are fixed so the two twins stay byte-identical and
+the distributions are comparable across backends.
+
 ---
 
 ## 3. Python — Run
@@ -98,7 +116,10 @@ Then run any demo:
 
 ```bash
 python examples/python_demo.py
+python examples/python_demo.py --backend sparse
+python examples/estimator_demo.py --backend tn
 python examples/noise_demo.py
+python examples/noise_demo.py --backend tn
 python examples/run_qasm.py tests/data/qasm/bell.qasm --shots 1000 --seed 1
 python examples/run_qasm.py tests/data/qasm/bell.qasm --interactive --seed 1
 python examples/run_qasm.py tests/data/qasm/bell.qasm --draw
@@ -137,6 +158,10 @@ The core import and `Circuit.draw(output="text")` never need any extra.
 - **Native builder vs. QASM**: use `python_demo.py` as the template for building
   circuits programmatically; use `run_qasm.{cpp,py}` when you already have QASM
   text/files.
+- **Same flags everywhere**: `--backend` / `--proc` mean the same thing in
+  `run_qasm.{cpp,py}`, `python_demo.py`, `estimator_demo.py`, and
+  `noise_demo.{cpp,py}`, so the same circuit can be walked across backends
+  without changing any other option.
 - **Bundled circuits** for quick experiments live in
   [`tests/data/qasm/`](../tests/data/qasm/) (e.g. `bell.qasm`, `ghz_5.qasm`,
   `qft_4.qasm`).

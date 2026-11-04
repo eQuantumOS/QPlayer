@@ -1,5 +1,5 @@
 {
-  "_comment": "oracle_10.qasm expected values. 10-qubit dense oracle circuit (~120 ops, all qelib1.inc gates incl. ch/crz/cu1/cu3/ccx introduced by). Verification compares QRegister::get_statevector() against the inlined 1024 expected_amplitudes array element-by-element. Array index = basis-state index where bitstring = MSB->LSB (q[9]q[8]...q[1]q[0]). Tolerance follows the.data file's 6-decimal precision (~5e-7 round-off per amplitude).",
+  "_comment": "oracle_10.qasm expected values. 10-qubit dense oracle circuit (~120 ops, all qelib1.inc gates incl. ch/crz/cu1/cu3/ccx introduced). Verification compares QRegister::get_statevector() against the inlined 1024 expected_amplitudes array element-by-element. Array index = basis-state index where bitstring = MSB->LSB (q[9]q[8]...q[1]q[0]). Tolerance follows the.data file's 6-decimal precision (~5e-7 round-off per amplitude).",
   "qasm_file": "oracle_10.qasm",
   "phase_gate": "Phase 5",
   "kind": "statevector_dump",

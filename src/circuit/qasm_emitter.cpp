@@ -1,21 +1,23 @@
-// qasm_emitter.cpp -- Circuit -> OpenQASM v2 text emission.
-// Implements emit_qasm_v2(const Circuit&) used by Circuit::to_qasm().
-//
-// Emission rules:
-//   * Header:   OPENQASM 2.0;
-//               include "qelib1.inc";
-//   * Qubits:   qreg q[n];
-//   * Cubits:   creg <name>[<width>];   (one line per ClassicalRegister)
-//   * Opaque:   opaque <name> q1, ..., qk;   (matrix body cannot be expressed
-//               in QASM v2; we emit a comment noting the bypass.)
-//   * Gates:    h q[i]; / rx(theta) q[i]; / cx q[a], q[b]; ...
-//   * Measure:  measure q[i] -> <reg>[<offset>];   (global cubit decoded
-// back into the owning register via offsets.)
-//   * Barrier:  barrier q[a], q[b]; / barrier;     (empty list -> bare)
-//   * Reset:    reset q[i];
-//   * IfOp:     if (<reg>==<value>) <body-gate>;
-// * IdleOp: omitted (-- no QASM v2 representation).
-//   * Kraus opaque: CircuitError throw (lossless round-trip impossible).
+/// @file qasm_emitter.cpp
+/// @brief -- Circuit -> OpenQASM v2 text emission.
+///
+/// Implements emit_qasm_v2(const Circuit&) used by Circuit::to_qasm().
+///
+/// Emission rules:
+/// * Header:   OPENQASM 2.0;
+/// include "qelib1.inc";
+/// * Qubits:   qreg q[n];
+/// * Cubits:   creg \<name\>[\<width\>];   (one line per ClassicalRegister)
+/// * Opaque:   opaque \<name\> q1, ..., qk;   (matrix body cannot be expressed
+/// in QASM v2; we emit a comment noting the bypass.)
+/// * Gates:    h q[i]; / rx(theta) q[i]; / cx q[a], q[b]; ...
+/// * Measure:  measure q[i] -> \<reg\>[\<offset\>];   (global cubit decoded
+/// back into the owning register via offsets.)
+/// * Barrier:  barrier q[a], q[b]; / barrier;     (empty list -> bare)
+/// * Reset:    reset q[i];
+/// * IfOp:     if (\<reg\>==\<value\>) <body-gate>;
+/// * IdleOp: omitted (-- no QASM v2 representation).
+/// * Kraus opaque: CircuitError throw (lossless round-trip impossible).
 
 #include "circuit/circuit.hpp"
 

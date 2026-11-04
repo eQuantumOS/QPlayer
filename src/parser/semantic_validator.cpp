@@ -1,15 +1,17 @@
-// semantic_validator.cpp — AST-level semantic validator for OpenQASM v2
-// See header for full responsibility list.
-//
-// One-pass forward-only validation: QASM v2 requires declarations before use
-// so we register symbols as we encounter declaration statements and
-// validate call/reference sites immediately afterwards.
-//
-// Lookup precedence for gate names:
-//   1. user_gates_ — user-defined `gate` bodies shadow standard names.
-//   2. opaques_    — opaque declarations.
-//   3. kQelib1Signatures — built-in U/CX + 25 qelib1 gates.
-// Undeclared names after all three lookups → QASMParseError.
+/// @file semantic_validator.cpp
+/// @brief AST-level semantic validator for OpenQASM v2
+///
+/// See header for full responsibility list.
+///
+/// One-pass forward-only validation: QASM v2 requires declarations before use
+/// so we register symbols as we encounter declaration statements and
+/// validate call/reference sites immediately afterwards.
+///
+/// Lookup precedence for gate names:
+/// 1. user_gates_ — user-defined `gate` bodies shadow standard names.
+/// 2. opaques_    — opaque declarations.
+/// 3. kQelib1Signatures — built-in U/CX + 25 qelib1 gates.
+/// Undeclared names after all three lookups → QASMParseError.
 
 #include "parser/detail/semantic_validator.hpp"
 #include "error.hpp"

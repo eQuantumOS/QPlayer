@@ -10,7 +10,7 @@
 // during development and are anchored here as regression guards.
 //
 // oracle_20.qasm uses whole-register gate syntax ("h q;" without index), now
-// supported via broadcast semantics (OpenQASM v2). The circuit parses to
+// supported via broadcast semantics (OpenQASM v2). The circuit parses
 // 275 ops and transpile level 1 does not reduce it (no adjacent inverse pairs).
 //
 // QASM file paths use the QPLAYER_ACCEPTANCE_DATA_DIR compile-time macro
@@ -126,7 +126,7 @@ TEST(TranspileAcceptanceQasm, Oracle10_Level1_NoReduction) {
 }
 
 // ── Case 6: oracle_20.qasm — uses whole-register syntax "h q;" (without index).
-// Broadcast semantics (OpenQASM v2) expand "h q;" with qreg q[20] to
+// Broadcast semantics (OpenQASM v2) expand "h q;" with qreg q[20]
 // 20 individual H gates. Measured: before=275 ops, after=275 ops.
 // Level-1 transpile does not reduce this circuit (no adjacent inverse pairs).
 

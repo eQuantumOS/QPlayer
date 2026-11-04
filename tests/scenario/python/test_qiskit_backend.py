@@ -3,7 +3,7 @@
 Verifies transpile(qc, backend=...) + backend.run().result() and that the result
 counts bit order matches Qiskit's convention (compared against Aer when present).
 
-    python -m unittest tests.python.test_qiskit_backend -v
+    python -m unittest tests.scenario.python.test_qiskit_backend -v
 """
 import os
 import sys

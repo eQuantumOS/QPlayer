@@ -1,9 +1,11 @@
-// coupling_validator.cpp — CouplingValidatorPass implementation
-// Verification-only pass: scans every two-qubit GateOp and throws
-// ConnectivityError when its (physical) operand pair is absent from the device
-// coupling map. transpile() runs it after routing (⑤ verify) so it is
-// normally a safety net confirming SwapRouterPass honoured the coupling
-// constraints; it also rejects circuits whose violations routing did not fix.
+/// @file coupling_validator.cpp
+/// @brief CouplingValidatorPass implementation (
+///
+///). Verification-only pass: scans every two-qubit GateOp and throws
+/// ConnectivityError when its (physical) operand pair is absent from the device
+/// coupling map. transpile() runs it after routing (⑤ verify) so it is
+/// normally a safety net confirming SwapRouterPass honoured the coupling
+/// constraints; it also rejects circuits whose violations routing did not fix.
 
 #include "transpiler/passes/validation/coupling_validator.hpp"
 

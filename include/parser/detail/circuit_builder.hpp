@@ -1,24 +1,27 @@
-// circuit_builder.hpp — AST → Circuit IR transformation.
-// Consumes a validated Program AST (SemanticValidator output) and emits a
-// fully-constructed Circuit object. Sits at the end of the parser pipeline:
-//   Lexer → AstParser → SemanticValidator → CircuitBuilder.
-//
-// Design SSOT:.
-//
-// Error handling:
-//   QASMParseError  — expression evaluation failures (unknown name, div/0,
-//                     sqrt of negative, ln of non-positive) with (file,line,col).
-//   CircuitError    — propagated unchanged from Circuit API violations.
-//
-// Inline depth limit: user-defined gate bodies are expanded recursively up to
-// kMaxInlineDepth levels (5). Deeper nesting throws QASMParseError to avoid
-// unbounded stack growth from mutually-recursive gate definitions that slip
-// past the SemanticValidator.
-//
-// if-body restriction: only GateCall bodies are supported inside IfStmt at
-// Phase 3. Measure or Reset as if-body throws CircuitError because the Circuit
-// API's if_then() accepts only GateOp ( allows the full
-// set — tracked as a post-Phase-3 open item in).
+/// @file circuit_builder.hpp
+/// @brief AST → Circuit IR transformation.
+/// @ingroup frontend
+///
+/// Consumes a validated Program AST (SemanticValidator output) and emits a
+/// fully-constructed Circuit object. Sits at the end of the parser pipeline:
+/// Lexer → AstParser → SemanticValidator → CircuitBuilder.
+///
+/// Design SSOT:.
+///
+/// Error handling:
+/// QASMParseError  — expression evaluation failures (unknown name, div/0,
+/// sqrt of negative, ln of non-positive) with (file,line,col).
+/// CircuitError    — propagated unchanged from Circuit API violations.
+///
+/// Inline depth limit: user-defined gate bodies are expanded recursively up to
+/// kMaxInlineDepth levels (5). Deeper nesting throws QASMParseError to avoid
+/// unbounded stack growth from mutually-recursive gate definitions that slip
+/// past the SemanticValidator.
+///
+/// if-body restriction: only GateCall bodies are supported inside IfStmt at
+/// Phase 3. Measure or Reset as if-body throws CircuitError because the Circuit
+/// API's if_then() accepts only GateOp ( allows the full
+/// set — tracked as a post-Phase-3 open item).
 
 #pragma once
 
@@ -32,6 +35,7 @@
 
 namespace qplayer::detail {
 
+/// Lowers a validated AST into the Circuit IR, expanding gate definitions.
 class CircuitBuilder {
 public:
     // Constructs the builder with the source label used in QASMParseError
@@ -47,15 +51,15 @@ public:
 private:
     // ── Register resolution ───────────────────────────────────────────────────
 
-    // Tracks one quantum register: its name, global qubit offset, and size.
-    // offset + index yields the global QubitIndex used by Circuit builders.
+    /// Tracks one quantum register: its name, global qubit offset, and size.
+    /// offset + index yields the global QubitIndex used by Circuit builders.
     struct QregInfo {
         std::string  name;
         QubitIndex   offset = 0;
         QubitIndex   size   = 0;
     };
 
-    // Tracks one classical register offset for cubit global-index resolution.
+    /// Tracks one classical register offset for cubit global-index resolution.
     struct CregInfo {
         std::string       name;
         ClassicalBitIndex offset = 0;

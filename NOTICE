@@ -1,4 +1,4 @@
-QPlayer v5-Caracal — C++17 High-Performance Quantum Circuit Emulator
+QPlayer v6-Lynx — C++17 High-Performance Quantum Circuit Emulator
 Copyright 2026 Electronics and Telecommunications Research Institute (ETRI)
 
 This product is dual-licensed:
@@ -42,10 +42,14 @@ MKL is excluded because its
    Homepage : https://developer.nvidia.com/cuda-toolkit
    License  : NVIDIA Software License Agreement (proprietary; linked under
               the GPL v3 System Library Exception, GPL)
-   Use      : GPU backend (FullState GPU, TensorNetwork GPU). Used via cuBLAS
-              and cuSolver only — no cuTensorNet or cuQuantum dependency
-Required only when QPLAYER_ENABLE_CUDA=ON;
-              CPU-only builds do not link CUDA.
+   Use      : GPU backend (FullState GPU, TensorNetwork GPU). Linked against
+              the CUDA runtime (cudart), cuRAND (GPU Monte Carlo trajectory
+              PRNG) and cuSolver (TensorNetwork two-site SVD offload) only —
+              no cuBLAS, cuTensorNet or cuQuantum dependency (
+). Required only when the CMake option
+              QPLAYER_BUILD_GPU=ON (default OFF); CPU-only builds do not link
+              CUDA at all. No CUDA binary is redistributed with QPlayer — the
+              user installs the CUDA Toolkit separately.
 
 ================================================================================
 QASM Acceptance Test Vectors

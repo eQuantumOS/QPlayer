@@ -1,18 +1,23 @@
-// kraus_apply_2q.hpp — Monte Carlo application of a two-qubit (4x4) Kraus channel
-// to a SoA state vector. Header-only + detail-scoped so the
-// FullState CPU trajectory path and the GPU host-side Kraus path invoke the exact
-// same routine, guaranteeing CPU<->GPU statistical parity (contract).
-//
-// Algorithm mirrors the 1x1 (2x2) path in full_state_cpu.cpp:
-//   1. For each Kraus operator K_i compute p_i = ||K_i|psi>||^2 over all quads.
-//   2. Draw u ~ U[0,1) and pick the first operator whose cumulative p exceeds u.
-//   3. Apply the chosen operator in place and renormalise by sqrt(p_chosen).
-// Local bit convention: q0 = bit 0, q1 = bit 1, so the gathered amplitude index
-// is x = 2*bit(q1) + bit(q0) (matches ecr_matrix_data / depolarizing_2q_ops).
+/// @file kraus_apply_2q.hpp
+/// @brief Monte Carlo application of a two-qubit Kraus channel to a SoA state.
+/// @ingroup backend
+///
+/// Monte Carlo application of a two-qubit (4x4) Kraus channel
+/// to a SoA state vector. Header-only + detail-scoped so the
+/// FullState CPU trajectory path and the GPU host-side Kraus path invoke the exact
+/// same routine, guaranteeing CPU<->GPU statistical parity (contract).
+///
+/// Algorithm mirrors the 1x1 (2x2) path in full_state_cpu.cpp:
+/// 1. For each Kraus operator K_i compute p_i = ||K_i|psi>||^2 over all quads.
+/// 2. Draw u ~ U[0,1) and pick the first operator whose cumulative p exceeds u.
+/// 3. Apply the chosen operator in place and renormalise by sqrt(p_chosen).
+/// Local bit convention: q0 = bit 0, q1 = bit 1, so the gathered amplitude index
+/// is x = 2*bit(q1) + bit(q0) (matches ecr_matrix_data / depolarizing_2q_ops).
 
 #pragma once
 
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <random>
 #include <vector>
@@ -22,11 +27,15 @@
 
 namespace qplayer::detail {
 
-// Apply a 4x4 Kraus channel `ops` on qubits (q0, q1) to the SoA buffers.
-inline void apply_kraus_2q(double* re, double* im, StateIndex dim,
-                           QubitIndex q0, QubitIndex q1,
-                           const std::vector<UnitaryMatrix>& ops,
-                           std::mt19937_64& rng) {
+// Apply a 4x4 Kraus channel `ops` on qubits (q0, q1) to the SoA buffers, picking
+// the branch with the uniform `u` the caller already drew. Returns the branch.
+// The u-taking form lets the noise-site hook see the draw without
+// copying the RNG; the rng form below draws once and delegates, so its stream is
+// unchanged.
+inline std::size_t apply_kraus_2q_u(double* re, double* im, StateIndex dim,
+                                    QubitIndex q0, QubitIndex q1,
+                                    const std::vector<UnitaryMatrix>& ops,
+                                    double u) {
     const QubitIndex lo = q0 < q1 ? q0 : q1;
     const QubitIndex hi = q0 < q1 ? q1 : q0;
     const StateIndex lo_mask  = (StateIndex{1} << lo) - 1;
@@ -71,8 +80,6 @@ inline void apply_kraus_2q(double* re, double* im, StateIndex dim,
     }
 
     // Step 2-3: pick operator by cumulative probability (one draw, as the 2x2 path).
-    std::uniform_real_distribution<double> dist(0.0, 1.0);
-    const double u = dist(rng);
     double cumsum = 0.0;
     std::size_t chosen = 0;
     for (std::size_t ki = 0; ki < nops; ++ki) {
@@ -101,10 +108,20 @@ inline void apply_kraus_2q(double* re, double* im, StateIndex dim,
 
     // Renormalise by ||K_chosen|psi>|| = sqrt(p_chosen).
     const double p_chosen = probs[chosen];
-    if (p_chosen < 1e-15) return;
+    if (p_chosen < 1e-15) return chosen;
     const double inv_norm = 1.0 / std::sqrt(p_chosen);
     const std::int64_t idim = static_cast<std::int64_t>(dim);
     for (std::int64_t ii = 0; ii < idim; ++ii) { re[ii] *= inv_norm; im[ii] *= inv_norm; }
+    return chosen;
+}
+
+// Apply a 4x4 Kraus channel `ops` on qubits (q0, q1), drawing its one uniform from `rng`.
+inline std::size_t apply_kraus_2q(double* re, double* im, StateIndex dim,
+                                  QubitIndex q0, QubitIndex q1,
+                                  const std::vector<UnitaryMatrix>& ops,
+                                  std::mt19937_64& rng) {
+    std::uniform_real_distribution<double> dist(0.0, 1.0);
+    return apply_kraus_2q_u(re, im, dim, q0, q1, ops, dist(rng));
 }
 
 }  // namespace qplayer::detail

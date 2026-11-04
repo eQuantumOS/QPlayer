@@ -19,7 +19,11 @@
 #include <string>
 #include <vector>
 
+#include "backend/simulator_backend.hpp"  // SimType
+
 namespace qplayer::acceptance {
+
+using qplayer::SimType;
 
 enum class Status {
     PASS,             // expected_fail=false and result matched expectation
@@ -35,6 +39,13 @@ struct TestCase {
     bool        expected_fail;      // Phase 0-T initial: true for all 7
     std::string phase_gate;         // "Phase 4", "Phase 5", ... -- for cumulative tracking
     std::string label;              // e.g. "bell" -- for logs / cross-ref
+
+    // Backend the comparison runs on. The default keeps every historical row on
+    // the FullState reference path; tn_gate_cases() re-runs the TN-capable
+    // subset on TensorNetwork so the TN gate claim has an executing test
+    // rather than a written assertion. `counts_sparse` pins SparseState by kind
+    // and ignores this field.
+    SimType     sim = SimType::FullState;
 };
 
 class AcceptanceRunner {
@@ -72,5 +83,14 @@ std::vector<TestCase> default_phase0t_cases();
 // macro (or an env-var override -- see run_acceptance.cpp). Exposed only for
 // the CLI driver; library callers should construct TestCase paths directly.
 std::string resolve_data_path(const std::string& subdir, const std::string& basename);
+
+// The TN-capable subset of the acceptance circuits (7 of 9), pinned to
+// SimType::TensorNetwork — the Phase 9 gate, widened at Phase 10 (noisy_bell),
+// (compile_swap) and (oracle_10, once ccx gained a fixed
+// decomposition in MpsState::apply_3q). Two short of the default: sparse_100q
+// pins its own backend by kind, and oracle_20 runs but turns LOSSY at the
+// default bond cap because the decomposition inflates chi. See the definition
+// for the per-circuit reasoning.
+std::vector<TestCase> tn_gate_cases();
 
 }  // namespace qplayer::acceptance

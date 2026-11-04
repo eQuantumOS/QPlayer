@@ -2,7 +2,7 @@
 // (H then a CX chain) measured into a 5-bit register yields only |00000> and
 // |11111>, each ~0.5 (fast path). Migrated to TEST_BACKENDS
 // so distribution and expectation value are verified on both CPU and GPU.
-// .
+//
 
 #include "../../framework/test_case.hpp"
 #include "../../framework/assertions.hpp"

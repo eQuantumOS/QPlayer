@@ -1,28 +1,32 @@
-// partitioned_store.hpp — persistent, in-place, prime-modulo amplitude store for
-// the SparseState backend (Phase 8-E). Replaces the /0923
-// double-buffer store, which rebuilt a fresh store every gate (flatten snapshot
-// + T×P bucket matrix + P fresh maps + 2·S node churn + 4× peak memory —
-// verify-sparse 2026-07-23: cat_n35 22×, surface_d5 65× slower than the
-// ETRI-2021 generation).
-//
-// Design:
-// Partition key = idx % P (prime modulo, default P=1171). A prime modulus
-//     spreads the 2^k regularity of basis indices across shards, avoiding the
-// top-bit skew of. QPLAYER_SPARSE_PARTITIONS overrides P.
-// The store is sized ONCE (from init_state) and kept across gates; gates
-//     mutate amplitudes in place — no per-gate rebuild, no flatten.
-// Gate application is LOCK-FREE (4): STEP1 reads the store
-//     read-only (lower-representative rule → each pair once) and appends outputs
-//     to per-thread, per-TARGET-partition buckets (GateBuckets, sized once and
-//     reused); STEP2 merges each target partition from a single thread. No mutex
-//     (the earlier mutex+stage claim collapsed under 144-thread futex contention
-//     — surface_d5 1491s). Kernels live in sparse_state_backend.cpp.
-//
-// Reproducibility (retained): each output amplitude is a
-// fixed 2-term form produced exactly once, and the merge is a disjoint per-key
-// apply, so the state is bit-identical regardless of P, thread count, and
-// machine. All reductions feeding sampling/measurement go through
-// sorted_entries() (ascending StateIndex, deterministic parallel sort).
+/// @file partitioned_store.hpp
+/// @brief Persistent in-place prime-modulo amplitude store for SparseState.
+/// @ingroup backend
+///
+/// persistent, in-place, prime-modulo amplitude store for
+/// the SparseState backend (Phase 8-E). Replaces the /0923
+/// double-buffer store, which rebuilt a fresh store every gate (flatten snapshot
+/// + T×P bucket matrix + P fresh maps + 2·S node churn + 4× peak memory —
+/// verify-sparse 2026-07-23: cat_n35 22×, surface_d5 65× slower than the
+/// ETRI-2021 generation).
+///
+/// Design:
+/// Partition key = idx % P (prime modulo, default P=1171). A prime modulus
+/// spreads the 2^k regularity of basis indices across shards, avoiding the
+/// top-bit skew. QPLAYER_SPARSE_PARTITIONS overrides P.
+/// The store is sized ONCE (from init_state) and kept across gates; gates
+/// mutate amplitudes in place — no per-gate rebuild, no flatten.
+/// Gate application is LOCK-FREE (4): STEP1 reads the store
+/// read-only (lower-representative rule → each pair once) and appends outputs
+/// to per-thread, per-TARGET-partition buckets (GateBuckets, sized once and
+/// reused); STEP2 merges each target partition from a single thread. No mutex
+/// (the earlier mutex+stage claim collapsed under 144-thread futex contention
+/// — surface_d5 1491s). Kernels live in sparse_state_backend.cpp.
+///
+/// Reproducibility (retained): each output amplitude is a
+/// fixed 2-term form produced exactly once, and the merge is a disjoint per-key
+/// apply, so the state is bit-identical regardless of P, thread count, and
+/// machine. All reductions feeding sampling/measurement go through
+/// sorted_entries() (ascending StateIndex, deterministic parallel sort).
 
 #pragma once
 
@@ -44,9 +48,12 @@
 
 namespace qplayer {
 
-// std::hash is not specialised for unsigned __int128 in GCC libstdc++.
-// noexcept folding of the two 64-bit halves via golden-ratio multiplicative
-// mixing; noexcept lets the libstdc++ hashtable skip hash-code caching.
+/// Hash functor for 128-bit state indices.
+/// @ingroup backend
+///
+/// std::hash is not specialised for unsigned __int128 in GCC libstdc++.
+/// noexcept folding of the two 64-bit halves via golden-ratio multiplicative
+/// mixing; noexcept lets the libstdc++ hashtable skip hash-code caching.
 struct StateIndexHash {
     [[nodiscard]] std::size_t operator()(StateIndex idx) const noexcept {
         const auto lo = static_cast<std::uint64_t>(idx);
@@ -129,19 +136,26 @@ inline void parallel_sort_by_index(std::vector<Entry>& v) {
 
 }  // namespace detail
 
-// Per-thread gate output buckets, keyed by TARGET partition (4).
-// The lock-free gate kernel fills scratch[tid].set[q] / .del[q] during STEP1
-// (read-only on the store); merge then applies each target partition q from a
-// single thread. Persistent (sized once in configure, reused per gate) to avoid
-// per-gate allocation of T×P vectors.
+/// Per-partition scratch used while applying one gate.
+/// @ingroup backend
+///
+/// Per-thread gate output buckets, keyed by TARGET partition (4).
+/// The lock-free gate kernel fills scratch[tid].set[q] / .del[q] during STEP1
+/// (read-only on the store); merge then applies each target partition q from a
+/// single thread. Persistent (sized once in configure, reused per gate) to avoid
+/// per-gate allocation of T×P vectors.
 struct GateBuckets {
     std::vector<std::vector<std::pair<StateIndex, std::complex<double>>>> set;  // [target partition]
     std::vector<std::vector<StateIndex>>                                  del;  // [target partition]
 };
 
+/// Partitioned amplitude map mutated in place across gates, replacing the double-buffer store that rebuilt itself every gate.
+/// @ingroup backend
 class PersistentAmplitudeStore {
 public:
+    /// One partition's amplitude map, keyed by state index.
     using Shard = std::unordered_map<StateIndex, std::complex<double>, StateIndexHash>;
+    /// A single state index paired with its amplitude.
     using Entry = std::pair<StateIndex, std::complex<double>>;
 
     PersistentAmplitudeStore() : shards_(1) {}

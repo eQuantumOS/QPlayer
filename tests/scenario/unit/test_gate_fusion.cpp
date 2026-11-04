@@ -17,6 +17,8 @@
 //   MaxWidthRespected: all FusedGates have qubits.size() <= max_width.
 //   MaxWidth1: every gate is its own FusedGate when max_width=1.
 //   WindowSplitAccurate: a 3Q window split by max_width=2 still yields correct state.
+//   OverWidthClamped: fusion_max_width above kMaxFusionWidth is clamped, not
+// allowed to overrun the kernels' fixed stack scratch (audit #1).
 //
 // (Arrange/Act/Assert), (EXPECT_NEAR 1e-12 for exact).
 
@@ -71,7 +73,9 @@ public:
     // Apply a circuit unfused (path A) and fused (path B), then compare
     // every amplitude to within tol.
     void compare_unfused_vs_fused(const Circuit& circ, std::uint32_t max_width,
-                                   double tol = 1e-12) {
+                                   double tol = 1e-12,
+                                   const qplayer::detail::FusionCostModel& cost =
+                                       qplayer::detail::kCpuFusionCostModel) {
         const QubitIndex n = circ.num_qubits();
 
         // Path A: unfused.
@@ -86,7 +90,8 @@ public:
 
         // Path B: fused.
         backB->init_state(n);
-        const std::vector<FusedOp> prog = fuse_circuit(circ.ops(), max_width);
+        const std::vector<FusedOp> prog =
+            fuse_circuit(circ.ops(), max_width, circ.num_qubits(), cost);
         backB->apply_fused_program(prog);
         const StateVector svB = backB->get_statevector();
 
@@ -207,7 +212,7 @@ TEST_F(FusionFixture, BoundaryBarrier_PreventsMerge_BothSidesCorrect) {
     circ.h(0).barrier({0}).x(0);
 
     // Act: fuse with max_width=4.
-    const std::vector<FusedOp> prog = fuse_circuit(circ.ops(), 4);
+    const std::vector<FusedOp> prog = fuse_circuit(circ.ops(), 4, circ.num_qubits());
 
     // Assert: program contains at least 3 elements: FusedGate(H), Barrier, FusedGate(X).
     // The barrier must appear between two FusedGates.
@@ -234,7 +239,7 @@ TEST_F(FusionFixture, BoundaryMeasure_PreventsMerge_PassesThrough) {
     circ.h(0).measure(0, 0).h(1);
 
     // Act.
-    const std::vector<FusedOp> prog = fuse_circuit(circ.ops(), 4);
+    const std::vector<FusedOp> prog = fuse_circuit(circ.ops(), 4, circ.num_qubits());
 
     // Assert: MeasureOp is present in the output.
     bool found_measure = false;
@@ -255,7 +260,7 @@ TEST_F(FusionFixture, MaxWidthRespected_AllFusedGatesWithinWidth) {
         .cx(0, 1).cx(1, 2).cx(2, 3);
 
     // Act.
-    const std::vector<FusedOp> prog = fuse_circuit(circ.ops(), 2);
+    const std::vector<FusedOp> prog = fuse_circuit(circ.ops(), 2, circ.num_qubits());
 
     // Assert: no FusedGate has more than 2 qubits.
     for (const FusedOp& fop : prog) {
@@ -277,7 +282,7 @@ TEST_F(FusionFixture, MaxWidth1_EachGateOwnFusedGate_CorrectState) {
     circ.h(0).x(0).z(0);
 
     // Act.
-    const std::vector<FusedOp> prog = fuse_circuit(circ.ops(), 1);
+    const std::vector<FusedOp> prog = fuse_circuit(circ.ops(), 1, circ.num_qubits());
 
     // Assert: all elements are FusedGates, each with exactly 1 qubit.
     for (const FusedOp& fop : prog) {
@@ -359,7 +364,7 @@ TEST_F(FusionFixture, FusionEmptyCircuit_EmptyFusedProgram) {
     Circuit circ(2);
 
     // Act.
-    const std::vector<FusedOp> prog = fuse_circuit(circ.ops(), 4);
+    const std::vector<FusedOp> prog = fuse_circuit(circ.ops(), 4, circ.num_qubits());
 
     // Assert.
     EXPECT_EQ(prog.size(), static_cast<std::size_t>(0));
@@ -493,4 +498,283 @@ TEST_F(FusionFixture, ApplyFusedGate_VectorisedGemv_MatchesScalarReference) {
         EXPECT_NEAR(sv[i].real(), ref_re[i], 1e-10);
         EXPECT_NEAR(sv[i].imag(), ref_im[i], 1e-10);
     }
+}
+
+// ── Test: fusion_max_width above the supported cap is clamped ────────
+//
+// Audit #1: the GEMV kernels keep the local amplitude block in stack scratch
+// sized 1 << kMaxFusionWidth, but no code checked the width coming from
+// QRegister::run(..., fusion_max_width). A width >= 9 indexed past the scratch
+// and the process died with "stack smashing detected". fuse_circuit() now clamps.
+//
+// The circuit mirrors the reported repro (10 qubits: H on all, CX chain, T on all)
+// so a window would grow past the cap if nothing clamped it.
+
+TEST_F(FusionFixture, OverWidth_ClampedToCap_NoScratchOverrun) {
+    // Arrange: the audit repro circuit.
+    Circuit circ(10);
+    for (QubitIndex q = 0; q < 10; ++q) circ.h(q);
+    for (QubitIndex q = 0; q + 1 < 10; ++q) circ.cx(q, q + 1);
+    for (QubitIndex q = 0; q < 10; ++q) circ.t(q);
+
+    // Act: widths that previously smashed the stack.
+    for (std::uint32_t w : {std::uint32_t{9}, std::uint32_t{16},
+                            std::uint32_t{64}, ~std::uint32_t{0}}) {
+        const std::vector<FusedOp> prog = fuse_circuit(circ.ops(), w, circ.num_qubits());
+
+        // Assert: every FusedGate fits the scratch (k <= kMaxFusionWidth).
+        for (const FusedOp& fop : prog) {
+            if (std::holds_alternative<FusedGate>(fop)) {
+                const FusedGate& fg = std::get<FusedGate>(fop);
+                EXPECT_TRUE(fg.qubits.size() <= qplayer::detail::kMaxFusionWidth);
+            }
+        }
+    }
+}
+
+// A clamped run must still be numerically correct — the clamp only narrows the
+// window, so the fused result stays identical to the unfused reference.
+TEST_F(FusionFixture, OverWidth_ClampedRun_MatchesUnfused) {
+    Circuit circ(10);
+    for (QubitIndex q = 0; q < 10; ++q) circ.h(q);
+    for (QubitIndex q = 0; q + 1 < 10; ++q) circ.cx(q, q + 1);
+    for (QubitIndex q = 0; q < 10; ++q) circ.t(q);
+
+    // Width 9 was the first crashing value in the audit repro; 8 is the cap.
+    compare_unfused_vs_fused(circ, 9);
+    compare_unfused_vs_fused(circ, qplayer::detail::kMaxFusionWidth);
+}
+
+// ── Cost model: windows that do not pay for themselves pass through ─
+//
+// A dedicated controlled kernel only touches the subspace its controls select,
+// while a fused GEMV always sweeps the whole state. Absorbing a few controlled
+// gates therefore costs more than running them separately (measured q26: cx
+// 0.61x, ccx 0.55x — both losses, and q28_adder ran 26% slower with fusion on).
+// fuse_circuit() now weighs each closed window and emits the originals instead
+// when fusing would lose.
+
+namespace {
+
+// Count FusedGate vs passed-through GateOp elements of a fused program.
+struct ProgShape {
+    int fused = 0;
+    int passthrough = 0;
+};
+
+ProgShape shape_of(const std::vector<FusedOp>& prog) {
+    ProgShape s;
+    for (const FusedOp& fop : prog) {
+        if (std::holds_alternative<FusedGate>(fop))      ++s.fused;
+        else if (std::holds_alternative<GateOp>(fop))    ++s.passthrough;
+    }
+    return s;
+}
+
+}  // namespace
+
+TEST_F(FusionFixture, CostModel_GateWeights_MatchControlCount) {
+    // w(c) = 0.5 + 0.5 * 2^-c, from the fixed dim/2 scan plus the touched subspace.
+    // Gates come from a Circuit so every GateOp field is builder-initialised.
+    Circuit circ(3);
+    circ.h(0).cx(0, 1).ccx(0, 1, 2);
+
+    std::vector<double> w;
+    for (const Op& op : circ.ops()) {
+        w.push_back(qplayer::detail::gate_kernel_weight(std::get<GateOp>(op)));
+    }
+
+    EXPECT_EQ(w.size(), static_cast<std::size_t>(3));
+    EXPECT_NEAR(w[0], 1.000, 1e-12);   // H   — no control
+    EXPECT_NEAR(w[1], 0.750, 1e-12);   // CX  — one control
+    EXPECT_NEAR(w[2], 0.625, 1e-12);   // CCX — two controls
+}
+
+TEST_F(FusionFixture, CostModel_ControlledOnlyWindow_PassesThrough) {
+    // A CX chain fills a width-4 window with 3 gates: sum w = 2.25 against
+    // C(4) = 2.80, so none of them should be fused.
+    Circuit circ(12);
+    for (QubitIndex q = 0; q + 1 < 12; ++q) circ.cx(q, q + 1);
+
+    const ProgShape s = shape_of(fuse_circuit(circ.ops(), 4, circ.num_qubits()));
+
+    EXPECT_EQ(s.fused, 0);
+    EXPECT_EQ(s.passthrough, 11);
+}
+
+TEST_F(FusionFixture, CostModel_ToffoliOnlyWindow_PassesThrough) {
+    // Two CCX per width-4 window: sum w = 1.25, far below C(4) = 2.80.
+    Circuit circ(12);
+    for (QubitIndex q = 0; q + 2 < 12; ++q) circ.ccx(q, q + 1, q + 2);
+
+    const ProgShape s = shape_of(fuse_circuit(circ.ops(), 4, circ.num_qubits()));
+
+    EXPECT_EQ(s.fused, 0);
+    EXPECT_EQ(s.passthrough, 10);
+}
+
+TEST_F(FusionFixture, CostModel_SingleQubitWindow_StillFuses) {
+    // Four 1Q gates per width-4 window: sum w = 4.00 > C(4) = 2.80.
+    Circuit circ(12);
+    for (QubitIndex q = 0; q < 12; ++q) circ.h(q);
+
+    const ProgShape s = shape_of(fuse_circuit(circ.ops(), 4, circ.num_qubits()));
+
+    EXPECT_EQ(s.fused, 3);
+    EXPECT_EQ(s.passthrough, 0);
+}
+
+TEST_F(FusionFixture, CostModel_NarrowWindowWithControls_StillFuses) {
+    // The QFT shape: CX and RZ alternating on one qubit pair. The window stays
+    // width 2 (C(2) = 1.45) while the weight keeps accumulating, so this must
+    // keep fusing — a gate-type blacklist would wrongly reject it and give up
+    // the 3.16x measured on q21_qft.
+    Circuit circ(4);
+    for (int i = 0; i < 8; ++i) { circ.cx(0, 1); circ.rz(0.3, 1); }
+
+    const ProgShape s = shape_of(fuse_circuit(circ.ops(), 4, circ.num_qubits()));
+
+    EXPECT_EQ(s.fused, 1);
+    EXPECT_EQ(s.passthrough, 0);
+}
+
+TEST_F(FusionFixture, CostModel_PermissiveProfile_FusesEverything) {
+    // With a free window (alpha = beta = 0) every window pays for itself, so the
+    // same CX chain that passes through above is fused. This pins the behaviour
+    // change on the cost profile rather than on some unrelated new rejection.
+    Circuit circ(12);
+    for (QubitIndex q = 0; q + 1 < 12; ++q) circ.cx(q, q + 1);
+
+    const qplayer::detail::FusionCostModel free_window{0.0, 0.0};
+    const ProgShape s = shape_of(fuse_circuit(circ.ops(), 4, circ.num_qubits(), free_window));
+
+    EXPECT_TRUE(s.fused > 0);
+    EXPECT_EQ(s.passthrough, 0);
+}
+
+TEST_F(FusionFixture, CostModel_PassThroughPath_MatchesUnfused) {
+    // Correctness of the rejected path: a controlled-heavy circuit now runs its
+    // gates individually inside apply_fused_program, and must still agree with
+    // the plain unfused reference.
+    Circuit circ(5);
+    circ.h(0).h(1)
+        .cx(0, 1).ccx(0, 1, 2).cx(2, 3).ccx(1, 2, 3).cx(3, 4)
+        .t(4);
+
+    compare_unfused_vs_fused(circ, 4);
+}
+
+// ── Cost model: host window-composition term ───────────────────────
+//
+// Composing a window costs host time proportional to the GATE COUNT while the
+// fusion benefit is proportional to the STATE SIZE, so the same window can be
+// worth fusing at 26 qubits and a loss at 15. On GPU the 2.6 us launch-latency
+// floor made that loss real: 9-19 qubit circuits ran 1.5-2.5x slower with fusion
+// on. These tests pin the term's shape and the two verdicts it must produce.
+
+TEST_F(FusionFixture, ComposeCost_ScalesWithWidthAndFallsWithStateSize) {
+    const auto& gpu = qplayer::detail::kGpuFusionCostModel;
+
+    // 2^(2k): one width step up quadruples the composition work.
+    const double h3 = gpu.compose_cost(3, 1.0, 15);
+    const double h4 = gpu.compose_cost(4, 1.0, 15);
+    EXPECT_NEAR(h4 / h3, 4.0, 1e-9);
+
+    // Below the pass-time floor the term is flat in n; above it, it halves per
+    // added qubit because t_pass doubles.
+    EXPECT_NEAR(gpu.compose_cost(4, 1.0, 11), gpu.compose_cost(4, 1.0, 15), 1e-12);
+    EXPECT_NEAR(gpu.compose_cost(4, 1.0, 26) / gpu.compose_cost(4, 1.0, 27), 2.0, 1e-9);
+
+    // Same host cost, 13x higher CPU pass floor -> 13x smaller relative weight.
+    // This is why CPU never regressed while GPU did.
+    const double ratio = gpu.compose_cost(4, 1.0, 15)
+                       / qplayer::detail::kCpuFusionCostModel.compose_cost(4, 1.0, 15);
+    EXPECT_NEAR(ratio, 34.0 / 2.6, 1e-6);
+}
+
+TEST_F(FusionFixture, ComposeCost_ProfileWithoutPassTime_DisablesTerm) {
+    // A profile carrying only alpha/beta must behave exactly as did,
+    // which is what keeps the permissive-profile test above meaningful.
+    const qplayer::detail::FusionCostModel legacy{1.0, 0.1125};
+
+    EXPECT_NEAR(legacy.compose_cost(4, 64.0, 15), 0.0, 1e-12);
+    EXPECT_NEAR(legacy.pass_time_us(15), 0.0, 1e-12);
+}
+
+TEST_F(FusionFixture, CostModel_SmallStateOnGpu_HostSynthesisRejectsWindow) {
+    // Two 1Q gates plus a CX spread over 4 qubits: sum w = 2.75 against
+    // C(4) = 1.32 on GPU, so alone would fuse. At 15 qubits the state
+    // is below the launch-latency floor and the composition term adds ~1.64,
+    // pushing the threshold to ~2.96 — just past the window's weight.
+    Circuit circ(15);
+    circ.h(0).rz(0.3, 1).cx(2, 3);
+
+    const ProgShape s = shape_of(
+        fuse_circuit(circ.ops(), 4, circ.num_qubits(),
+                     qplayer::detail::kGpuFusionCostModel));
+
+    EXPECT_EQ(s.fused, 0);
+    EXPECT_EQ(s.passthrough, 3);
+}
+
+TEST_F(FusionFixture, CostModel_LargeStateOnGpu_SameWindowStillFuses) {
+    // Same window, 26 qubits: t_pass is ~243x the floor so the composition term
+    // collapses to ~0.007 and the verdict stands. Without this the fix
+    // would have cost the 8-G large-circuit gains.
+    Circuit circ(26);
+    circ.h(0).rz(0.3, 1).cx(2, 3);
+
+    const ProgShape s = shape_of(
+        fuse_circuit(circ.ops(), 4, circ.num_qubits(),
+                     qplayer::detail::kGpuFusionCostModel));
+
+    EXPECT_EQ(s.fused, 1);
+    EXPECT_EQ(s.passthrough, 0);
+}
+
+TEST_F(FusionFixture, CostModel_GateDenseSmallState_StillFuses) {
+    // The q13_gcm shape: a small state but many gates per window, so sum w grows
+    // with the composition cost and fusion keeps paying (measured 14.03x on CPU,
+    // 1.12x on GPU at 13 qubits). A plain qubit-count cutoff would lose this,
+    // which is why the term is per-gate rather than a threshold on n.
+    Circuit circ(13);
+    for (int i = 0; i < 24; ++i) {
+        if (i % 2 == 0) circ.h(static_cast<QubitIndex>(i % 4));
+        else            circ.rz(0.37, static_cast<QubitIndex>(i % 4));
+    }
+
+    const ProgShape s = shape_of(
+        fuse_circuit(circ.ops(), 4, circ.num_qubits(),
+                     qplayer::detail::kGpuFusionCostModel));
+
+    EXPECT_EQ(s.fused, 1);
+    EXPECT_EQ(s.passthrough, 0);
+}
+
+TEST_F(FusionFixture, CostModel_HostTermPassThrough_MatchesUnfused) {
+    // Correctness of the newly rejected path: under the GPU profile on a small
+    // state these windows now run gate-by-gate inside apply_fused_program, and
+    // must still agree amplitude-for-amplitude with the unfused reference. The
+    // program is backend-agnostic, so driving the GPU profile through the CPU
+    // backend is a valid check of the emitted program.
+    Circuit circ(10);
+    circ.h(0).rz(0.3, 1).cx(2, 3)
+        .h(4).cx(5, 6).rz(0.5, 7)
+        .t(8).cx(0, 9);
+
+    compare_unfused_vs_fused(circ, 4, 1e-12, qplayer::detail::kGpuFusionCostModel);
+}
+
+TEST_F(FusionFixture, CostModel_MixedCircuit_FusedAndPassThroughAgree) {
+    // A circuit that produces both kinds of program element, checked end to end.
+    Circuit circ(6);
+    circ.h(0).h(1).h(2).h(3).h(4).h(5);        // fuses
+    for (QubitIndex q = 0; q + 2 < 6; ++q) circ.ccx(q, q + 1, q + 2);   // passes through
+    circ.rz(0.7, 0).ry(0.2, 1).rx(0.9, 2);     // fuses
+
+    const ProgShape s = shape_of(fuse_circuit(circ.ops(), 4, circ.num_qubits()));
+    EXPECT_TRUE(s.fused > 0);
+    EXPECT_TRUE(s.passthrough > 0);
+
+    compare_unfused_vs_fused(circ, 4);
 }

@@ -342,10 +342,12 @@ static bool run_counts(const TestCase& tc) {
     Parser p;
     Circuit circ = p.parse_file(tc.qasm_path);
 
-    QRegister qr{SimType::FullState};
+    // tc.sim selects the backend: FullState for the reference rows, and
+    // TensorNetwork for the Phase 9 TN gate rows running the same expectation.
+    QRegister qr{tc.sim};
     qr.set_seed(42);  // Deterministic seed for reproducible counts.
 
-    // when the expected JSON carries a device_coupling_map, compile the
+    // F-CC: when the expected JSON carries a device_coupling_map, compile the
     // circuit against it first (② layout → ③ routing → ⑤ verify). Results stay
     // logical-indexed, so the comparison below is unchanged.
     const std::string coupling = json_extract_array(json_text, "device_coupling_map");
@@ -401,7 +403,7 @@ static bool run_counts(const TestCase& tc) {
 // whose Z-basis diagonal gives P(00)=P(11)=(1+F)/4 and P(01)=P(10)=(1-F)/4.
 // Hence the fidelity is recoverable from computational-basis counts alone:
 //   F = 2*(P00 + P11) - 1
-// (no density-matrix or basis-rotation machinery needed — see).
+// (no density-matrix or basis-rotation machinery needed —).
 static bool run_fidelity(const TestCase& tc) {
     const std::string json_text = read_file(tc.expected_json_path);
     const int    nshots             = static_cast<int>(json_get_number(json_text, "nshots"));
@@ -526,8 +528,9 @@ static bool run_statevector(const TestCase& tc) {
 
     // Use CPU explicitly: statevector accuracy tests compare against CPU
     // baselines (generated with enable_fusion=true). GPU no-fusion path
-    // diverges on circuits with ctrl>tgt gate ordering.
-    QRegister qr{SimType::FullState, qplayer::ProcType::CPU};
+    // diverges on circuits with ctrl>tgt gate ordering. TensorNetwork ignores
+    // ProcType (CPU-only backend), so the TN gate rows pass through unchanged.
+    QRegister qr{tc.sim, qplayer::ProcType::CPU};
     qr.set_seed(42);
     qr.run(circ, 1);
     const StateVector sv = qr.get_statevector();
@@ -590,7 +593,7 @@ static bool run_statevector_dump(const TestCase& tc) {
     // oracle_20.data) were generated with the CPU backend + Gate Fusion.
     // GPU no-fusion diverges on ctrl>tgt gate circuits (see fix comment).
     // GPU golden comparison is covered by the GoldenGpu suite in test_golden_gpu.cpp.
-    QRegister qr{SimType::FullState, qplayer::ProcType::CPU};
+    QRegister qr{tc.sim, qplayer::ProcType::CPU};
     qr.set_seed(42);
     qr.run(circ, 1);
     const StateVector sv = qr.get_statevector();
@@ -866,7 +869,7 @@ std::vector<TestCase> default_phase0t_cases() {
          resolve_data_path("qasm/expected", "sparse_100q.json"),
          false, "Phase 7", "sparse_100q"},
 
-        // Phase 8: SWAP routing -- transpile() against a linear coupling
+        // Phase 8: F-CC SWAP routing -- transpile() against a linear coupling
         // map inserts SWAPs; logical measurement distribution is preserved
         // Flipped to expected_fail=false now that the device-aware
         // pipeline (-) is implemented (cumulative gate 9/9).
@@ -897,6 +900,62 @@ std::vector<TestCase> default_phase0t_cases() {
          resolve_data_path("qasm/expected", "oracle_20.json"),
          false, "Phase 5", "oracle_20"},
     };
+}
+
+// The TN gate subset. Six of the nine acceptance circuits, not nine:
+//
+//   bell / ghz_5      counts on the MPS path
+//   qft_4             statevector comparison (n <= MAX_DENSE_EXPORT_QUBITS)
+//   opt_cancel        circuit_metric — transpile only, backend-independent
+// noisy_bell Monte Carlo trajectories on MPS (Phase 10)
+//   compile_swap      the device pipeline's output run on MPS (Phase 10-A)
+//
+// noisy_bell joined when the TN noise route landed (-): the circuit
+// is bell.qasm with a NoiseModel supplied at runtime, which is exactly what
+// execute_trajectories() carries. compile_swap joined at — it is a
+// transpile-then-run row, and what it checks (logical results survive inserted
+// SWAPs) is backend-independent, so the only question was whether the routed
+// physical circuit runs on MPS. It does: SWAP is a 2Q gate, and the coupling
+// map is the linear chain an MPS already prefers.
+//
+// oracle_10 joined at : it uses ccx, which the TN backend used to reject
+// outright and now runs through MpsState::apply_3q()'s fixed decomposition.
+//
+// oracle_20 is NOT here, and the reason is the decomposition's cost rather than
+// its correctness. Six CX per Toffoli each take their own SVD, so the chain needs
+// far more bond dimension than the final state does; at 20 qubits with ten ccx
+// that overshoots the default cap (chi_max 256) and the run turns
+// LOSSY. Measured: the statevector dump misses by L2 = 1.25 with a per-amplitude
+// worst of 1.3e-02 against a 1e-07 tolerance, while oracle_10 passes exactly.
+// That tradeoff was named up front, and this is the number on it.
+// The row comes back one of two ways: a native three-site apply, which is the
+// deferred alternative, or a per-row cap knob the runner does not
+// have.
+//
+// sparse_100q stays out by kind rather than capability: it selects SparseState.
+std::vector<TestCase> tn_gate_cases() {
+    // The gate label is what made the row runnable on TN, not the Phase that
+    // added the circuit — that is what makes the cumulative count readable as TN
+    // progress (4 at Phase 9, 5 at Phase 10, 6 at Phase 10-A, 7).
+    // lands after Phase 11, the last Lynx Phase, so it names itself.
+    struct TnRow { const char* label; const char* gate; };
+    static constexpr TnRow kRows[] = {
+        {"bell",         "Phase 9"},
+        {"ghz_5",        "Phase 9"},
+        {"qft_4",        "Phase 9"},
+        {"opt_cancel",   "Phase 9"},
+        {"noisy_bell",   "Phase 10"},
+        {"compile_swap", "Phase 10-A"},
+        {"oracle_10",    ""},
+    };
+    std::vector<TestCase> cases;
+    for (const TnRow& row : kRows) {
+        cases.push_back({resolve_data_path("qasm", std::string{row.label} + ".qasm"),
+                         resolve_data_path("qasm/expected", std::string{row.label} + ".json"),
+                         false, row.gate, std::string{row.label} + "_tn",
+                         SimType::TensorNetwork});
+    }
+    return cases;
 }
 
 }  // namespace qplayer::acceptance

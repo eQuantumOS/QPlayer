@@ -229,7 +229,7 @@ TEST(BasisGateTranslation, MixedCircuit_EquivalentAndAllNative) {
     EXPECT_TRUE(equal_up_to_phase(before, sv_of(out), 1e-10));
 }
 
-// ── Arbitrary 2Q gate with no rule -> CircuitError (KAK deferred to) ─────
+// ── Arbitrary 2Q gate with no rule -> CircuitError (KAK deferred) ─────
 TEST(BasisGateTranslation, ArbitraryTwoQubit_ThrowsCircuitError) {
     Circuit c(2);
     c.cz(0, 1);                      // not cx/swap, not native -> rejected

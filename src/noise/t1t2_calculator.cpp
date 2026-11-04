@@ -1,5 +1,7 @@
-// t1t2_calculator.cpp — T1/T2 -> relaxation Kraus implementation
-// See header for the formulas and clamping policy.
+/// @file t1t2_calculator.cpp
+/// @brief T1/T2 -> relaxation Kraus implementation
+///
+/// See header for the formulas and clamping policy.
 
 #include "noise/t1t2_calculator.hpp"
 

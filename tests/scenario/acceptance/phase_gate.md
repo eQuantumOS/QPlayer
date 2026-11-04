@@ -42,11 +42,10 @@
 | **Phase 5** | `bell`, `ghz_5`, `qft_4`, `oracle_10`, `oracle_20` | **6/9** | FullState CPU + QRegister Batch API. Interactive 제외. oracle_10/20 은 qelib1 직접 표현 25 게이트 전부 자극 |
 | Phase 6 | — | 6/9 | FullState GPU. 기존 6종이 GPU 백엔드에서도 통과 검증. `expected_fail` 토글 없음 (CPU 백엔드 기준으로 이미 통과) |
 | **Phase 7** | `sparse_100q` | **7/9** | SparseState. 노이즈 미지원 |
-| **Phase 8** | `noisy_bell`, `compile_swap` | **9/9 ✅** | NoiseModel + DeviceModel + Interactive  |
-| Phase 9 | — | 9/9 ✅ | TN 기본. 기존 회로 TN 백엔드 회귀 |
+| **Phase 8** | `noisy_bell`, `compile_swap` | **9/9 ✅** | NoiseModel + DeviceModel + Interactive + F-CC |
+| Phase 9 | — | 9/9 ✅ | TN 기본. **TN 백엔드 인수 실행은 4/9** — `--sim=tn` 모드 |
 | Phase 10 | — | 9/9 ✅ | TN 노이즈. TN vs FullState CPU parity ±0.01 |
 | Phase 11 | — | 9/9 ✅ | Python 바인딩. Python acceptance runner 9/9 통과 |
-| Phase 12 | — | 9/9 ✅ | CI 통합 |
 
 ## 3. 토글 절차 (각 Phase Gate 진입 시)
 
@@ -57,6 +56,26 @@
 5. `` 의 해당 Phase 항목 ✅ 완료 + QASM 누적 카운트 갱신.
 
 기대값(JSON) 자체를 갱신해야 할 경우 반드시 ADR 선행 작성(Golden test 규칙 준용 · ADR 카테고리 03 또는 09).
+
+## 3-A. TN 백엔드 모드 (`--sim=tn`, Phase 9~)
+
+기본 실행(`./build/tests/qplayer_acceptance`)은 9개 케이스를 FullState 기준 경로로 돌린다. Phase 9 부터 **`--sim=tn`** 이 TN 백엔드가 감당할 수 있는 부분집합만 `SimType::TensorNetwork` 로 다시 돌린다(CTest 엔트리 `qplayer_acceptance_tn`). 누적 `9/9` 요약을 흔들지 않도록 **별도 호출**로 분리했다.
+
+각 row 의 `phase_gate` 라벨은 **회로가 추가된 Phase 가 아니라 TN 에서 돌게 만든 Phase** 다 — 그래야 누적 카운트가 TN 진척으로 읽힌다.
+
+| 라벨 | kind | TN 실행 | gate | 근거 |
+|---|---|:---:|---|---|
+| `bell` · `ghz_5` | counts | ✅ | Phase 9 | MPS 경로 1Q·2Q 게이트만 사용 |
+| `qft_4` | statevector | ✅ | Phase 9 | n ≤ `MAX_DENSE_EXPORT_QUBITS` 라 `get_statevector()` 가능 |
+| `opt_cancel` | circuit_metric | ✅ | Phase 9 | `transpile()` 만 검증 — 백엔드 무관 |
+| `noisy_bell` | fidelity | ✅ | **Phase 10** | TN 노이즈 도입으로 `execute_trajectories()` 가 그대로 감당 |
+| `compile_swap` | counts | ✅ | **Phase 10-A** | 검증 대상("삽입된 SWAP 후에도 논리 결과 유지")은 백엔드 무관이고, 라우팅된 물리 회로가 MPS 에서 돈다 — SWAP 은 2Q 이고 커플링 맵이 MPS 가 선호하는 선형 체인이다 |
+| `oracle_10` · `oracle_20` | statevector_dump | ✗ | — | **`ccx` 사용**. MPS 경로가 1Q·2Q 적용만 구현하므로 TN 백엔드가 3큐빗 이상 게이트를 거부한다(`tn_fusion.cpp`). 3Q 분해 패스를 백엔드 앞단에 두면 편입 가능 |
+| `sparse_100q` | counts_sparse | ✗ | — | kind 가 SparseState 를 고정 — 백엔드 선택 사항이 아니다 |
+
+> **이력**:
+> - 2026-08-25: `` Phase 9 절이 당초 TN 통과 회로를 "의미 있는 6개"(oracle 2건 포함)로 적었으나, `--sim=tn` 실행에서 두 회로가 3큐빗 게이트 거부로 FAIL 하는 것이 확인돼 **4개**로 정정했다.
+> - 2026-08-26: `noisy_bell`·`compile_swap` 편입으로 **4 → 6**. `compile_swap` 은 종전 "디바이스 파이프라인이라 TN 축과 무관" 으로 제외돼 있었는데, 그 판단은 *왜 제외하는가* 가 아니라 *아직 검증하지 않았다* 였다 — 실제로 돌려 보니 통과한다.
 
 ## 4. exit_code 정책 요약
 

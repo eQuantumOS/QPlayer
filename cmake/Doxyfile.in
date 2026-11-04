@@ -1,0 +1,66 @@
+# Doxyfile.in — Doxygen configuration for the QPlayer public API reference
+# CMake configures this file
+# ${CMAKE_BINARY_DIR}/Doxyfile so PROJECT_NUMBER always tracks project(VERSION).
+#
+# Shared tags live in Doxyfile.common.in (input set, extraction defaults,
+# preprocessing, warning basics). Everything below the @INCLUDE is specific to
+# rendering the human-readable page: output location, main page, HTML shape and
+# diagrams. Doxygen resolves tags in file order, so these assignments win.
+#
+# One reference, not two: implementation files, detail/ headers and private
+# members are published here alongside the public API ( supersedes the
+# public/internal split had planned).
+
+@INCLUDE               = @QPLAYER_DOXYGEN_COMMON@
+
+# ── Project identity ─────────────────────────────────────────────────────────
+PROJECT_NAME           = "QPlayer"
+PROJECT_BRIEF          = "High-performance C++17 quantum circuit emulator"
+OUTPUT_DIRECTORY       = @QPLAYER_DOXYGEN_OUTPUT_DIR@
+USE_MDFILE_AS_MAINPAGE = @QPLAYER_DOXYGEN_MAINPAGE@
+
+# ── Extraction ───────────────────────────────────────────────────────────────
+# EXTRACT_ALL keeps undocumented declarations visible so the reference stays a
+# complete structural map even where prose has not reached yet. Turning it off
+# would raise the coverage percentage while making the page less useful — a
+# reader could no longer see which members a class has.
+EXTRACT_ALL            = YES
+
+# ── Warnings ─────────────────────────────────────────────────────────────────
+# WARN_IF_UNDOCUMENTED is not a choice here: Doxygen disables it automatically
+# whenever EXTRACT_ALL is YES, so with the setting above it cannot fire. Coverage
+# is therefore measured by a second config — Doxyfile.coverage.in, driven by the
+# `docs-coverage` target — which turns EXTRACT_ALL off and hands its XML to
+# coverage.py. Keep the NO explicit so no
+# one reads the blank as an oversight and "fixes" it here.
+WARN_IF_UNDOCUMENTED   = NO
+WARN_NO_PARAMDOC       = NO
+WARN_LOGFILE           = @QPLAYER_DOXYGEN_WARN_LOG@
+
+# ── Output format ────────────────────────────────────────────────────────────
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+GENERATE_TREEVIEW      = YES
+DISABLE_INDEX          = NO
+FULL_SIDEBAR           = NO
+GENERATE_LATEX         = NO
+GENERATE_MAN           = NO
+GENERATE_XML           = NO
+
+# ── Diagrams ─────────────────────────────────────────────────────────────────
+# Graphviz is optional; CMake flips HAVE_DOT off when `dot` is absent so the
+# target still succeeds (text-only output) on a bare host.
+HAVE_DOT               = @QPLAYER_DOXYGEN_HAVE_DOT@
+DOT_IMAGE_FORMAT       = svg
+INTERACTIVE_SVG        = YES
+CLASS_GRAPH            = YES
+COLLABORATION_GRAPH    = YES
+INCLUDE_GRAPH          = YES
+INCLUDED_BY_GRAPH      = NO
+# Call graphs need src/ in INPUT to mean anything, and now it is there. They cost
+# most of the output size (1,612 SVGs of ~3,800 files) but they are the reason a
+# reader can follow a call from the public entry point down to a kernel.
+# CALLER_GRAPH stays off: the inverse view roughly doubles dot work while adding
+# little for a codebase whose entry points are few and already documented.
+CALL_GRAPH             = YES
+CALLER_GRAPH           = NO

@@ -1,10 +1,12 @@
-// circuit.cpp -- Phase 2 implementation of the Circuit IR builder
-//
-// Method bodies validate qubit ranges, classical-register name collisions,
-// opaque dimension / unitarity / trace-preservation, and the single-direction
-// opaque body promotion (DeclarationOnly -> UnitaryMatrix / KrausChannel).
-// Serialisation paths (to_qasm / to_json / from_json / load_json_file) stay
-// stubbed -- owns that work.
+/// @file circuit.cpp
+/// @brief -- Phase 2 implementation of the Circuit IR builder
+///
+///
+/// Method bodies validate qubit ranges, classical-register name collisions,
+/// opaque dimension / unitarity / trace-preservation, and the single-direction
+/// opaque body promotion (DeclarationOnly -> UnitaryMatrix / KrausChannel).
+/// Serialisation paths (to_qasm / to_json / from_json / load_json_file) stay
+/// stubbed -- owns that work.
 
 #include "circuit/circuit.hpp"
 
@@ -99,7 +101,23 @@ UnitaryMatrix array_to_unitary_2q(const std::array<std::array<std::complex<doubl
 
 // ── Unitary verification: matrix is NxN with N == 2^num_qubits and U†U ≈ I ───
 // Throws CircuitError on dimension mismatch, ragged rows, or unitarity failure.
+// kMaxOpaqueQubits now lives in circuit/gate_op.hpp so the backend can bind it
+// to its kernel bound with a static_assert. The rationale for the
+// value is documented there; the O(2^3n) verification cost below is what caps it.
+// Kraus operators share the same dimension law, so the same cap applies there.
+
+void check_opaque_qubit_count(QubitIndex num_qubits, const std::string& opaque_name) {
+    if (num_qubits == 0 || num_qubits > kMaxOpaqueQubits) {
+        throw CircuitError{"define_opaque(\"" + opaque_name + "\"): num_qubits " +
+                           std::to_string(num_qubits) +
+                           " out of range (1.." +
+                           std::to_string(kMaxOpaqueQubits) +
+                           "); a dense 2^n x 2^n matrix is verified in O(2^3n)"};
+    }
+}
+
 void verify_unitary(const UnitaryMatrix& m, QubitIndex num_qubits, const std::string& opaque_name) {
+    check_opaque_qubit_count(num_qubits, opaque_name);
     const std::size_t expected = std::size_t{1} << num_qubits;
     if (m.size() != expected) {
         throw CircuitError{"define_opaque(\"" + opaque_name + "\"): matrix has " +
@@ -134,6 +152,8 @@ void verify_unitary(const UnitaryMatrix& m, QubitIndex num_qubits, const std::st
 
 // ── Kraus trace-preserving verification: sum_i K_i†K_i ≈ I ───────────────────
 void verify_kraus(const KrausChannel& ch, QubitIndex num_qubits, const std::string& opaque_name) {
+    // Same dimension law as the unitary path: each operator is 2^n x 2^n.
+    check_opaque_qubit_count(num_qubits, opaque_name);
     if (ch.operators.empty()) {
         throw CircuitError{"define_opaque(\"" + opaque_name +
                            "\"): KrausChannel has no operators"};
@@ -241,7 +261,7 @@ namespace {
 void check_distinct(QubitIndex a, QubitIndex b, const char* gate_name) {
     if (a == b) {
         throw CircuitError{std::string{gate_name} + ": qubits must be distinct (got " +
-                           std::to_string(a) + ", " + std::to_string(a) + ")"};
+                           std::to_string(a) + ", " + std::to_string(b) + ")"};
     }
 }
 }  // namespace
@@ -409,6 +429,22 @@ Circuit& Circuit::if_then(ClassicalRegisterIndex creg,
                            " out of range (classical_registers=" +
                            std::to_string(classical_registers_.size()) + ")"};
     }
+    // A comparison value the register cannot represent makes the branch
+    // permanently dead. The QASM front end already rejects this
+    // (SemanticValidatorPass, "exceeds maximum"), but the C++ API accepted it
+    // silently — so the same typo was an error through one entry point and a
+    // no-op through the other (audit #23; the report described the QASM path as
+    // unchecked, which it is not). Treat both the same way.
+    const ClassicalBitIndex width = classical_registers_[creg].width;
+    if (width < 64) {
+        const std::uint64_t max_value = (std::uint64_t{1} << width) - 1;
+        if (value > max_value) {
+            throw CircuitError{"if_then: condition value " + std::to_string(value) +
+                               " exceeds maximum " + std::to_string(max_value) +
+                               " for creg \"" + classical_registers_[creg].name +
+                               "\" of width " + std::to_string(width)};
+        }
+    }
     // Validate the body gate's qubit references too, so a malformed body
     // cannot slip through if_then() and surface at backend dispatch.
     for (QubitIndex q : gate.qubits) {
@@ -509,6 +545,48 @@ Circuit& Circuit::declare_opaque(const std::string& name, QubitIndex num_qubits)
         throw CircuitError{"declare_opaque(\"" + name + "\"): duplicate opaque name"};
     }
     opaque_definitions_.push_back(OpaqueDefinition{name, num_qubits, DeclarationOnly{}});
+    return *this;
+}
+
+// opaque() — append an opaque CALL. Field layout must match what
+// CircuitBuilder emits for a QASM opaque call so both paths hand the backend an
+// identical GateOp (circuit_builder.cpp buildGateCall).
+Circuit& Circuit::opaque(const std::string& name, std::initializer_list<QubitIndex> qubits) {
+    if (name.empty()) {
+        throw CircuitError{"opaque: name must be non-empty"};
+    }
+    if (qubits.size() == 0) {
+        throw CircuitError{"opaque(\"" + name + "\"): needs at least one qubit"};
+    }
+    for (QubitIndex q : qubits) {
+        check_qubit(q, num_qubits_, "opaque");
+    }
+    // Distinct operands: a definition matrix indexes one local bit per operand,
+    // so repeating a qubit has no meaning.
+    std::vector<QubitIndex> seen(qubits.begin(), qubits.end());
+    std::sort(seen.begin(), seen.end());
+    if (std::adjacent_find(seen.begin(), seen.end()) != seen.end()) {
+        throw CircuitError{"opaque(\"" + name + "\"): qubits must be distinct"};
+    }
+    // Arity is checked only when a definition is already registered; an
+    // undefined name stays legal here and is rejected by SemanticValidatorPass.
+    const std::size_t idx = find_opaque(opaque_definitions_, name);
+    if (idx != opaque_definitions_.size()) {
+        const QubitIndex declared = opaque_definitions_[idx].num_qubits;
+        if (static_cast<std::size_t>(declared) != qubits.size()) {
+            throw CircuitError{"opaque(\"" + name + "\"): definition takes " +
+                               std::to_string(declared) + " qubits, called with " +
+                               std::to_string(qubits.size())};
+        }
+    }
+
+    GateOp g;
+    g.type        = GateType::Opaque;
+    g.name        = name;
+    g.opaque_name = name;
+    g.qubits.assign(qubits.begin(), qubits.end());
+    g.is_opaque   = true;
+    ops_.push_back(std::move(g));
     return *this;
 }
 
@@ -676,30 +754,79 @@ const CircuitMetadata& Circuit::metadata()   const noexcept { return metadata_; 
 //   2. A MeasureOp followed by a non-Measure / non-Barrier op on the same
 //      qubit -- mid-circuit measurement with downstream gates.
 bool Circuit::has_classical_control() const {
-    // Pass 1: any IfOp -> immediate true.
+    // Single forward pass with a per-qubit "already measured" bitmap. The former
+    // shape re-scanned every following op for each MeasureOp — O(ops^2) — and
+    // QRegister::run() plus all three backends' execute() call this on every run
+    // (audit #28). Cost is now linear in the total operand count.
+    //
+    // Semantics are unchanged: an IfOp anywhere, or a GateOp/IdleOp touching a
+    // qubit that an earlier MeasureOp already collapsed, means the circuit needs
+    // the per-shot path. BarrierOp and a repeated MeasureOp do not reactivate a
+    // qubit, so they are simply not consulted.
+    std::vector<bool> measured(static_cast<std::size_t>(num_qubits_), false);
+    const auto is_measured = [&](QubitIndex q) {
+        return q < num_qubits_ && measured[static_cast<std::size_t>(q)];
+    };
+
     for (const auto& op : ops_) {
-        if (std::holds_alternative<IfOp>(op)) return true;
-    }
-    // Pass 2: for each MeasureOp, scan forward on the same qubit.
-    for (std::size_t i = 0; i < ops_.size(); ++i) {
-        const auto* m = std::get_if<MeasureOp>(&ops_[i]);
-        if (m == nullptr) continue;
-        const QubitIndex measured_q = m->qubit;
-        for (std::size_t j = i + 1; j < ops_.size(); ++j) {
-            const auto& later = ops_[j];
-            // BarrierOp / further MeasureOp don't reactivate the qubit.
-            if (std::holds_alternative<BarrierOp>(later)) continue;
-            if (std::holds_alternative<MeasureOp>(later)) continue;
-            // GateOp / IfOp / IdleOp on the same qubit -> mid-circuit measure.
-            if (const auto* g = std::get_if<GateOp>(&later)) {
-                for (QubitIndex q : g->qubits) {
-                    if (q == measured_q) return true;
-                }
-            } else if (const auto* idle = std::get_if<IdleOp>(&later)) {
-                if (idle->qubit == measured_q) return true;
-            }
-            // (IfOp on the same qubit is already covered by Pass 1.)
+        if (std::holds_alternative<IfOp>(op)) {
+            return true;
         }
+        if (const auto* m = std::get_if<MeasureOp>(&op)) {
+            if (m->qubit < num_qubits_) {
+                measured[static_cast<std::size_t>(m->qubit)] = true;
+            }
+            continue;
+        }
+        if (const auto* g = std::get_if<GateOp>(&op)) {
+            for (QubitIndex q : g->qubits) {
+                if (is_measured(q)) return true;
+            }
+            continue;
+        }
+        if (const auto* idle = std::get_if<IdleOp>(&op)) {
+            if (is_measured(idle->qubit)) return true;
+        }
+        // BarrierOp: no effect on the measured set.
+    }
+    return false;
+}
+
+// requires_per_shot: the routing question, as opposed to has_classical_control()'s
+// literal one. Adds one trigger — a Reset on a qubit some gate has
+// already touched.
+//
+// A leading `reset q[i];` on an untouched qubit is deterministic (the state is
+// already |0>), which is why the touched bitmap is worth keeping rather than
+// treating every Reset as a trigger: that idiom opens a great many QASM files
+// and would otherwise cost every one of them an nshots-fold slowdown.
+//
+// MeasureOp deliberately does NOT mark a qubit touched here: `measure q; reset q`
+// is already caught by has_classical_control()'s second trigger, and marking it
+// would only duplicate that.
+bool Circuit::requires_per_shot() const {
+    if (has_classical_control()) return true;
+
+    std::vector<bool> touched(static_cast<std::size_t>(num_qubits_), false);
+    for (const auto& op : ops_) {
+        if (const auto* g = std::get_if<GateOp>(&op)) {
+            if (g->type == GateType::Reset) {
+                for (QubitIndex q : g->qubits) {
+                    if (q < num_qubits_ && touched[static_cast<std::size_t>(q)]) return true;
+                }
+            }
+            for (QubitIndex q : g->qubits) {
+                if (q < num_qubits_) touched[static_cast<std::size_t>(q)] = true;
+            }
+            continue;
+        }
+        if (const auto* idle = std::get_if<IdleOp>(&op)) {
+            if (idle->qubit < num_qubits_) {
+                touched[static_cast<std::size_t>(idle->qubit)] = true;
+            }
+        }
+        // MeasureOp / BarrierOp / IfOp: see the note above; IfOp already
+        // returned true through has_classical_control().
     }
     return false;
 }

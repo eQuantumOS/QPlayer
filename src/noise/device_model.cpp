@@ -1,9 +1,11 @@
-// device_model.cpp — DeviceModel JSON ingestion + query (,
-//). Parses the schema via the in-house
-// detail::JsonValue parser (bars external JSON libraries) into dense
-// T1/T2 vectors, a gate-property registry, and a coupling map. Value-range
-// violations (non-positive T1/T2, error_rate outside [0,1], negative duration
-// or qubit index) throw CircuitError at load time.
+/// @file device_model.cpp
+/// @brief DeviceModel JSON ingestion + query (,
+///
+///). Parses the schema via the in-house
+/// detail::JsonValue parser (bars external JSON libraries) into dense
+/// T1/T2 vectors, a gate-property registry, and a coupling map. Value-range
+/// violations (non-positive T1/T2, error_rate outside [0,1], negative duration
+/// or qubit index) throw CircuitError at load time.
 
 #include "noise/device_model.hpp"
 

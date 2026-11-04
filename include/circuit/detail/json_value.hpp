@@ -1,18 +1,21 @@
-// json_value.hpp -- Minimal in-house JSON value type + parser + writer for
-// Circuit serialisation. NOT a public API:
-// lives in qplayer::detail because bars external JSON libraries
-// (vcpkg/Conan/nlohmann etc.) and we only need the subset Circuit IR
-// produces -- objects, arrays, strings, numbers (double / int64), bool, null.
-//
-// Numbers: stored as double internally. Integers up to 2^53 round-trip
-// exactly (IEEE-754 double mantissa). QubitIndex / ClassicalBitIndex are
-// uint32 -> fits comfortably. duration_ns is already double so it round-
-// trips bit-exact when written with std::setprecision(17).
-//
-// Parser tolerances: rejects trailing commas, comments, NaN/Infinity, and
-// numbers beyond double range. Errors carry the byte offset of the failing
-// character so Circuit::from_json can surface "circuit.json: <reason>" with
-// useful diagnostics.
+/// @file json_value.hpp
+/// @brief -- Minimal in-house JSON value type + parser + writer for
+/// @ingroup ir
+///
+/// Circuit serialisation. NOT a public API:
+/// lives in qplayer::detail because bars external JSON libraries
+/// (vcpkg/Conan/nlohmann etc.) and we only need the subset Circuit IR
+/// produces -- objects, arrays, strings, numbers (double / int64), bool, null.
+///
+/// Numbers: stored as double internally. Integers up to 2^53 round-trip
+/// exactly (IEEE-754 double mantissa). QubitIndex / ClassicalBitIndex are
+/// uint32 -> fits comfortably. duration_ns is already double so it round-
+/// trips bit-exact when written with std::setprecision(17).
+///
+/// Parser tolerances: rejects trailing commas, comments, NaN/Infinity, and
+/// numbers beyond double range. Errors carry the byte offset of the failing
+/// character so Circuit::from_json can surface "circuit.json: <reason>" with
+/// useful diagnostics.
 
 #pragma once
 
@@ -27,14 +30,17 @@
 namespace qplayer::detail {
 
 class JsonValue;
+/// A JSON array: an ordered list of values.
 using JsonArray  = std::vector<JsonValue>;
+/// A JSON object; the writer sorts keys so output is byte-stable.
 using JsonObject = std::map<std::string, JsonValue>;  // insertion-order-agnostic; we sort keys in writer for stability
 
+/// Which of the seven JSON types a JsonValue currently holds.
 enum class JsonKind { Null, Bool, Int, Double, String, Array, Object };
 
-// Discriminated-union value type. Heap-allocates nested containers so the
-// payload size is small (sizeof(JsonValue) ~ 32 bytes on x86_64). Movable +
-// copyable so callers can pass values around without ownership ceremony.
+/// Discriminated-union value type. Heap-allocates nested containers so the
+/// payload size is small (sizeof(JsonValue) ~ 32 bytes on x86_64). Movable +
+/// copyable so callers can pass values around without ownership ceremony.
 class JsonValue {
 public:
     JsonValue() : kind_(JsonKind::Null) {}

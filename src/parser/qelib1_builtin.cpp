@@ -1,13 +1,15 @@
-// qelib1_builtin.cpp — compile-time validation for the qelib1 built-in table
-//
-//
-// The two compile-time tables (kQelib1Signatures in qelib1_signatures.hpp and
-// kQelib1Mappings in qelib1_builtin.hpp) must stay in lock-step. This TU owns
-// the static_assert that enforces their sizes are equal so a future extension
-// that adds an entry to one table but not the other is caught at build time.
-//
-// No runtime code lives here beyond the static assertion — all lookup logic is
-// implemented inline in the respective headers.
+/// @file qelib1_builtin.cpp
+/// @brief compile-time validation for the qelib1 built-in table
+///
+///
+///
+/// The two compile-time tables (kQelib1Signatures in qelib1_signatures.hpp and
+/// kQelib1Mappings in qelib1_builtin.hpp) must stay in lock-step. This TU owns
+/// the static_assert that enforces their sizes are equal so a future extension
+/// that adds an entry to one table but not the other is caught at build time.
+///
+/// No runtime code lives here beyond the static assertion — all lookup logic is
+/// implemented inline in the respective headers.
 
 #include "parser/detail/qelib1_builtin.hpp"
 #include "parser/detail/qelib1_signatures.hpp"

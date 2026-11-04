@@ -1,32 +1,34 @@
-// merge_two_qubit_pass.cpp — MergeTwoQubitPass (Phase 4).
-// Merges adjacent same-kind 2Q GateOp pairs that act on the identical ordered
-// qubit pair. Qubit-pair order is significant — CX(0,1) and CX(1,0) are
-// treated as distinct gates and are NOT merged.
-//
-// Merge rules:
-//   Self-inverse (result = identity, op removed):
-//     CX(q0,q1)·CX(q0,q1)       → I
-//     CY·CY, CZ·CZ, CH·CH       → I  (same qubit pair)
-//     SWAP(q0,q1)·SWAP(q0,q1)   → I
-//     CCX(c0,c1,t)·CCX(c0,c1,t) → I  (all 3 qubits match in order)
-//     CSwap(c,t0,t1)·CSwap(c,t0,t1) → I
-//
-//   Rotation accumulation:
-//     CRZ(θ1,q0,q1)·CRZ(θ2,q0,q1) → CRZ(θ1+θ2, q0, q1)
-//     CU1(λ1,q0,q1)·CU1(λ2,q0,q1) → CU1(λ1+λ2, q0, q1)
-//
-// Window logic: a pending slot is maintained per (gate_type, qubit_vector) key.
-// When the next 2Q gate arrives with matching type AND identical qubit vector,
-// the pair is merged. Any intervening op that touches a qubit in the pair
-// invalidates the pending slot for that pair.
-//
-// A 1Q GateOp that does NOT touch either qubit in the pair does NOT invalidate
-// the pending slot (it commutes past the 2Q gate for merge purposes). This is
-// a sound approximation because the 2Q gate and its copy are still logically
-// adjacent on both qubits' timelines.
-//
-// Level 2/3 only — not auto-registered at Level 0/1.
-//
+/// @file merge_two_qubit_pass.cpp
+/// @brief MergeTwoQubitPass (Phase 4).
+///
+/// Merges adjacent same-kind 2Q GateOp pairs that act on the identical ordered
+/// qubit pair. Qubit-pair order is significant — CX(0,1) and CX(1,0) are
+/// treated as distinct gates and are NOT merged.
+///
+/// Merge rules:
+/// Self-inverse (result = identity, op removed):
+/// CX(q0,q1)·CX(q0,q1)       → I
+/// CY·CY, CZ·CZ, CH·CH       → I  (same qubit pair)
+/// SWAP(q0,q1)·SWAP(q0,q1)   → I
+/// CCX(c0,c1,t)·CCX(c0,c1,t) → I  (all 3 qubits match in order)
+/// CSwap(c,t0,t1)·CSwap(c,t0,t1) → I
+///
+/// Rotation accumulation:
+/// CRZ(θ1,q0,q1)·CRZ(θ2,q0,q1) → CRZ(θ1+θ2, q0, q1)
+/// CU1(λ1,q0,q1)·CU1(λ2,q0,q1) → CU1(λ1+λ2, q0, q1)
+///
+/// Window logic: a pending slot is maintained per (gate_type, qubit_vector) key.
+/// When the next 2Q gate arrives with matching type AND identical qubit vector,
+/// the pair is merged. Any intervening op that touches a qubit in the pair
+/// invalidates the pending slot for that pair.
+///
+/// A 1Q GateOp that does NOT touch either qubit in the pair does NOT invalidate
+/// the pending slot (it commutes past the 2Q gate for merge purposes). This is
+/// a sound approximation because the 2Q gate and its copy are still logically
+/// adjacent on both qubits' timelines.
+///
+/// Level 2/3 only — not auto-registered at Level 0/1.
+///
 
 #include "transpiler/passes/optimization/merge_two_qubit_pass.hpp"
 

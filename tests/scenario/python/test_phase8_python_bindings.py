@@ -11,7 +11,7 @@ Covers:
 Uses the stdlib `unittest` framework (pytest is not a build/test dependency).
 After installing (`pip install .`), run:
 
-    python -m unittest tests.python.test_phase8_python_bindings -v
+    python -m unittest tests.scenario.python.test_phase8_python_bindings -v
 
 or simply `python tests/scenario/python/test_phase8_python_bindings.py`.
 """
@@ -216,3 +216,81 @@ class TestChannelTypeEnum(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestPhase8FApiGaps(unittest.TestCase):
+    """Phase 8-F — API gaps the 2026-07-28 audit found (#10, #38, #39)."""
+
+    # ── #38: native 2-qubit basis gates were unreachable from Python ──────────
+    #
+    # GateType lacked ECR/ISWAP/SQRT_ISWAP/FSIM, so `op.type` checks on a circuit
+    # transpiled for an IBM Eagle (ecr) or Google (iswap/fsim) target compared
+    # against enum members that did not exist. The Circuit builders and the
+    # Interactive Google gates were missing too, so Python could neither inspect
+    # nor construct them.
+
+    def test_gate_type_exposes_native_two_qubit_gates(self):
+        for name in ("ECR", "ISWAP", "SQRT_ISWAP", "FSIM"):
+            self.assertTrue(hasattr(qplayer.GateType, name),
+                            f"GateType.{name} missing")
+
+    def test_circuit_builds_native_two_qubit_gates(self):
+        circ = qplayer.Circuit(2)
+        circ.ecr(0, 1).iswap(0, 1).sqrt_iswap(0, 1)
+        circ.fsim(0.5, 0.25, 0, 1).sycamore(0, 1)
+        types = [op.type for op in circ.ops()]
+        self.assertEqual(len(types), 5)
+        self.assertIn(qplayer.GateType.ECR, types)
+        self.assertIn(qplayer.GateType.ISWAP, types)
+        self.assertIn(qplayer.GateType.SQRT_ISWAP, types)
+        # sycamore is fsim(pi/2, pi/6): no separate GateType.
+        self.assertEqual(types.count(qplayer.GateType.FSIM), 2)
+
+    def test_interactive_exposes_google_native_gates(self):
+        qr = qplayer.QRegister(qplayer.SimType.FullState, qplayer.ProcType.CPU)
+        qr.interactive.initialize(2)
+        qr.interactive.h(0).iswap(0, 1).sqrt_iswap(0, 1)
+        qr.interactive.fsim(0.5, 0.25, 0, 1).sycamore(0, 1)
+        self.assertEqual(qr.interactive.num_qubits(), 2)
+
+    # ── #39 / : device model + manual channels could not be combined ──
+
+    def test_mutable_noise_model_allows_manual_channels_after_device_load(self):
+        qr = qplayer.QRegister(qplayer.SimType.FullState, qplayer.ProcType.CPU)
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
+            fh.write('{"qubits": [{"T1": 50000.0, "T2": 30000.0},'
+                     '            {"T1": 50000.0, "T2": 30000.0}],'
+                     ' "gates": {"h_0": {"duration_ns": 300.0}}}')
+            path = fh.name
+        try:
+            qr.load_device_model(path)          # clears previous channels
+            qr.mutable_noise_model().add_depolarizing("cx", 0.02)  # then add manual
+            # Both the synthesised relaxation and the manual channel are present.
+            self.assertTrue(qr.noise_model().has_t1_t2())
+            self.assertTrue(qr.noise_model().has_channels_for_gate("cx"))
+        finally:
+            os.unlink(path)
+
+    def test_const_noise_model_accessor_is_read_only_view(self):
+        qr = qplayer.QRegister(qplayer.SimType.FullState, qplayer.ProcType.CPU)
+        # Reading must not arm the noisy path; an empty model reports no channels.
+        self.assertFalse(qr.noise_model().has_channels_for_gate("h"))
+
+    # ── #10 / : default-arg combination failed on any GPU host ────────
+    #
+    # ProcType::Auto picks GPU when one is visible and Interactive is
+    # CPU-only, so `QRegister()` + `interactive.initialize(n)` — both
+    # documented defaults — raised unconditionally. Auto now switches to CPU.
+
+    def test_default_qregister_supports_interactive(self):
+        qr = qplayer.QRegister()          # ProcType.Auto
+        qr.interactive.initialize(3)      # must not raise on a GPU host
+        qr.interactive.h(0).cx(0, 1)
+        self.assertEqual(qr.interactive.num_qubits(), 3)
+
+    def test_explicit_gpu_interactive_still_raises(self):
+        if not qplayer.QRegister.gpu_available():
+            self.skipTest("no CUDA device")
+        qr = qplayer.QRegister(qplayer.SimType.FullState, qplayer.ProcType.GPU)
+        with self.assertRaises(qplayer.SimulatorError):
+            qr.interactive.initialize(2)

@@ -279,6 +279,159 @@ TEST(CircuitSerializer, LoadJsonFile_MissingFile_Throws) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Semantic validation of decoded payloads (audit #2, Phase 8-F)
+//
+// from_json / load_json_file are public Python API and used to feed indices
+// straight into detail_make_circuit_from_payload, an explicit validation-bypass
+// bridge. An out-of-range cubit reached result.cpp cubit_vals[...] and produced a
+// heap OOB write -> SIGSEGV. Every check below must reject before construction.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// The exact reported repro: a Bell circuit whose last measure cubit is rewritten
+// to 1000000 while total_cubits == 2.
+TEST(CircuitSerializer, FromJson_MeasureCubitOutOfRange_Throws) {
+    const std::string src = R"({
+  "num_qubits": 2,
+  "classical_registers": [{"name": "c", "width": 2, "offset": 0}],
+  "ops": [{"type": "measure", "qubit": 1, "cubit": 1000000}]
+})";
+    EXPECT_THROW(Circuit::from_json(src), CircuitError);
+}
+
+TEST(CircuitSerializer, FromJson_MeasureQubitOutOfRange_Throws) {
+    const std::string src = R"({
+  "num_qubits": 2,
+  "classical_registers": [{"name": "c", "width": 2, "offset": 0}],
+  "ops": [{"type": "measure", "qubit": 7, "cubit": 0}]
+})";
+    EXPECT_THROW(Circuit::from_json(src), CircuitError);
+}
+
+TEST(CircuitSerializer, FromJson_GateQubitOutOfRange_Throws) {
+    const std::string src = R"({
+  "num_qubits": 2,
+  "ops": [{"type": "gate", "name": "h", "gate_type": 0, "qubits": [5], "params": []}]
+})";
+    EXPECT_THROW(Circuit::from_json(src), CircuitError);
+}
+
+// cx q[1],q[1] is rejected at builder time (check_distinct); JSON must match.
+TEST(CircuitSerializer, FromJson_MultiQubitGateSameQubitTwice_Throws) {
+    const std::string src = R"({
+  "num_qubits": 2,
+  "ops": [{"type": "gate", "name": "cx", "gate_type": 12, "qubits": [1, 1], "params": []}]
+})";
+    EXPECT_THROW(Circuit::from_json(src), CircuitError);
+}
+
+TEST(CircuitSerializer, FromJson_BarrierQubitOutOfRange_Throws) {
+    const std::string src = R"({
+  "num_qubits": 2,
+  "ops": [{"type": "barrier", "qubits": [0, 9]}]
+})";
+    EXPECT_THROW(Circuit::from_json(src), CircuitError);
+}
+
+TEST(CircuitSerializer, FromJson_IdleQubitOutOfRange_Throws) {
+    const std::string src = R"({
+  "num_qubits": 1,
+  "ops": [{"type": "idle", "qubit": 4, "duration_ns": 10.0}]
+})";
+    EXPECT_THROW(Circuit::from_json(src), CircuitError);
+}
+
+TEST(CircuitSerializer, FromJson_IfCregIndexOutOfRange_Throws) {
+    const std::string src = R"({
+  "num_qubits": 1,
+  "classical_registers": [{"name": "c", "width": 1, "offset": 0}],
+  "ops": [{"type": "if", "creg": 3, "value": 1,
+           "body": {"type": "gate", "name": "x", "gate_type": 1, "qubits": [0], "params": []}}]
+})";
+    EXPECT_THROW(Circuit::from_json(src), CircuitError);
+}
+
+// The if body is a GateOp too and gets the same range check.
+TEST(CircuitSerializer, FromJson_IfBodyQubitOutOfRange_Throws) {
+    const std::string src = R"({
+  "num_qubits": 1,
+  "classical_registers": [{"name": "c", "width": 1, "offset": 0}],
+  "ops": [{"type": "if", "creg": 0, "value": 1,
+           "body": {"type": "gate", "name": "x", "gate_type": 1, "qubits": [6], "params": []}}]
+})";
+    EXPECT_THROW(Circuit::from_json(src), CircuitError);
+}
+
+// A bogus offset would silently re-point resolve_cbit() at the wrong global cubit,
+// so offsets must match the cumulative layout add_creg() builds.
+TEST(CircuitSerializer, FromJson_CregOffsetNotCumulative_Throws) {
+    const std::string src = R"({
+  "num_qubits": 1,
+  "classical_registers": [{"name": "a", "width": 2, "offset": 0},
+                          {"name": "b", "width": 1, "offset": 7}],
+  "ops": []
+})";
+    EXPECT_THROW(Circuit::from_json(src), CircuitError);
+}
+
+TEST(CircuitSerializer, FromJson_CregZeroWidth_Throws) {
+    const std::string src = R"({
+  "num_qubits": 1,
+  "classical_registers": [{"name": "a", "width": 0, "offset": 0}],
+  "ops": []
+})";
+    EXPECT_THROW(Circuit::from_json(src), CircuitError);
+}
+
+TEST(CircuitSerializer, FromJson_DuplicateCregName_Throws) {
+    const std::string src = R"({
+  "num_qubits": 1,
+  "classical_registers": [{"name": "a", "width": 1, "offset": 0},
+                          {"name": "a", "width": 1, "offset": 1}],
+  "ops": []
+})";
+    EXPECT_THROW(Circuit::from_json(src), CircuitError);
+}
+
+TEST(CircuitSerializer, FromJson_ExpectationTargetInvalidChar_Throws) {
+    const std::string src = R"({
+  "num_qubits": 2,
+  "expectation_targets": ["ZQ"],
+  "ops": []
+})";
+    EXPECT_THROW(Circuit::from_json(src), CircuitError);
+}
+
+TEST(CircuitSerializer, FromJson_ExpectationTargetWrongLength_Throws) {
+    const std::string src = R"({
+  "num_qubits": 3,
+  "expectation_targets": ["ZZ"],
+  "ops": []
+})";
+    EXPECT_THROW(Circuit::from_json(src), CircuitError);
+}
+
+// Round-trip safety: validation must be no stricter than the builder, so any
+// API-built circuit still survives to_json() -> from_json().
+TEST(CircuitSerializer, RoundTrip_ValidationDoesNotRejectApiBuiltCircuit) {
+    Circuit c(3, 0);
+    c.add_creg("a", 2);
+    c.add_creg("b", 1);
+    c.h(0).cx(0, 1).ccx(0, 1, 2).barrier({0, 1, 2})
+     .measure(0, 0).measure(1, 1).measure(2, 2)
+     .add_expectation("ZZZ");
+    GateOp if_body;
+    if_body.type   = GateType::X;
+    if_body.name   = "x";
+    if_body.qubits = {0};
+    c.if_then(c.creg("a"), 3, if_body);
+
+    EXPECT_NO_THROW(Circuit::from_json(c.to_json()));
+    const Circuit back = Circuit::from_json(c.to_json());
+    EXPECT_EQ(back.num_ops(), c.num_ops());
+    EXPECT_EQ(back.total_cubits(), c.total_cubits());
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // QASM v2 emission
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -392,4 +545,16 @@ TEST(QasmEmitter, MultiRegister_EmitsBothCregLines) {
     const std::string out = c.to_qasm();
     EXPECT_TRUE(out.find("creg c[2];")   != std::string::npos);
     EXPECT_TRUE(out.find("creg aux[3];") != std::string::npos);
+}
+
+// The payload bridge bypasses Circuit::if_then(), so the dead-branch rule has to
+// be repeated in the JSON validator (audit #23).
+TEST(CircuitSerializer, FromJson_IfValueWiderThanRegister_Throws) {
+    const std::string src = R"({
+  "num_qubits": 1,
+  "classical_registers": [{"name": "c", "width": 2, "offset": 0}],
+  "ops": [{"type": "if", "creg": 0, "value": 9,
+           "body": {"type": "gate", "name": "x", "gate_type": 1, "qubits": [0], "params": []}}]
+})";
+    EXPECT_THROW(Circuit::from_json(src), CircuitError);
 }

@@ -1,10 +1,14 @@
-// remove_identity_pass.hpp — RemoveIdentityPass declaration.
-// Removes identity (GateType::I) gates from the circuit. All other ops pass
-// through unchanged. Boundary ops (Measure, Barrier, If, Idle) and Opaque
-// GateOps are preserved as-is.
-//
-// Level 2/3 only — not registered in Level 0/1 PassPolicy.
-//
+/// @file remove_identity_pass.hpp
+/// @brief Removes identity gates from the circuit.
+/// @ingroup transpiler
+///
+/// RemoveIdentityPass declaration.
+/// Removes identity (GateType::I) gates from the circuit. All other ops pass
+/// through unchanged. Boundary ops (Measure, Barrier, If, Idle) and Opaque
+/// GateOps are preserved as-is.
+///
+/// Level 2/3 only — not registered in Level 0/1 PassPolicy.
+///
 
 #pragma once
 
@@ -14,6 +18,8 @@ namespace qplayer {
 
 class Circuit;
 
+/// Drops GateType::I ops and passes every other op through unchanged.
+/// @ingroup transpiler
 class RemoveIdentityPass : public IPass {
 public:
     RemoveIdentityPass() = default;

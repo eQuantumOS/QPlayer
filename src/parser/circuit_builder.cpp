@@ -1,23 +1,25 @@
-// circuit_builder.cpp — AST → Circuit IR transformation.
-// Implements CircuitBuilder::build() which converts a validated Program AST
-// into a qplayer::Circuit object by executing five sequential passes:
-//   Pass 1: QRegDecl  → qubit offset table, total qubit count.
-//   Pass 2: CRegDecl  → classical register creation + offset table.
-// Pass 3: OpaqueDecl → Circuit::declare_opaque() (DeclarationOnly).
-//   Pass 4: GateDef   → user_gates_ cache (body emitted at call sites).
-//   Pass 5: Statements → Circuit op emission (GateCall / Measure / Reset /
-//                         Barrier / If / IncludeStmt / VersionDecl skipped).
-//
-// Expression evaluation supports: pi, sin, cos, tan, exp, ln, sqrt, +, -, *,
-// /, ^ (pow), unary -. Unknown identifiers / functions throw QASMParseError.
-//
-// if-body restriction: only GateCall is supported as an if-then body in Phase
-// 3 (Circuit::if_then accepts GateOp only). Measure/Reset as if-body throws
-// CircuitError. This is noted as a post-Phase-3 open item (
-// allows the full set; tracked in).
-//
-// References:,,,,,
-// .
+/// @file circuit_builder.cpp
+/// @brief AST → Circuit IR transformation.
+///
+/// Implements CircuitBuilder::build() which converts a validated Program AST
+/// into a qplayer::Circuit object by executing five sequential passes:
+/// Pass 1: QRegDecl  → qubit offset table, total qubit count.
+/// Pass 2: CRegDecl  → classical register creation + offset table.
+/// Pass 3: OpaqueDecl → Circuit::declare_opaque() (DeclarationOnly).
+/// Pass 4: GateDef   → user_gates_ cache (body emitted at call sites).
+/// Pass 5: Statements → Circuit op emission (GateCall / Measure / Reset /
+/// Barrier / If / IncludeStmt / VersionDecl skipped).
+///
+/// Expression evaluation supports: pi, sin, cos, tan, exp, ln, sqrt, +, -, *,
+/// /, ^ (pow), unary -. Unknown identifiers / functions throw QASMParseError.
+///
+/// if-body restriction: only GateCall is supported as an if-then body in Phase
+/// 3 (Circuit::if_then accepts GateOp only). Measure/Reset as if-body throws
+/// CircuitError. This is noted as a post-Phase-3 open item (
+/// allows the full set; tracked).
+///
+/// References:,,,,,
+///
 
 #include "parser/detail/circuit_builder.hpp"
 
@@ -32,6 +34,7 @@
 #include "circuit/circuit.hpp"
 #include "circuit/gate_op.hpp"
 #include "error.hpp"
+#include "log.hpp"
 #include "parser/detail/qelib1_builtin.hpp"
 
 // GCC 13 false-positive -Wmaybe-uninitialized triggered by variant push_back
@@ -158,7 +161,24 @@ double CircuitBuilder::eval_expr(
                                     "division by zero in parameter expression");
                     }
                     return lhs / rhs;
-                case BinaryOp::Pow: return std::pow(lhs, rhs);
+                case BinaryOp::Pow: {
+                    // Guard the two domain errors std::pow answers with NaN: a
+                    // negative base with a fractional exponent, and 0 raised to a
+                    // negative power. Without this the NaN flows into a gate
+                    // parameter and only surfaces much later as a diverged state
+                    // (audit #7 side finding).
+                    if (lhs < 0.0 && rhs != std::floor(rhs)) {
+                        parse_error(file_, v.line, v.col,
+                                    "negative base with fractional exponent in "
+                                    "parameter expression (result is not real)");
+                    }
+                    if (lhs == 0.0 && rhs < 0.0) {
+                        parse_error(file_, v.line, v.col,
+                                    "zero raised to a negative power in parameter "
+                                    "expression");
+                    }
+                    return std::pow(lhs, rhs);
+                }
             }
             // Unreachable; silence compiler warning.
             return 0.0;
@@ -440,44 +460,12 @@ void CircuitBuilder::emit_gate_call(
         }
     }
 
-    // 2. Opaque gate → emit GateOp{Opaque} by pushing through detail_make path.
-    // Circuit has no public opaque-call builder; we use detail_make_circuit_from_payload
-    // only for construction. The correct approach here is to directly append to
-    // ops_ via the friend function. However, since Circuit does not expose
-    // ops_ directly, we must push via the friend: detail_make_circuit_from_payload
-    // is the only friend, but it constructs a new circuit.
-    //
-    // Resolution: Use the ops() accessor (const), clone, rebuild — too costly.
-    // Better: Add a CircuitBuilder friend declaration to Circuit. But we cannot
-    // modify circuit.hpp here without ADR.
-    //
-    // Phase 3 compromise: opaque calls in the main circuit body are emitted by
-    // building a "carrier" GateOp and inserting it via a passthrough. Since we
-    // own the CircuitBuilder, we use detail_make_circuit_from_payload to
-    // reassemble after accumulation. That's also expensive.
-    //
-    // Pragmatic solution: Expose a package-internal method via a non-public
-    // free function or use the existing friend. Circuit has:
-    //   friend Circuit detail_make_circuit_from_payload(..., std::vector<Op> ops, ...);
-    // We can therefore reconstruct, but that means we'd need to buffer all ops.
-    //
-    // Simplest correct approach: declare CircuitBuilder as a friend of Circuit
-    // in circuit.hpp. Since that requires ADR (public API header change), and
-    // the task instructions say to check and report:
-    //
-    // For Phase 3 we use the following WORKAROUND: We append to a *local*
-    // std::vector<Op> buffer that we carry externally, then reconstruct the
-    // Circuit at the end. But CircuitBuilder::build() already holds the Circuit
-    // by value and returns it — we cannot buffer late.
-    //
-    // FINAL DECISION (see open item):
-    // We add CircuitBuilder as a friend in circuit.hpp via a free function
-    // detail_circuit_push_op() that is implemented in circuit.cpp. This is the
-    // minimal change to circuit.hpp (one free function declaration) and does
-    // NOT change the public API surface visible to users. Reporting this as a
-    // design observation but proceeding with the free-function bridge.
-    // This function is declared at the bottom of circuit.hpp and implemented
-    // in circuit.cpp (Phase 3 patch).
+    // 2. Opaque gate -> emit GateOp{Opaque}. Circuit exposes no public opaque-call
+    // builder and ops_ is private, so we append through the free friend function
+    // detail_circuit_push_op() (declared at the bottom of circuit.hpp, defined in
+    // circuit.cpp). That keeps the public API surface unchanged — the alternative,
+    // rebuilding the Circuit from a buffered op vector, would cost a full copy per
+    // opaque call.
     {
         auto it = opaques_.find(call.name);
         if (it != opaques_.end()) {
@@ -679,8 +667,13 @@ void CircuitBuilder::emit_statement(
             const AstStmt& body_stmt = *s.body;
             if (!std::holds_alternative<GateCall>(body_stmt.v)) {
                 // Measure/Reset as if-body: unsupported in Phase 3.
-                const char* body_kind =
-                    std::holds_alternative<MeasureStmt>(body_stmt.v) ? "measure" : "reset";
+                // Name the actual body kind instead of labelling everything that
+                // is not a measure as "reset" (audit #23).
+                const char* body_kind = "statement";
+                if (std::holds_alternative<MeasureStmt>(body_stmt.v))    body_kind = "measure";
+                else if (std::holds_alternative<ResetStmt>(body_stmt.v)) body_kind = "reset";
+                else if (std::holds_alternative<BarrierStmt>(body_stmt.v)) body_kind = "barrier";
+                else if (std::holds_alternative<IfStmt>(body_stmt.v))    body_kind = "if";
                 throw qplayer::CircuitError{
                     std::string{"if(...) "} + body_kind +
                     " is not supported by the Circuit API in Phase 3 "
@@ -691,6 +684,12 @@ void CircuitBuilder::emit_statement(
             static const std::unordered_map<std::string, QubitIndex> empty_qmap;
             static const std::unordered_map<std::string, double>     empty_pmap;
             GateOp body_op = build_if_body_gate(body_call, empty_qmap, empty_pmap);
+
+            // No width check here: SemanticValidatorPass already rejects an
+            // if-condition value the register cannot hold (semantic_validator.cpp
+            // "exceeds maximum"), so this path is unreachable for QASM input. The
+            // equivalent guard for the C++ API lives in Circuit::if_then().
+
             c.if_then(creg_idx, static_cast<std::uint64_t>(s.value), body_op);
         }
 

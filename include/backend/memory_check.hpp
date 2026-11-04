@@ -1,7 +1,11 @@
-// memory_check.hpp — Pre-allocation memory budget guard for backends.
-// FullState CPU/GPU backends call check_memory_budget() inside prepare() before
-// allocating the 2^n state vector. SparseState / TensorNetwork skip the check
-// because their footprint cannot be bounded ahead of time.
+/// @file memory_check.hpp
+/// @brief Pre-allocation memory budget guard used by the dense backends.
+/// @ingroup backend
+///
+/// Pre-allocation memory budget guard for backends.
+/// FullState CPU/GPU backends call check_memory_budget() inside prepare() before
+/// allocating the 2^n state vector. SparseState / TensorNetwork skip the check
+/// because their footprint cannot be bounded ahead of time.
 
 #pragma once
 
@@ -27,9 +31,12 @@ void check_memory_budget(std::uint64_t    required_bytes,
                          std::string_view backend_name,
                          QubitIndex       num_qubits);
 
-// Working-set kind for the FullState CPU peak-memory model.
-// The bare state vector (re + im SoA) is 2^n * 16 bytes; the two kinds capture
-// the transient buffers layered on top of it.
+/// Selects which allocation profile check_memory_budget() validates against.
+/// @ingroup backend
+///
+/// Working-set kind for the FullState CPU peak-memory model.
+/// The bare state vector (re + im SoA) is 2^n * 16 bytes; the two kinds capture
+/// the transient buffers layered on top of it.
 enum class WorkingSet {
     Execute,      // base + one transient (reorder scratch OR sampling prob/cdf,
                   // which never overlap) -> 2 * 2^n * 16

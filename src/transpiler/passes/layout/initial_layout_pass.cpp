@@ -1,8 +1,10 @@
-// initial_layout_pass.cpp — InitialLayoutPass implementation
-// Stamps CircuitMetadata.layout with a logical->physical mapping
-// (Trivial identity by default, or a caller-supplied permutation) and copies
-// the device coupling map into the metadata. Op qubit indices are left as-is;
-// physical routing is the SwapRouterPass's job.
+/// @file initial_layout_pass.cpp
+/// @brief InitialLayoutPass implementation (
+///
+///). Stamps CircuitMetadata.layout with a logical->physical mapping
+/// (Trivial identity by default, or a caller-supplied permutation) and copies
+/// the device coupling map into the metadata. Op qubit indices are left as-is;
+/// physical routing is the SwapRouterPass's job.
 
 #include "transpiler/passes/layout/initial_layout_pass.hpp"
 

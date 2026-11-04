@@ -4,7 +4,7 @@ QPlayerBackend is a BackendV2, so Qiskit's own BackendSamplerV2 / BackendEstimat
 wrap it directly — no dedicated primitive classes. Verifies Bell sampling and a
 shot-based <H> estimate.
 
-    python -m unittest tests.python.test_qiskit_primitives -v
+    python -m unittest tests.scenario.python.test_qiskit_primitives -v
 """
 import math
 import os

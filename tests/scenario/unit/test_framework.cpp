@@ -201,7 +201,7 @@ TEST(Framework, ExpectedFailTest_BodyThrowsNotImplemented_Counted_AsExpectedFail
     // Act
     RunResult r = run_isolated(entries);
 
-    // Assert: NotImplementedError in xfail body → expected_fail (per).
+    // Assert: NotImplementedError in xfail body → expected_fail ().
     EXPECT_EQ(r.expected_fail, 1);
     EXPECT_EQ(r.exit_code,     0);
 }
@@ -265,7 +265,7 @@ TEST(Framework, ExpectNoThrow_WhenThrows_Fails) {
 
 // : QRegister::parse() now delegates to the Phase 3 Parser facade (no
 // longer a stub). The test name retains the Phase0S suite for historical
-// continuity; the stub contract has been superseded by.
+// continuity; the stub contract has been superseded.
 TEST(Phase0S, ParseStub_NoLongerThrows) {
     qplayer::QRegister qr;
     EXPECT_NO_THROW(qr.parse(
@@ -283,7 +283,7 @@ TEST(Phase0S, RunStub_NoLongerThrows) {
 // : QRegister::transpile() is now implemented (no longer a stub).
 // Verify that the default call (optimization_level=1, no device) succeeds and
 // does NOT throw NotImplementedError. The test name retains Phase0S suite for
-// historical continuity -- the stub contract has been superseded by.
+// historical continuity -- the stub contract has been superseded.
 TEST(Phase0S, TranspileStub_NoLongerThrows) {
     qplayer::QRegister qr;
     qplayer::Circuit circ(2, 0);

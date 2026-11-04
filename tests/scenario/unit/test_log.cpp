@@ -4,7 +4,7 @@
 //   2. Thread-safety: N threads calling log::warn concurrently produce
 //      N complete uninterleaved lines in std::clog.
 //
-// std::thread waiver: performance-rules forbids direct std::thread usage in
+// std::thread waiver: performance-rules forbids direct std::thread usage
 // runtime code (OpenMP only). Test bodies are exempt — exercising log's mutex
 // from N concurrent native threads is the only way to validate 's
 // thread-safety claim, which explicitly requires. The

@@ -1,18 +1,21 @@
-// qelib1_builtin.hpp — GateType mapping for every qelib1.inc gate.
-// Cross-links qelib1_signatures.hpp (num_params/num_qubits) with the GateType
-// enum from gate_op.hpp. Used by CircuitBuilder to dispatch a GateCall AST node
-// to the correct Circuit builder method.
-//
-// Design SSOT: table — 29 entries: U/CX built-in aliases
-// plus 27 qelib1 gates (incl. sx/sxdg). kQelib1Signatures and
-// kQelib1Mappings must stay in 1:1
-// correspondence (same index order). A static_assert in qelib1_builtin.cpp
-// enforces the array size match.
-//
-// qelib1.inc include handling: CircuitBuilder skips IncludeStmt whose path is
-// "qelib1.inc" (or ends with "/qelib1.inc") as a no-op. Other paths throw
-// QASMParseError (external includes are out of scope for Phase 3). The helper
-// is_qelib1_inc() does the matching.
+/// @file qelib1_builtin.hpp
+/// @brief GateType mapping for every qelib1.inc gate.
+/// @ingroup frontend
+///
+/// Cross-links qelib1_signatures.hpp (num_params/num_qubits) with the GateType
+/// enum from gate_op.hpp. Used by CircuitBuilder to dispatch a GateCall AST node
+/// to the correct Circuit builder method.
+///
+/// Design SSOT: table — 29 entries: U/CX built-in aliases
+/// plus 27 qelib1 gates (incl. sx/sxdg). kQelib1Signatures and
+/// kQelib1Mappings must stay in 1:1
+/// correspondence (same index order). A static_assert in qelib1_builtin.cpp
+/// enforces the array size match.
+///
+/// qelib1.inc include handling: CircuitBuilder skips IncludeStmt whose path is
+/// "qelib1.inc" (or ends with "/qelib1.inc") as a no-op. Other paths throw
+/// QASMParseError (external includes are out of scope for Phase 3). The helper
+/// is_qelib1_inc() does the matching.
 
 #pragma once
 
@@ -25,9 +28,9 @@
 
 namespace qplayer::detail {
 
-// Pairs a QASM gate name with its Circuit IR GateType. Null-terminated
-// name field matches the corresponding kQelib1Signatures entry at the same
-// index position.
+/// Pairs a QASM gate name with its Circuit IR GateType. Null-terminated
+/// name field matches the corresponding kQelib1Signatures entry at the same
+/// index position.
 struct Qelib1Mapping {
     std::string_view name;
     GateType         type;

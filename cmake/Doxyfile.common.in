@@ -1,0 +1,87 @@
+# Doxyfile.common.in — tags shared by every QPlayer Doxygen configuration
+# CMake configures this into ${CMAKE_BINARY_DIR}/Doxyfile.common and
+# each concrete config pulls it in with @INCLUDE before applying its overrides.
+#
+# The reason to share rather than duplicate is not the config count — it is that
+# the coverage gate must measure exactly the surface `docs` publishes. If INPUT,
+# FILE_PATTERNS or the exclusions drifted between the two, the reported
+# percentage would describe a document nobody receives.
+#
+# Doxygen resolves tags in file order, so anything a config assigns AFTER its
+# @INCLUDE line wins. Only non-default tags belong here, matching the policy of
+# the concrete configs.
+
+# ── Project identity ─────────────────────────────────────────────────────────
+PROJECT_NUMBER         = "@QPLAYER_DOXYGEN_VERSION@"
+OUTPUT_LANGUAGE        = English
+
+# ── Input ────────────────────────────────────────────────────────────────────
+# The whole tree the reference covers: include/ (detail/ included), src/, and the
+# English markdown files so their cross-links resolve inside the output instead of
+# dangling. Implementation detail and private members are published deliberately
+# ( — the artifact documents how the contract is met, not only what it
+# is). The Korean design documents stay out by policy, and src/ comments
+# are English, so the output remains a single-language
+# document.
+INPUT                  = @QPLAYER_DOXYGEN_INPUT@
+RECURSIVE              = YES
+FILE_PATTERNS          = *.hpp *.h *.cuh *.cpp *.cu *.md *.dox
+STRIP_FROM_PATH        = @QPLAYER_DOXYGEN_STRIP_PATH@
+# Doxygen does not know .cu / .cuh natively, so without this mapping it lists the
+# CUDA files but parses none of their comments — full_state_gpu.cu carried a
+# correct @file block and still counted as undocumented until this was set.
+EXTENSION_MAPPING      = cu=C++ cuh=C++
+# No exclusions: detail/ headers are precisely what a reader following an
+# implementation path needs (parser AST and lexer, Kraus builders, the JSON value
+# type, the RNG). They carry @file briefs and are inside the T-1 gate.
+EXCLUDE_PATTERNS       =
+EXCLUDE_SYMBOLS        =
+
+# Example sources referenced by \example, so a reader reaches runnable code from
+# the reference instead of only the examples/README prose. This is
+# shared rather than per-config because the references live in the shared input
+# (include/modules.dox): a config that reads modules.dox without EXAMPLE_PATH
+# warns "included file ... is not found" (observed on docs-internal).
+EXAMPLE_PATH           = @QPLAYER_DOXYGEN_EXAMPLE_PATH@
+EXAMPLE_PATTERNS       = *.cpp
+EXAMPLE_RECURSIVE      = NO
+
+# ── Extraction ───────────────────────────────────────────────────────────────
+# EXTRACT_ALL is deliberately absent: it is the one extraction tag the two configs
+# disagree on (docs keeps undocumented declarations visible as a structural map;
+# docs-coverage must turn it off because Doxygen silently disables
+# WARN_IF_UNDOCUMENTED while it is on).
+#
+# EXTRACT_PRIVATE = YES follows the same reasoning as the widened INPUT. It does
+# not move the coverage numbers: check-doc-coverage.py judges public and protected
+# members only, so private members land outside every tier.
+EXTRACT_STATIC         = YES
+EXTRACT_PRIVATE        = YES
+EXTRACT_LOCAL_CLASSES  = YES
+# Anonymous-namespace helpers inside src/ are real implementation surface.
+EXTRACT_ANON_NSPACES   = YES
+INTERNAL_DOCS          = YES
+HIDE_UNDOC_MEMBERS     = NO
+HIDE_UNDOC_CLASSES     = NO
+JAVADOC_AUTOBRIEF      = YES
+# Declaration order carries meaning in the public headers (construction first,
+# then execution, then state access) — alphabetical sorting would destroy it.
+SORT_MEMBER_DOCS       = NO
+SORT_BRIEF_DOCS        = NO
+
+# ── Preprocessing ────────────────────────────────────────────────────────────
+# types.hpp guards `unsigned __int128` behind __GNUC__; without the
+# define Doxygen takes the #error branch and drops StateIndex entirely.
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = YES
+EXPAND_ONLY_PREDEF     = YES
+PREDEFINED             = __GNUC__=11 \
+                         __x86_64__=1 \
+                         QPLAYER_BUILD_GPU=1
+
+# ── Warnings ─────────────────────────────────────────────────────────────────
+# WARN_IF_UNDOCUMENTED / WARN_NO_PARAMDOC are per-config: only docs-coverage
+# turns them on, and only it can (see the EXTRACT_ALL note above).
+QUIET                  = YES
+WARNINGS               = YES
+WARN_IF_DOC_ERROR      = YES

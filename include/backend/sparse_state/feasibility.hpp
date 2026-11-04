@@ -1,11 +1,15 @@
-// feasibility.hpp — SparseState pre-flight memory feasibility analysis
-// (Phase 7-F). Statically estimates an upper bound Ŝ on the
-// non-zero amplitude count a circuit can reach, so prepare() can reject circuits
-// that cannot fit the memory budget *before* evolving them (instead of relying
-// on the post-hoc std::bad_alloc path of). The estimate is a safe
-// upper bound and stays independent of the get_statevector() dense fast-path
-// — false-rejects of low-qubit high-branch circuits are relaxed
-// via QPLAYER_MEMORY_BUDGET_GB, never by under-estimating.
+/// @file feasibility.hpp
+/// @brief Static pre-flight estimate of the non-zero amplitude count a circuit can reach.
+/// @ingroup backend
+///
+/// SparseState pre-flight memory feasibility analysis
+/// (Phase 7-F). Statically estimates an upper bound Ŝ on the
+/// non-zero amplitude count a circuit can reach, so prepare() can reject circuits
+/// that cannot fit the memory budget *before* evolving them (instead of relying
+/// on the post-hoc std::bad_alloc path). The estimate is a safe
+/// upper bound and stays independent of the get_statevector() dense fast-path
+/// — false-rejects of low-qubit high-branch circuits are relaxed
+/// via QPLAYER_MEMORY_BUDGET_GB, never by under-estimating.
 
 #pragma once
 
@@ -29,8 +33,11 @@ namespace detail {
 // basis.
 constexpr std::uint64_t kSparseEntryBytes = 168;
 
-// Result of analyze_sparse_feasibility(): the worst-case non-zero count and the
-// memory it would need, compared against the supplied budget.
+/// Upper-bound amplitude estimate letting prepare() reject infeasible circuits before evolving them.
+/// @ingroup backend
+///
+/// Result of analyze_sparse_feasibility(): the worst-case non-zero count and the
+/// memory it would need, compared against the supplied budget.
 struct SparseFeasibility {
     StateIndex    estimated_max_states;  // Ŝ — upper bound, saturated (see .cpp)
     std::uint64_t estimated_bytes;       // Ŝ × kSparseEntryBytes

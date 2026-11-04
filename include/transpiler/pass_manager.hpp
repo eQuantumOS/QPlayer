@@ -1,8 +1,12 @@
-// pass_manager.hpp — Ordered IPass executor.
-// Holds passes in registration order. run() iterates and invokes each pass
-// in sequence, emitting qplayer::log::debug breadcrumbs around each step
-// Circuit value semantics: each pass receives the output of the
-// previous pass as its input.
+/// @file pass_manager.hpp
+/// @brief Ordered executor that runs registered IPass instances in sequence.
+/// @ingroup transpiler
+///
+/// Ordered IPass executor.
+/// Holds passes in registration order. run() iterates and invokes each pass
+/// in sequence, emitting qplayer::log::debug breadcrumbs around each step
+/// Circuit value semantics: each pass receives the output of the
+/// previous pass as its input.
 
 #pragma once
 
@@ -17,6 +21,8 @@ namespace qplayer {
 class Circuit;  // Forward declaration — ipass.hpp already pulls circuit.hpp,
                 // but keep the forward declaration as documentation intent.
 
+/// Owns passes in registration order and threads each pass's output into the next.
+/// @ingroup transpiler
 class PassManager {
 public:
     PassManager();
@@ -31,7 +37,8 @@ public:
     PassManager(const PassManager&)            = delete;
     PassManager& operator=(const PassManager&) = delete;
 
-    // Append a pass to the pipeline. Ownership transfers in.
+    // Append a pass to the pipeline. Ownership transfers to the PassManager
+    // (by-value unique_ptr).
     void add_pass(std::unique_ptr<IPass> pass);
 
     // Run every registered pass against the Circuit in registration order.

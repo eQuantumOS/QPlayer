@@ -1,7 +1,7 @@
 """PennyLane tape -> qplayer.Circuit converter + observable mapping.
 
 Maps PennyLane operations to qplayer.Circuit gates directly (op direct mapping,
-shared approach with). Only the gates with an exact qplayer
+shared approach). Only the gates with an exact qplayer
 equivalent are declared "supported"; QPlayerDevice.preprocess decomposes anything
 else into this set, so the converter never sees an unsupported op in practice.
 Observables are mapped to weighted Pauli strings (qplayer big-endian).

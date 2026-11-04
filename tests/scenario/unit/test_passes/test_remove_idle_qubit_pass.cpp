@@ -145,7 +145,7 @@ TEST(RemoveIdleQubitPass, ThreeQubits_TwoIdle_BothRemoved) {
 // ── Case 10: opaque GateOp on idle qubit is preserved (-2) ────────
 //
 // Opaque gates have unknown semantics so the pass must never silently delete
-// them even when every operand qubit looks idle. The other eight passes
+// them even when every operand qubit looks idle. The other eight F-OPT passes
 // enforce the same guard; this case pins it for RemoveIdleQubitPass too.
 
 TEST(RemoveIdleQubitPass, OpaqueGate_OnIdleQubit_Preserved) {
@@ -171,4 +171,54 @@ TEST(RemoveIdleQubitPass, OpaqueGate_OnIdleQubit_Preserved) {
     // Opaque op + H(1) + measure(1,0) all remain — no silent deletion.
     EXPECT_EQ(out.num_ops(), std::size_t{3});
     EXPECT_FALSE(pass.changed());
+}
+
+// ── Case 11: no observation declared at all — pass skipped ────────
+//
+// This is the audit finding #3 repro reduced to pass level: a Bell circuit with
+// no measure was wiped to zero ops, so <XX> read back +1 -> 0. A statevector or
+// expectation read happens after run() and is invisible here, so a circuit that
+// declares no observation must be left untouched.
+
+TEST(RemoveIdleQubitPass, NoObservationDeclared_PassSkipped) {
+    Circuit c(2);
+    c.h(0).cx(0, 1);
+
+    RemoveIdleQubitPass pass;
+    Circuit out = pass.run(std::move(c));
+
+    EXPECT_EQ(out.num_ops(), std::size_t{2});
+    EXPECT_FALSE(pass.changed());
+}
+
+// ── Case 12: expectation target keeps its qubits ──────────────────
+
+TEST(RemoveIdleQubitPass, ExpectationTarget_KeepsNamedQubits) {
+    // No measure anywhere, but <ZZ> is pre-registered so both qubits
+    // are observed and neither gate may be dropped.
+    Circuit c(2);
+    c.h(0).cx(0, 1).add_expectation("ZZ");
+
+    RemoveIdleQubitPass pass;
+    Circuit out = pass.run(std::move(c));
+
+    EXPECT_EQ(out.num_ops(), std::size_t{2});
+    EXPECT_FALSE(pass.changed());
+}
+
+// ── Case 13: partial Pauli — only the named qubit is observed ─────
+
+TEST(RemoveIdleQubitPass, PartialPauliTarget_UnnamedQubitsStillIdle) {
+    // "IIZ" in Qiskit big-endian order names qubit 0 only: pauli[0]
+    // acts on the highest qubit (2), pauli[2] on qubit 0. So gates on q[1]/q[2]
+    // stay idle and are dropped, while H(0) is kept.
+    Circuit c(3);
+    c.h(0).x(1).y(2).add_expectation("IIZ");
+
+    RemoveIdleQubitPass pass;
+    Circuit out = pass.run(std::move(c));
+
+    EXPECT_EQ(out.num_ops(), std::size_t{1});
+    EXPECT_TRUE(pass.changed());
+    EXPECT_EQ(out.num_qubits(), qplayer::QubitIndex{3});  // num_qubits unchanged
 }

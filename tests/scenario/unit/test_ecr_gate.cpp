@@ -173,7 +173,7 @@ TEST(EcrGate, FusedEqualsUnfused_OnEntangledContext) {
 
     // Act: path B (fuse then apply program).
     backB.init_state(n);
-    const std::vector<FusedOp> prog = fuse_circuit(circ.ops(), 4);
+    const std::vector<FusedOp> prog = fuse_circuit(circ.ops(), 4, circ.num_qubits());
     backB.apply_fused_program(prog);
     const StateVector svB = backB.get_statevector();
 

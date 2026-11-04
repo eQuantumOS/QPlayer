@@ -1,20 +1,25 @@
-// interactive.cpp — Real implementation of the Interactive facade
-// Delegates all gate / measure / state-access calls directly to the
-// bound SimulatorBackend. Typed gate methods are thin wrappers over apply_gate().
-//
-// Design decisions:
-//   - TensorNetwork backend rejects initialize() with SimulatorError per the
-// feature matrix.
-//   - measure(q, cubit) accumulates 0/1 outcomes into cbits_[] and builds an
-// MSB-first bitstring matching the Batch run() path (result.cpp).
-//   - probability(q, outcome) is computed from get_statevector() because the
-//     backend interface exposes no per-qubit probability API. For SparseState
-//     get_statevector_raw() throws; we fall through to get_statevector() (AoS)
-// which is valid for num_qubits <= MAX_STATEVECTOR_QUBITS.
-//   - active_ guard applies before every user-visible method; it throws
-// SimulatorError with the backend's name() literal.
+/// @file interactive.cpp
+/// @brief Real implementation of the Interactive facade (
+///
+///). Delegates all gate / measure / state-access calls directly to the
+/// bound SimulatorBackend. Typed gate methods are thin wrappers over apply_gate().
+///
+/// Design decisions:
+/// - TensorNetwork backend rejects initialize() with SimulatorError per the
+/// feature matrix (CLAUDE.md).
+/// - measure(q, cubit) accumulates 0/1 outcomes into cbits_[] and builds an
+/// MSB-first bitstring matching the Batch run() path (result.cpp).
+/// - probability(q, outcome) is computed from get_statevector() because the
+/// backend interface exposes no per-qubit probability API. For SparseState
+/// get_statevector_raw() throws; we fall through to get_statevector() (AoS)
+/// which is valid for num_qubits <= MAX_DENSE_EXPORT_QUBITS.
+/// - active_ guard applies before every user-visible method; it throws
+/// SimulatorError with the backend's name() literal.
 
 #include "circuit/interactive.hpp"
+
+// Needs the complete QRegister type for the switch (owner_->...).
+#include "qregister.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -78,6 +83,13 @@ void Interactive::bind_backend(SimulatorBackend* backend) {
     backend_ = backend;
 }
 
+// bind_owner(): called once from QRegister's constructor so initialize() can
+// request the CPU switch. Never called from the run() fallback path —
+// the owner does not change.
+void Interactive::bind_owner(QRegister* owner) {
+    owner_ = owner;
+}
+
 // initialize(): allocate |0...0> on the backend. Interactive supports CPU
 // statevector backends only (FullState CPU, SparseState). TensorNetwork (tensor-
 // graph model, no incremental gate apply) and FullState GPU (batch execute()
@@ -90,9 +102,20 @@ void Interactive::initialize(QubitIndex num_qubits) {
         throw SimulatorError{"TensorNetwork", "Interactive mode not supported"};
     }
     if (backend_->name() == std::string_view("FullStateGPU")) {
-        throw SimulatorError{"FullStateGPU",
-            "Interactive mode is CPU-only; use QRegister(FullState, ProcType::CPU) "
-            "or the batch run() path for GPU"};
+        // ProcType::Auto means the user delegated the proc choice, so picking a
+        // proc that cannot run Interactive and then throwing breaks the delegation
+        // contract: `QRegister qr; qr.interactive.initialize(n);` — both documented
+        // defaults — failed unconditionally on any GPU host (audit #10). Switch to
+        // CPU and say so. An explicit ProcType::GPU is a user decision and still
+        // errors.
+        if (owner_ != nullptr && owner_->proc_type_ == ProcType::Auto) {
+            owner_->switch_to_cpu_backend_for_interactive();
+            // backend_ was rebound by the owner; fall through on the CPU backend.
+        } else {
+            throw SimulatorError{"FullStateGPU",
+                "Interactive mode is CPU-only; use QRegister(FullState, ProcType::CPU) "
+                "or the batch run() path for GPU"};
+        }
     }
     backend_->init_state(num_qubits);
     num_qubits_ = num_qubits;
@@ -265,15 +288,34 @@ Interactive::get_statevector_nonzero() const {
 
 // probability(q, outcome): P(qubit q collapses to |outcome>) from statevector.
 // Backend has no direct per-qubit probability API, so we sum over the full
-// statevector. Uses get_statevector() (AoS) which works on all backends up to
-// MAX_STATEVECTOR_QUBITS (SparseState get_statevector_raw() would throw — AoS
-// path is safe). Basis index bit q = outcome selects contributing amplitudes.
+// statevector. FullState reads the raw SoA view (no copy); SparseState falls back
+// to the AoS get_statevector() because it has no SoA form.
+// Basis index bit q = outcome selects contributing amplitudes.
 double Interactive::probability(QubitIndex q, int outcome) const {
     if (!active_) throw_not_active(backend_->name());
-    const StateVector sv = backend_->get_statevector();
-    double prob = 0.0;
     const StateIndex mask = StateIndex{1} << q;
-    const StateIndex dim  = static_cast<StateIndex>(sv.size());
+    double prob = 0.0;
+
+    // FullState exposes the internal SoA buffers, so read them in place. The AoS
+    // get_statevector() path allocated and copied the whole 2^n vector on EVERY
+    // call — 2 GiB per call at 27 qubits — even though this only needs a
+    // read-only scan (audit #26). SparseState has no SoA representation and
+    // throws from get_statevector_raw(), so it keeps the AoS path;
+    // there the densified vector is bounded by MAX_DENSE_EXPORT_QUBITS anyway.
+    if (backend_->sim_type() == SimType::FullState) {
+        const RawStateView view = backend_->get_statevector_raw();
+        for (StateIndex i = 0; i < view.size; ++i) {
+            const bool bit_set = ((i & mask) != StateIndex{0});
+            if (bit_set == (outcome != 0)) {
+                const std::size_t k = static_cast<std::size_t>(i);
+                prob += view.re[k] * view.re[k] + view.im[k] * view.im[k];
+            }
+        }
+        return prob;
+    }
+
+    const StateVector sv = backend_->get_statevector();
+    const StateIndex dim = static_cast<StateIndex>(sv.size());
     for (StateIndex i = 0; i < dim; ++i) {
         const bool bit_set = ((i & mask) != StateIndex{0});
         if (bit_set == (outcome != 0)) {

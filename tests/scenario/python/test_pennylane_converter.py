@@ -2,7 +2,7 @@
 
 stdlib unittest (Python-only, not a ctest target). Skips when pennylane absent.
 
-    python -m unittest tests.python.test_pennylane_converter -v
+    python -m unittest tests.scenario.python.test_pennylane_converter -v
 """
 import os
 import sys

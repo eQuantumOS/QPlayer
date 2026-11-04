@@ -1,6 +1,6 @@
 // test_noise_model.cpp — Phase 8 unit tests for NoiseModel channel
 // registration, query, and Kraus operator construction (
-// 06). Each built-in channel must produce trace-preserving Kraus
+//..06). Each built-in channel must produce trace-preserving Kraus
 // operators; out-of-range parameters and non-trace-preserving raw channels
 // must throw CircuitError. Also covers the Circuit::define_opaque(KrausChannel)
 // trace-preserving gate.
@@ -10,6 +10,7 @@
 
 #include <cmath>
 #include <complex>
+#include <limits>
 #include <vector>
 
 #include "../../../include/circuit/circuit.hpp"
@@ -612,4 +613,161 @@ TEST(NoiseModel, LoadDevice_BareGateKey_AppliesRelaxationButNoDepol) {
     auto chans = nm.channels_for_gate("sx", {0});
     EXPECT_EQ(count_relax_on(chans, 0), 2);        // relaxation still applied
     EXPECT_FALSE(has_depolarizing(chans));         // error_rate not synthesised
+}
+
+// ── Malformed device gate keys throw QPlayerError, not std::out_of_range (#20) ─
+//
+// split_gate_key() parsed the trailing qubit tokens with std::stoul, which throws
+// std::out_of_range on an oversized number. That type is outside the QPlayerError
+// hierarchy, so error.hpp's contract ("All throws must use one of these types so
+// Python bindings can map them") was violated and the exception escaped unmapped.
+
+TEST(NoiseModel, LoadDevice_GateKeyQubitTokenOverflows_ThrowsCircuitError) {
+    DeviceModel dev = DeviceModel::from_json_string(R"({
+      "qubits": [{"T1": 50000.0, "T2": 30000.0}],
+      "gates": {"cx_99999999999999999999_0": {"duration_ns": 300.0, "error_rate": 0.01}}
+    })");
+    NoiseModel nm;
+    EXPECT_THROW(nm.load_device(dev), qplayer::CircuitError);
+}
+
+// A qubit index that fits in unsigned long but not in QubitIndex (uint32) used to
+// be truncated into a plausible-looking id; it is now rejected.
+TEST(NoiseModel, LoadDevice_GateKeyQubitExceedsQubitIndex_ThrowsCircuitError) {
+    DeviceModel dev = DeviceModel::from_json_string(R"({
+      "qubits": [{"T1": 50000.0, "T2": 30000.0}],
+      "gates": {"h_4294967296": {"duration_ns": 300.0}}
+    })");
+    NoiseModel nm;
+    EXPECT_THROW(nm.load_device(dev), qplayer::CircuitError);
+}
+
+// ── explicit idle Kraus registry ─────────────────────────
+
+namespace {
+
+// A phase-flip channel written as raw Kraus operators, standing in for the
+// twirled idle channel a harness computes: Pauli, trace-preserving, and
+// distinguishable from the two-operator AD+PD pair T1T2Calculator emits.
+KrausChannel phase_flip_channel(double p) {
+    using C = std::complex<double>;
+    KrausChannel ch;
+    ch.operators = {
+        {{C{std::sqrt(1.0 - p), 0.0}, C{0.0, 0.0}}, {C{0.0, 0.0}, C{std::sqrt(1.0 - p), 0.0}}},
+        {{C{std::sqrt(p), 0.0}, C{0.0, 0.0}}, {C{0.0, 0.0}, C{-std::sqrt(p), 0.0}}},
+    };
+    ch.type = ChannelType::PhaseFlip;
+    return ch;
+}
+
+DeviceModel one_qubit_device() {
+    return DeviceModel::from_json_string(R"({
+      "qubits": [{"T1": 50000.0, "T2": 30000.0}, {"T1": 50000.0, "T2": 30000.0}],
+      "gates": {"sx_0": {"duration_ns": 35.0, "error_rate": 0.001}}
+    })");
+}
+
+}  // namespace
+
+TEST(NoiseModel, AddIdleKraus_RegisteredWindow_TakesPrecedenceOverT1T2) {
+    // Arrange — device coherence would synthesise AD + PD (two channels).
+    NoiseModel nm;
+    nm.load_device(one_qubit_device());
+    EXPECT_EQ(nm.idle_channels(0, 400.0).size(), std::size_t{2});
+
+    // Act — register one explicit channel for exactly that window.
+    nm.add_idle_kraus(0, 400.0, phase_flip_channel(0.02));
+
+    // Assert — the registration replaces the synthesis, it does not add to it.
+    auto chans = nm.idle_channels(0, 400.0);
+    EXPECT_EQ(chans.size(), std::size_t{1});
+    EXPECT_TRUE(chans.front().type == ChannelType::PhaseFlip);
+    EXPECT_EQ(chans.front().target_qubit, qplayer::QubitIndex{0});
+}
+
+TEST(NoiseModel, AddIdleKraus_UnregisteredWindow_FallsBackToT1T2) {
+    // Registering one window must not silence the others: a different duration
+    // and a different qubit both keep the synthesised relaxation.
+    NoiseModel nm;
+    nm.load_device(one_qubit_device());
+    nm.add_idle_kraus(0, 400.0, phase_flip_channel(0.02));
+
+    EXPECT_EQ(nm.idle_channels(0, 401.0).size(), std::size_t{2});
+    EXPECT_EQ(nm.idle_channels(1, 400.0).size(), std::size_t{2});
+    EXPECT_TRUE(nm.has_idle_kraus(0, 400.0));
+    EXPECT_FALSE(nm.has_idle_kraus(0, 401.0));
+    EXPECT_FALSE(nm.has_idle_kraus(1, 400.0));
+}
+
+TEST(NoiseModel, AddIdleKraus_DurationKeyQuantisedToFemtosecond) {
+    // The key is llround(ns * 1e6): a caller re-deriving 400 ns through a
+    // different sum must hit the same entry, while a real (ns-scale) window
+    // must not be merged into it.
+    NoiseModel nm;
+    nm.add_idle_kraus(0, 400.0, phase_flip_channel(0.02));
+
+    EXPECT_TRUE(nm.has_idle_kraus(0, 400.0 + 1e-9));   // below the 1 fs grid
+    EXPECT_FALSE(nm.has_idle_kraus(0, 400.001));       // 1 ps apart -> distinct
+}
+
+TEST(NoiseModel, AddIdleKraus_NegativeOrNonFiniteDuration_ThrowsCircuitError) {
+    NoiseModel nm;
+    EXPECT_THROW(nm.add_idle_kraus(0, -1.0, phase_flip_channel(0.02)),
+                 qplayer::CircuitError);
+    EXPECT_THROW(nm.add_idle_kraus(0, std::numeric_limits<double>::infinity(),
+                                   phase_flip_channel(0.02)),
+                 qplayer::CircuitError);
+}
+
+TEST(NoiseModel, AddIdleKraus_NonTracePreserving_ThrowsCircuitError) {
+    // An idle window is a channel like any other (contract): reject
+    // registration, not silently inside a trajectory.
+    using C = std::complex<double>;
+    KrausChannel bad;
+    bad.operators = {{{C{2.0, 0.0}, C{0.0, 0.0}}, {C{0.0, 0.0}, C{2.0, 0.0}}}};
+    NoiseModel nm;
+    EXPECT_THROW(nm.add_idle_kraus(0, 400.0, bad), qplayer::CircuitError);
+}
+
+TEST(NoiseModel, AddIdleKraus_LoadDeviceClearsRegistry) {
+    // load_device() is idempotent by clearing prior state; the idle registry
+    // follows that rule, so callers must register after loading.
+    NoiseModel nm;
+    nm.load_device(one_qubit_device());
+    nm.add_idle_kraus(0, 400.0, phase_flip_channel(0.02));
+    EXPECT_TRUE(nm.has_idle_kraus(0, 400.0));
+
+    nm.load_device(one_qubit_device());
+
+    EXPECT_FALSE(nm.has_idle_kraus(0, 400.0));
+    EXPECT_EQ(nm.idle_channels(0, 400.0).size(), std::size_t{2});
+}
+
+TEST(NoiseModel, AddIdleKraus_EmptyRegistry_IdleChannelsUnchanged) {
+    // The regression guard for "no behaviour change when unused": with nothing
+    // registered, idle_channels() must return exactly what it returned before.
+    NoiseModel nm;
+    nm.load_device(one_qubit_device());
+
+    auto chans = nm.idle_channels(0, 400.0);
+
+    EXPECT_EQ(chans.size(), std::size_t{2});
+    EXPECT_TRUE(chans[0].type == ChannelType::AmplitudeDamping);
+    EXPECT_TRUE(chans[1].type == ChannelType::PhaseDamping);
+}
+
+TEST(NoiseModel, ProjectToDense_IdleKrausRekeyedAndDroppedWithQubit) {
+    // Truncation re-indexes the registry into dense space; an entry whose
+    // physical qubit did not survive is dropped (handoff).
+    NoiseModel nm;
+    nm.add_idle_kraus(2, 400.0, phase_flip_channel(0.02));
+    nm.add_idle_kraus(9, 400.0, phase_flip_channel(0.02));   // outside the map
+
+    NoiseModel proj = nm.project_to_dense({{0, 2}, {1, 5}});
+
+    EXPECT_TRUE(proj.has_idle_kraus(0, 400.0));              // dense 0 <- phys 2
+    EXPECT_FALSE(proj.has_idle_kraus(2, 400.0));             // physical key gone
+    EXPECT_EQ(proj.idle_channels(0, 400.0).front().target_qubit,
+              qplayer::QubitIndex{0});                        // target remapped
+    EXPECT_FALSE(proj.has_idle_kraus(1, 400.0));             // phys 5 unregistered
 }

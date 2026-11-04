@@ -1,13 +1,15 @@
-// result.cpp — Phase 0-S trivial accessors for the Result container
-// (+). Backends populate the private members through the
-// `friend class QRegister` / `friend class Interactive` channels (Phase 5+);
-// the const accessors below simply expose those members.
-//
-// Phase 0-S notes:
-//   - has_error()/error_message() stay trivially false / "" under the immediate-
-// throw model. Continuation mode (M4+) may flip them later.
-//   - has_statevector() reflects whether the optional was populated by the
-//     backend; statevector() throws CircuitError when called without one.
+/// @file result.cpp
+/// @brief Phase 0-S trivial accessors for the Result container
+///
+/// (+). Backends populate the private members through the
+/// `friend class QRegister` / `friend class Interactive` channels (Phase 5+);
+/// the const accessors below simply expose those members.
+///
+/// Phase 0-S notes:
+/// - has_error()/error_message() stay trivially false / "" under the immediate-
+/// throw model. Continuation mode (M4+) may flip them later.
+/// - has_statevector() reflects whether the optional was populated by the
+/// backend; statevector() throws CircuitError when called without one.
 
 #include "result.hpp"
 
@@ -38,8 +40,13 @@ namespace {
 template <typename T>
 struct uninit_allocator : public std::allocator<T> {
     using base = std::allocator<T>;
-    using typename base::pointer;
-    using typename base::size_type;
+    // Define these directly instead of inheriting them: std::allocator<T>::pointer
+    // and ::size_type are deprecated in C++17 and REMOVED in C++20, so the
+    // inherited form compiles today only because CMakeLists pins C++17 and would
+    // break the moment the standard is raised (audit #24).
+    using value_type = T;
+    using pointer    = T*;
+    using size_type  = std::size_t;
 
     template <typename U>
     struct rebind { using other = uninit_allocator<U>; };
@@ -89,7 +96,7 @@ const std::map<std::string, std::uint64_t>& Result::counts() const {
 // perform_lazy_sampling() — inverse-CDF draw deferred from a backend fast path.
 // Mirrors the eager fast-path samplers exactly (same probability formula, RNG
 // stream, and MSB-first bitstring) so a fixed seed reproduces identical counts
-// (Golden invariance). Two modes (개정):
+// (Golden invariance). Two modes (revised):
 //   - sparse (LazySampling::sparse_probs non-empty): draw from the sparse CDF,
 //     basis index taken from the sparse entry (SparseState; no densify).
 //   - dense  (sparse_probs empty): build prob/CDF over statevector_ (FullState
@@ -212,12 +219,12 @@ void Result::perform_lazy_sampling() const {
         // AoS fallback (statevector_ populated, or GPU-resident after materialize):
         // uses the existing statevector_ complex array path.
         //
-        // Size-gated parallel CDF (개정 2026-06-16):
+        // Size-gated parallel CDF (revised 2026-06-16):
         // - dimi <= kParallelSampleThreshold: serial path (bit-exact Golden).
         //   - dimi >  kParallelSampleThreshold: deterministic block inclusive scan
         // (3-phase OpenMP) — single logical pass, no prob_sum/normalize.
         //
-        // DEFAULT IS PARALLEL for dimi > 2^18 (개정 2026-06-16). The value
+        // DEFAULT IS PARALLEL for dimi > 2^18 (revised 2026-06-16). The value
         // of the parallel block-scan is CONTENTION RESILIENCE, not raw throughput:
         // the serial CDF is single-threaded, so on a busy/shared host a 1-GiB+ scan
         // gets starved by preemption (measured q27 serial 148ms quiet -> 1357ms under
@@ -281,6 +288,17 @@ void Result::perform_lazy_sampling() const {
         if (has_cpu_resident()) {
             dimi = static_cast<std::size_t>(cpu_dim_);
         } else {
+            // A SparseState run whose amplitudes were all pruned (S == 0, reachable
+            // with QPLAYER_SPARSE_THRESHOLD near 1.0) leaves sparse_probs empty, so
+            // `sparse` above is false and we land on this dense branch — but for
+            // n > MAX_DENSE_EXPORT_QUBITS the backend never attached a statevector,
+            // so this used to dereference an empty optional (audit #19).
+            if (!statevector_.has_value()) {
+                throw CircuitError{
+                    "counts(): no sampling source available — the backend attached "
+                    "neither a state vector nor a sparse probability snapshot "
+                    "(all amplitudes pruned? see QPLAYER_SPARSE_THRESHOLD)"};
+            }
             dimi = statevector_->size();
         }
 
@@ -625,6 +643,30 @@ bool Result::has_truncation_errors() const noexcept {
 
 const std::vector<double>& Result::truncation_errors() const noexcept {
     return truncation_errors_;
+}
+
+bool Result::has_trajectory_diagnostics() const noexcept {
+    return !bond_dimensions_.empty();
+}
+
+const std::vector<std::uint32_t>& Result::bond_dimensions() const noexcept {
+    return bond_dimensions_;
+}
+
+const std::vector<double>& Result::truncation_totals() const noexcept {
+    return truncation_totals_;
+}
+
+const std::vector<double>& Result::norm_drifts() const noexcept {
+    return norm_drifts_;
+}
+
+const std::vector<std::vector<NoiseDrawEvent>>& Result::noise_draw_ledger() const noexcept {
+    return noise_draw_ledger_;
+}
+
+const std::vector<std::uint32_t>& Result::noise_interventions() const noexcept {
+    return noise_interventions_;
 }
 
 }  // namespace qplayer

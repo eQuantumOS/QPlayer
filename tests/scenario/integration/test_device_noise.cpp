@@ -1,7 +1,7 @@
 // test_device_noise.cpp — Phase 8 DeviceModel-driven noise integration
 // Exercises the full device pipeline:
 // DeviceModel JSON -> NoiseModel::load_device (gate relaxation) and the idle
-// path DurationAnnotationPass -> IdleNoiseInserterPass -> backend idle_channels.
+// path DurationAnnotationPass -> ALAPSchedulePass -> backend idle_channels.
 // Verifies relaxation shifts the measured distribution in the physical direction
 // and that DeviceModel noise is reproducible under a fixed seed.
 
@@ -11,8 +11,11 @@
 #include <cmath>
 #include <cstdint>
 #include <map>
+#include <complex>
 #include <string>
 #include <string_view>
+#include <variant>
+#include <vector>
 
 #include "../../../include/backend/simulator_backend.hpp"
 #include "../../../include/circuit/circuit.hpp"
@@ -20,13 +23,13 @@
 #include "../../../include/noise/noise_model.hpp"
 #include "../../../include/result.hpp"
 #include "../../../include/transpiler/passes/analysis/duration_annotation_pass.hpp"
-#include "../../../include/transpiler/passes/scheduling/idle_noise_inserter_pass.hpp"
+#include "../../../include/transpiler/passes/scheduling/alap_schedule.hpp"
 #include "../../../include/types.hpp"
 
 using qplayer::Circuit;
 using qplayer::DeviceModel;
 using qplayer::DurationAnnotationPass;
-using qplayer::IdleNoiseInserterPass;
+using qplayer::ALAPSchedulePass;
 using qplayer::make_backend;
 using qplayer::NoiseModel;
 using qplayer::ProcType;
@@ -96,6 +99,13 @@ TEST(DeviceNoise, IdleNoise_ExcitedIdlingQubitRelaxes) {
     // Arrange — q1 is excited (x), then idles while a long h runs on q0.
     // Device: q1 T1=100ns, "h" duration 200ns -> idle gamma = 1-exp(-2) = 0.865,
     // so q1 strongly relaxes toward |0> during the idle window.
+    //
+    // The barrier is load-bearing under ALAPSchedulePass: true ALAP
+    // schedules x(1) as late as possible, which would put q1's idle window BEFORE
+    // the excitation — relaxation on |0> is a no-op, and the test would see no
+    // decay at all. That state-dependence is exactly what corrected
+    // 's "ASAP is noise-equivalent" claim. The barrier pins x(1) ahead
+    // h(0) so the idle window provably follows the excitation.
     const std::uint32_t nshots = 4000;
     DeviceModel dev = DeviceModel::from_json_string(R"({
       "qubits": [{"T1": 100.0, "T2": 80.0}, {"T1": 100.0, "T2": 80.0}],
@@ -105,11 +115,14 @@ TEST(DeviceNoise, IdleNoise_ExcitedIdlingQubitRelaxes) {
     nm.load_device(dev);
 
     Circuit circ(2, 2);
-    circ.x(1).h(0).measure(0, 0).measure(1, 1);
+    circ.x(1).barrier({0, 1}).h(0).measure(0, 0).measure(1, 1);
 
-    // Full device pipeline ( will wire this into transpile()).
+    // Full device pipeline as transpile() runs it. IdleNoiseInserterPass was the
+    // original per-gate inserter; ALAPSchedulePass replaced it (1010) and
+    // the class was removed in Phase 8-F, so the test drives the production
+    // pass instead of a parallel implementation.
     Circuit annotated = DurationAnnotationPass(dev).run(circ);
-    Circuit with_idle = IdleNoiseInserterPass().run(annotated);
+    Circuit with_idle = ALAPSchedulePass().run(annotated);
 
     auto backend = make_backend(SimType::FullState, ProcType::CPU);
     backend->set_seed(0xBEEFULL);
@@ -272,4 +285,107 @@ TEST(DeviceNoise, LoadDeviceFullSynthesis_CpuGpuParity) {
 
     // ±0.02 absorbs CPU-SIMD vs GPU-kernel boundary flips (parity band).
     EXPECT_NEAR(cpu_p1, gpu_p1, 0.02);
+}
+
+// ── Explicit idle channels ───────────────────────────────
+//
+// The registry is only meaningful if the *backends* honour it, which they do
+// through idle_channels(). These tests therefore drive the production pipeline
+// end to end rather than calling the accessor: the failure they guard against
+// is a backend that keeps synthesising relaxation despite a registration.
+
+namespace {
+
+// Idle window durations ALAPSchedulePass materialised for one qubit. The
+// harness pattern this supports is the same one documents as the
+// caller's coverage obligation: enumerate the circuit's idle nodes, then
+// register a channel for each (qubit, duration) actually present.
+std::vector<double> idle_durations_of(const Circuit& c, qplayer::QubitIndex q) {
+    std::vector<double> out;
+    for (const auto& op : c.ops()) {
+        if (const auto* idle = std::get_if<qplayer::IdleOp>(&op)) {
+            if (idle->qubit == q) out.push_back(idle->duration_ns);
+        }
+    }
+    return out;
+}
+
+// Single-operator identity channel: trace-preserving, and observably different
+// from relaxation because it does nothing at all.
+qplayer::KrausChannel identity_channel() {
+    using C = std::complex<double>;
+    qplayer::KrausChannel ch;
+    ch.operators = {{{C{1.0, 0.0}, C{0.0, 0.0}}, {C{0.0, 0.0}, C{1.0, 0.0}}}};
+    ch.type = qplayer::ChannelType::Identity;
+    return ch;
+}
+
+// IdleNoise_ExcitedIdlingQubitRelaxes' device with one change: "x" takes zero
+// time. That isolates the quantity under test -- with a 10 ns x on T1=100 ns the
+// gate's own relaxation costs q1 another gamma = 0.095, so "no decay at all" is
+// unreachable and the assertion would have to be a threshold instead of an
+// equality. At duration 0 the relaxation channel is omitted as a no-op
+// (T1T2Calculator::compute), leaving q1's idle window as its only noise source.
+DeviceModel idle_test_device() {
+    return DeviceModel::from_json_string(R"({
+      "qubits": [{"T1": 100.0, "T2": 80.0}, {"T1": 100.0, "T2": 80.0}],
+      "gates": {"x": {"duration_ns": 0.0}, "h": {"duration_ns": 200.0}}
+    })");
+}
+
+Circuit idle_test_circuit(const DeviceModel& dev) {
+    Circuit circ(2, 2);
+    circ.x(1).barrier({0, 1}).h(0).measure(0, 0).measure(1, 1);
+    return ALAPSchedulePass().run(DurationAnnotationPass(dev).run(circ));
+}
+
+}  // namespace
+
+TEST(DeviceNoise, ExplicitIdleChannel_ReplacesRelaxationInFullStateCpu) {
+    // Arrange — the un-registered run of this exact circuit decays to p < 0.85
+    // (IdleNoise_ExcitedIdlingQubitRelaxes). Registering an identity channel on
+    // every idle window q1 actually has must suppress that decay entirely.
+    const std::uint32_t nshots = 4000;
+    DeviceModel dev = idle_test_device();
+    Circuit with_idle = idle_test_circuit(dev);
+
+    NoiseModel nm;
+    nm.load_device(dev);                       // registry must come AFTER this
+    auto windows = idle_durations_of(with_idle, 1);
+    EXPECT_FALSE(windows.empty());             // guard: the pass did insert idle
+    for (double d : windows) nm.add_idle_kraus(1, d, identity_channel());
+    for (double d : windows) EXPECT_TRUE(nm.has_idle_kraus(1, d));
+
+    auto backend = make_backend(SimType::FullState, ProcType::CPU);
+    backend->set_seed(0xBEEFULL);
+
+    // Act
+    Result r = backend->execute(with_idle, nshots, &nm);
+
+    // Assert — q1 stays excited exactly: the only noise it could have seen was
+    // its idle relaxation, and the registration replaced it (not added to it).
+    EXPECT_NEAR(prob_cubit_one(r.counts(), 1, nshots), 1.0, 1e-12);
+}
+
+TEST(DeviceNoise, ExplicitIdleChannel_ReplacesRelaxationInTensorNetwork) {
+    // Same contract on the TN trajectory path, which reads idle_channels() from
+    // its own dispatch site (tn_backend.cpp) -- the path the paper harness uses.
+    const std::uint32_t nshots = 500;
+    DeviceModel dev = idle_test_device();
+    Circuit with_idle = idle_test_circuit(dev);
+
+    NoiseModel nm;
+    nm.load_device(dev);
+    for (double d : idle_durations_of(with_idle, 1)) {
+        nm.add_idle_kraus(1, d, identity_channel());
+    }
+
+    auto backend = make_backend(SimType::TensorNetwork, ProcType::CPU);
+    backend->set_seed(0xBEEFULL);
+
+    // Act
+    Result r = backend->execute(with_idle, nshots, &nm);
+
+    // Assert
+    EXPECT_NEAR(prob_cubit_one(r.counts(), 1, nshots), 1.0, 1e-12);
 }

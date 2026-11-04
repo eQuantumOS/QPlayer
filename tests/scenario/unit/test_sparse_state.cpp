@@ -18,6 +18,7 @@
 
 #include "../../../include/backend/sparse_state/sparse_state_backend.hpp"
 #include "../../../include/backend/sparse_state/feasibility.hpp"
+#include "../../../include/backend/full_state/full_state_backend.hpp"  // expectation cross-check
 #include "../../../include/circuit/circuit.hpp"
 #include "../../../include/circuit/gate_op.hpp"
 #include "../../../include/error.hpp"
@@ -30,7 +31,7 @@ using qplayer::NotImplementedError;
 using qplayer::QubitIndex;
 using qplayer::StateIndex;
 using qplayer::StateVector;
-using qplayer::MAX_STATEVECTOR_QUBITS;
+using qplayer::MAX_DENSE_EXPORT_QUBITS;
 using qplayer::kSparseDefaultThreshold;
 
 namespace {
@@ -136,7 +137,7 @@ TEST(SparseState, DefaultThreshold_NoEnv_Is1e12) {
 // ── -5: env override sets a custom threshold ──────────────────────────────
 
 TEST(SparseState, EnvOverride_CustomThreshold_Accepted) {
-    // Arrange: set a larger threshold to simulate lossy opt-in.
+    // Arrange: set a larger threshold to simulate lossy opt-.
     ::setenv("QPLAYER_SPARSE_THRESHOLD", "0.1", 1);
     SparseStateBackend backend;
 
@@ -205,23 +206,23 @@ TEST_F(SparseStateFixture, GetStatevectorRaw_BeforeInit_ThrowsSimulatorError) {
     EXPECT_THROW(backend->get_statevector_raw(), SimulatorError);
 }
 
-// ── -9: get_statevector exceeds MAX_STATEVECTOR_QUBITS ────────────────────
+// ── -9: get_statevector exceeds MAX_DENSE_EXPORT_QUBITS ────────────────────
 
 TEST_F(SparseStateFixture, GetStatevector_ExceedsMaxQubits_Throws) {
-    // Arrange: init to MAX_STATEVECTOR_QUBITS + 1 (currently 26 qubits).
+    // Arrange: init to MAX_DENSE_EXPORT_QUBITS + 1 (currently 26 qubits).
     // Densification would require 2^26 * 16 bytes ~ 1 GiB which is disallowed.
-    const QubitIndex too_many = static_cast<QubitIndex>(MAX_STATEVECTOR_QUBITS) + 1u;
+    const QubitIndex too_many = static_cast<QubitIndex>(MAX_DENSE_EXPORT_QUBITS) + 1u;
     backend->init_state(too_many);
 
     // Act / Assert: densification guard rejects the request.
     EXPECT_THROW(backend->get_statevector(), SimulatorError);
 }
 
-// ── -10: get_statevector at exactly MAX_STATEVECTOR_QUBITS is allowed ─────
+// ── -10: get_statevector at exactly MAX_DENSE_EXPORT_QUBITS is allowed ─────
 
 TEST_F(SparseStateFixture, GetStatevector_AtMaxQubits_Succeeds) {
     // Arrange: init to the maximum allowed qubit count.
-    const QubitIndex at_max = static_cast<QubitIndex>(MAX_STATEVECTOR_QUBITS);
+    const QubitIndex at_max = static_cast<QubitIndex>(MAX_DENSE_EXPORT_QUBITS);
     backend->init_state(at_max);
 
     // Act: densification at the boundary must succeed.
@@ -230,7 +231,7 @@ TEST_F(SparseStateFixture, GetStatevector_AtMaxQubits_Succeeds) {
 
     // Assert: dim == 2^25; index 0 amplitude is (1, 0).
     // Tolerance 1e-12: exact arithmetic.
-    const std::size_t expected_dim = std::size_t{1} << MAX_STATEVECTOR_QUBITS;
+    const std::size_t expected_dim = std::size_t{1} << MAX_DENSE_EXPORT_QUBITS;
     EXPECT_EQ(sv.size(), expected_dim);
     EXPECT_NEAR(sv[0].real(), 1.0, 1e-12);
     EXPECT_NEAR(sv[0].imag(), 0.0, 1e-12);
@@ -505,7 +506,7 @@ TEST_F(SparseStateFixture, Execute_WithNoiseModel_ThrowsSimulatorError) {
 }
 
 // A circuit carrying an IdleOp is rejected: SparseState skips the
-// IdleNoiseInserterPass and throws on IdleOp dispatch (arch).
+// ALAPSchedulePass and throws on IdleOp dispatch (arch).
 // IdleOp cannot be added via the public builder, so it is injected through the
 // detail bridge used by the parser / passes.
 TEST_F(SparseStateFixture, Execute_CircuitWithIdleOp_ThrowsSimulatorError) {
@@ -558,7 +559,7 @@ TEST_F(SparseStateFixture, Prepare_129QubitCircuit_ThrowsSimulatorError) {
 }
 
 // max_qubits() reports the structural 128 ceiling, independent of WorkingSet and
-// of the densify cap MAX_STATEVECTOR_QUBITS=25.
+// of the densify cap MAX_DENSE_EXPORT_QUBITS=25.
 TEST_F(SparseStateFixture, MaxQubits_ReportsStructural128) {
     EXPECT_EQ(backend->max_qubits(qplayer::detail::WorkingSet::Execute),
               std::uint32_t{128});
@@ -640,10 +641,10 @@ TEST_F(SparseStateFixture, Feasibility_HighBranchTinyBudget_Infeasible) {
 }
 
 // prepare() rejects an infeasible circuit before evolving when the pre-flight
-// check is enabled (opt-in) and the budget is constrained via
+// check is enabled (opt-) and the budget is constrained
 // QPLAYER_MEMORY_BUDGET_GB (+).
 TEST_F(SparseStateFixture, Prepare_InsufficientMemory_ThrowsSimulatorError) {
-    backend->set_feasibility_check(true);  // is opt-in
+    backend->set_feasibility_check(true);  // is opt-
     // ~1 KiB budget: a 20-qubit all-H circuit (S=2^20) cannot fit.
     ::setenv("QPLAYER_MEMORY_BUDGET_GB", "0.000001", 1);
     qplayer::Circuit circ(20, 20);
@@ -660,7 +661,7 @@ TEST_F(SparseStateFixture, Prepare_InsufficientMemory_ThrowsSimulatorError) {
 // circuit: S=2 needs only ~336 B, so prepare() must NOT reject it (no
 // false-reject of sparse-friendly circuits).
 TEST_F(SparseStateFixture, Prepare_GHZUnderTinyBudget_Succeeds) {
-    backend->set_feasibility_check(true);  // is opt-in
+    backend->set_feasibility_check(true);  // is opt-
     ::setenv("QPLAYER_MEMORY_BUDGET_GB", "0.000001", 1);  // ~1 KiB
     qplayer::Circuit circ(40, 40);
     circ.h(0);
@@ -674,7 +675,7 @@ TEST_F(SparseStateFixture, Prepare_GHZUnderTinyBudget_Succeeds) {
 }
 
 // : pre-flight feasibility is OFF by default. The same infeasible
-// circuit + tiny budget that throws when is enabled must NOT throw at
+// circuit + tiny budget that throws when is enabled must NOT throw
 // prepare() by default — evolution proceeds, leaving overruns to the runtime
 // guard / bad_alloc backstop. prepare() only inits + (skipped) check, so it
 // completes without the predicted-count rejection.
@@ -897,6 +898,163 @@ TEST_F(SparseStateFixture, FixedSeed_ExecuteCountsReproducible) {
     const auto counts_b = backend->execute(circ, 2000).counts();
 
     EXPECT_TRUE(counts_a == counts_b);
+}
+
+// ── expectation_value(): O(nnz) Pauli expectation ────────────
+
+namespace {
+
+// Applies every GateOp of `circ` to `be` after prepare(). Measurement/barrier ops
+// are skipped — these cases only need the evolved |psi>.
+void evolve_gates(SparseStateBackend& be, const qplayer::Circuit& circ) {
+    be.prepare(circ);
+    for (const auto& op : circ.ops()) {
+        if (std::holds_alternative<qplayer::GateOp>(op)) {
+            be.apply_gate(std::get<qplayer::GateOp>(op));
+        }
+    }
+}
+
+// Bell pair (|00> + |11>)/sqrt(2) on 2 qubits.
+qplayer::Circuit bell_circuit() {
+    qplayer::Circuit c(2);
+    c.h(0).cx(0, 1);
+    return c;
+}
+
+}  // namespace
+
+// <ZZ> on a Bell pair is +1: both surviving basis states have even Z-parity.
+// Tolerance 1e-12: algebraic result, no sampling.
+TEST_F(SparseStateFixture, Expectation_BellZZ_ReturnsPlusOne) {
+    evolve_gates(*backend, bell_circuit());
+
+    EXPECT_NEAR(backend->expectation_value("ZZ"), 1.0, 1e-12);
+}
+
+// <XX> = +1 exercises the flip_mask path: P maps |00> <-> |11>, which are exactly
+// the two stored entries, so both off-diagonal lookups hit.
+TEST_F(SparseStateFixture, Expectation_BellXX_ReturnsPlusOne) {
+    evolve_gates(*backend, bell_circuit());
+
+    EXPECT_NEAR(backend->expectation_value("XX"), 1.0, 1e-12);
+}
+
+// <YY> = -1 exercises the i^num_y global phase (num_y == 2 -> phase == -1).
+TEST_F(SparseStateFixture, Expectation_BellYY_ReturnsMinusOne) {
+    evolve_gates(*backend, bell_circuit());
+
+    EXPECT_NEAR(backend->expectation_value("YY"), -1.0, 1e-12);
+}
+
+// <ZI> = 0 on a Bell pair: the marginal of one qubit is maximally mixed. Also
+// covers the 'I' branch (neither mask bit set).
+TEST_F(SparseStateFixture, Expectation_BellZI_ReturnsZero) {
+    evolve_gates(*backend, bell_circuit());
+
+    EXPECT_NEAR(backend->expectation_value("ZI"), 0.0, 1e-12);
+}
+
+// <XZ> = 0 on a Bell pair: P|00> = |10> and P|11> = -|01>, neither of which is a
+// stored entry, so every term multiplies by an absent (zero) amplitude. This is
+// the branch where store.get() must return 0 instead of failing.
+TEST_F(SparseStateFixture, Expectation_BellXZ_AbsentPartner_ReturnsZero) {
+    evolve_gates(*backend, bell_circuit());
+
+    EXPECT_NEAR(backend->expectation_value("XZ"), 0.0, 1e-12);
+}
+
+// An empty Pauli string defaults to all-Z over every qubit, so it must
+// equal the explicit "ZZ" request.
+TEST_F(SparseStateFixture, Expectation_EmptyString_DefaultsToAllZ) {
+    evolve_gates(*backend, bell_circuit());
+
+    EXPECT_NEAR(backend->expectation_value(""),
+                backend->expectation_value("ZZ"), 1e-12);
+}
+
+// |+> = H|0>: <Z> = 0 and <X> = 1. Single-qubit sanity for the 1Q masks.
+TEST_F(SparseStateFixture, Expectation_PlusState_ZZeroXOne) {
+    qplayer::Circuit c(1);
+    c.h(0);
+    evolve_gates(*backend, c);
+
+    EXPECT_NEAR(backend->expectation_value("Z"), 0.0, 1e-12);
+    EXPECT_NEAR(backend->expectation_value("X"), 1.0, 1e-12);
+}
+
+// Cross-backend agreement on a circuit with dense support and complex phases:
+// SparseState must reproduce FullState's value for the same Pauli string. This is
+// the real guard on the shared convention (Qiskit qubit order, i^num_y
+// phase, sign parity) — a mask or ordering slip shows up here, not in the
+// symmetric Bell cases. Tolerance 1e-12: same arithmetic, different traversal.
+TEST_F(SparseStateFixture, Expectation_MatchesFullStateBackend_MixedCircuit) {
+    qplayer::Circuit c(4);
+    c.h(0).ry(0.7, 1).rz(1.1, 2).h(3);
+    c.cx(0, 1).cx(1, 2).cx(2, 3);
+    c.t(1).s(3).rx(0.4, 2).u3(0.3, 0.5, 0.9, 0);
+
+    evolve_gates(*backend, c);
+
+    qplayer::FullStateCpuBackend fs;
+    fs.prepare(c);
+    for (const auto& op : c.ops()) {
+        if (std::holds_alternative<qplayer::GateOp>(op)) {
+            fs.apply_gate(std::get<qplayer::GateOp>(op));
+        }
+    }
+
+    // One representative per mask combination: diagonal, pure flip, mixed.
+    EXPECT_NEAR(backend->expectation_value("ZIZI"), fs.expectation_value("ZIZI"), 1e-12);
+    EXPECT_NEAR(backend->expectation_value("XXYY"), fs.expectation_value("XXYY"), 1e-12);
+    EXPECT_NEAR(backend->expectation_value("XYZI"), fs.expectation_value("XYZI"), 1e-12);
+}
+
+// No MAX_DENSE_EXPORT_QUBITS cap: expectation_value walks stored entries only, so
+// a 40-qubit GHZ (S=2) is answerable even though get_statevector() would reject
+// it. <Z...Z> = +1 because both |0..0> and |1..1> have even
+// Z-parity at 40 qubits. Also covers the >64-bit-index popcount path indirectly.
+TEST_F(SparseStateFixture, Expectation_FortyQubitGHZ_NoDensifyCap) {
+    qplayer::Circuit c(40);
+    c.h(0);
+    for (qplayer::QubitIndex q = 0; q < 39; ++q) c.cx(0, q + 1);
+    evolve_gates(*backend, c);
+
+    EXPECT_NEAR(backend->expectation_value(""), 1.0, 1e-12);
+    EXPECT_THROW(backend->get_statevector(), SimulatorError);
+}
+
+// Regression guard for the 128-bit popcount: a 71-qubit GHZ has |1..1> with 71
+// set bits (odd Z-parity, -0.5) against |0..0> (+0.5), so <Z...Z> = 0. A
+// truncated 64-bit popcount would see exactly 64 set bits — even parity — and
+// return +1.0 instead. 71 (not 70) is required: an even width makes both the
+// full and the truncated count even, hiding the bug.
+TEST_F(SparseStateFixture, Expectation_SeventyOneQubitGHZ_HighBitParityCounted) {
+    qplayer::Circuit c(71);
+    c.h(0);
+    for (qplayer::QubitIndex q = 0; q < 70; ++q) c.cx(0, q + 1);
+    evolve_gates(*backend, c);
+
+    EXPECT_NEAR(backend->expectation_value(""), 0.0, 1e-12);
+}
+
+// Pauli string length must match num_qubits (contract).
+TEST_F(SparseStateFixture, Expectation_LengthMismatch_ThrowsCircuitError) {
+    evolve_gates(*backend, bell_circuit());
+
+    EXPECT_THROW(backend->expectation_value("ZZZ"), qplayer::CircuitError);
+}
+
+// Only I/X/Y/Z are accepted.
+TEST_F(SparseStateFixture, Expectation_InvalidChar_ThrowsCircuitError) {
+    evolve_gates(*backend, bell_circuit());
+
+    EXPECT_THROW(backend->expectation_value("ZQ"), qplayer::CircuitError);
+}
+
+// Calling before init_state() is a backend usage error, not a stub gap.
+TEST_F(SparseStateFixture, Expectation_BeforeInitState_ThrowsSimulatorError) {
+    EXPECT_THROW(backend->expectation_value("Z"), SimulatorError);
 }
 
 // ── : entry-level parallel parity tests ───────────────────────────────

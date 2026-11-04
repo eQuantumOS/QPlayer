@@ -1,21 +1,23 @@
-// merge_single_qubit_pass.cpp — MergeSingleQubitPass (Phase 4).
-// Merges consecutive same-qubit 1Q gate sequences into a single gate using a
-// fixed pattern table. Only non-rotation Clifford+T gates are merged; rotation
-// gates (RX/RY/RZ/U1/U2/U3) act as boundaries (full matrix composition with
-// arbitrary angles is a Phase 4+ enhancement).
-//
-// Algorithm: for each qubit, maintain a pending-gate window. When the window
-// width reaches a recognisable pattern, replace it with the merged gate and mark
-// changed_=true. Unrecognised windows are flushed as-is on boundary or rotation.
-//
-// Because different qubits are independent, the pass tracks a per-qubit window
-// of GateType values and the corresponding op-list indices. On a flush or a
-// match the indices are replaced with the merged gate.
-//
-// Pattern table (global phase ignored per and):
-//   2-gate:  S,S -> Z   Sdg,Sdg -> Z   T,T -> S   Tdg,Tdg -> Sdg
-//   3-gate:  H,X,H -> Z   H,Z,H -> X
-//
+/// @file merge_single_qubit_pass.cpp
+/// @brief MergeSingleQubitPass (Phase 4).
+///
+/// Merges consecutive same-qubit 1Q gate sequences into a single gate using a
+/// fixed pattern table. Only non-rotation Clifford+T gates are merged; rotation
+/// gates (RX/RY/RZ/U1/U2/U3) act as boundaries (full matrix composition with
+/// arbitrary angles is a Phase 4+ enhancement).
+///
+/// Algorithm: for each qubit, maintain a pending-gate window. When the window
+/// width reaches a recognisable pattern, replace it with the merged gate and mark
+/// changed_=true. Unrecognised windows are flushed as-is on boundary or rotation.
+///
+/// Because different qubits are independent, the pass tracks a per-qubit window
+/// of GateType values and the corresponding op-list indices. On a flush or a
+/// match the indices are replaced with the merged gate.
+///
+/// Pattern table (global phase ignored per and):
+/// 2-gate:  S,S -> Z   Sdg,Sdg -> Z   T,T -> S   Tdg,Tdg -> Sdg
+/// 3-gate:  H,X,H -> Z   H,Z,H -> X
+///
 
 #include "transpiler/passes/optimization/merge_single_qubit_pass.hpp"
 

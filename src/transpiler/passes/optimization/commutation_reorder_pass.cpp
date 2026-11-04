@@ -1,24 +1,26 @@
-// commutation_reorder_pass.cpp — CommutationReorderPass (Phase 4).
-// Swaps adjacent GateOp pairs whose qubit sets are disjoint, making the circuit
-// more amenable to CancelInversePass and MergeSingleQubitPass.
-//
-// Phase 4 scope: single forward sweep of adjacent pair swaps — no multi-pass
-// bubble-sort or DAG analysis. Full DAG commutation is deferred to.
-//
-// Commutativity conditions checked here:
-//   (1) Qubit-disjoint: two gates that touch entirely different physical qubits
-//       always commute regardless of gate type (tensor product independence).
-//   (2) Same-qubit diagonal: two diagonal gates on the same qubit commute, but
-//       swapping them produces no structural benefit, so we skip that case.
-//
-// A swap is performed when the two consecutive GateOps are qubit-disjoint AND
-// swapping them brings an earlier gate closer to a potential cancel/merge partner.
-// Because we only do one pass the pass is idempotent after convergence; the
-// PassManager may run it repeatedly until changed() returns false.
-//
-// Boundary ops (Measure, Barrier, If, Idle) terminate the reorder window.
-// Opaque GateOps are treated as opaque barriers.
-//
+/// @file commutation_reorder_pass.cpp
+/// @brief CommutationReorderPass (Phase 4).
+///
+/// Swaps adjacent GateOp pairs whose qubit sets are disjoint, making the circuit
+/// more amenable to CancelInversePass and MergeSingleQubitPass.
+///
+/// Phase 4 scope: single forward sweep of adjacent pair swaps — no multi-pass
+/// bubble-sort or DAG analysis. Full DAG commutation is deferred.
+///
+/// Commutativity conditions checked here:
+/// (1) Qubit-disjoint: two gates that touch entirely different physical qubits
+/// always commute regardless of gate type (tensor product independence).
+/// (2) Same-qubit diagonal: two diagonal gates on the same qubit commute, but
+/// swapping them produces no structural benefit, so we skip that case.
+///
+/// A swap is performed when the two consecutive GateOps are qubit-disjoint AND
+/// swapping them brings an earlier gate closer to a potential cancel/merge partner.
+/// Because we only do one pass the pass is idempotent after convergence; the
+/// PassManager may run it repeatedly until changed() returns false.
+///
+/// Boundary ops (Measure, Barrier, If, Idle) terminate the reorder window.
+/// Opaque GateOps are treated as opaque barriers.
+///
 
 #include "transpiler/passes/optimization/commutation_reorder_pass.hpp"
 

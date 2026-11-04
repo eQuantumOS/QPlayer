@@ -1,30 +1,32 @@
-// serializer.cpp -- Circuit IR <-> JSON round-trip.
-// Implements Circuit::to_json / from_json / load_json_file by translating
-// Op variant nodes, ClassicalRegister entries, OpaqueDefinition entries,
-// and CircuitMetadata sidecar fields to/from qplayer::detail::JsonValue.
-//
-// Schema reference (canonical form):
-//   {
-//     "version":              1,
-//     "num_qubits":           <uint32>,
-//     "classical_registers":  [ {"name", "width", "offset"}, ... ],
-//     "opaque_definitions":   [ {"name", "num_qubits", "body": {...}}, ... ],
-//     "metadata":             { "name", "layout"?, "coupling_map"?, "device_model_ref"? },
-// "expectation_targets": [ <pauli-string>,... ],
-//     "ops":                  [ <op>, ... ]
-//   }
-// Op encodings:
-//   gate:    {"type":"gate", "name":<str>, "gate_type":<int>, "qubits":[...],
-//             "params":[...], "opaque_name":<str>?, "duration_ns":<double>?,
-//             "is_fused":<bool>, "is_opaque":<bool>}
-//   measure: {"type":"measure", "qubit":<uint32>, "cubit":<uint32>}
-//   barrier: {"type":"barrier", "qubits":[...]}
-//   if:      {"type":"if", "creg":<uint32>, "value":<int64>, "body":<gate-op>}
-// idle: {"type":"idle", "qubit":<uint32>, "duration_ns":<double>}
-// Opaque body discriminator:
-//   declaration_only: {"type":"declaration_only"}
-//   matrix:           {"type":"matrix",  "rows":[ [[re,im], ...], ... ]}
-//   kraus:            {"type":"kraus",   "operators":[ <matrix>, ... ]}
+/// @file serializer.cpp
+/// @brief -- Circuit IR <-> JSON round-trip.
+///
+/// Implements Circuit::to_json / from_json / load_json_file by translating
+/// Op variant nodes, ClassicalRegister entries, OpaqueDefinition entries,
+/// and CircuitMetadata sidecar fields to/from qplayer::detail::JsonValue.
+///
+/// Schema reference (canonical form):
+/// {
+/// "version":              1,
+/// "num_qubits":           \<uint32\>,
+/// "classical_registers":  [ {"name", "width", "offset"}, ... ],
+/// "opaque_definitions":   [ {"name", "num_qubits", "body": {...}}, ... ],
+/// "metadata":             { "name", "layout"?, "coupling_map"?, "device_model_ref"? },
+/// "expectation_targets": [ <pauli-string>,... ],
+/// "ops":                  [ \<op\>, ... ]
+/// }
+/// Op encodings:
+/// gate:    {"type":"gate", "name":\<str\>, "gate_type":\<int\>, "qubits":[...],
+/// "params":[...], "opaque_name":\<str\>?, "duration_ns":\<double\>?,
+/// "is_fused":\<bool\>, "is_opaque":\<bool\>}
+/// measure: {"type":"measure", "qubit":\<uint32\>, "cubit":\<uint32\>}
+/// barrier: {"type":"barrier", "qubits":[...]}
+/// if:      {"type":"if", "creg":\<uint32\>, "value":\<int64\>, "body":<gate-op>}
+/// idle: {"type":"idle", "qubit":\<uint32\>, "duration_ns":\<double\>}
+/// Opaque body discriminator:
+/// declaration_only: {"type":"declaration_only"}
+/// matrix:           {"type":"matrix",  "rows":[ [[re,im], ...], ... ]}
+/// kraus:            {"type":"kraus",   "operators":[ \<matrix\>, ... ]}
 
 #include "circuit/circuit.hpp"
 
@@ -436,6 +438,147 @@ Op decode_op(const JsonValue& v) {
     throw CircuitError{"circuit.json: unknown op type=\"" + type + "\""};
 }
 
+// ── Semantic validation of a decoded payload (audit #2, Phase 8-F) ─────
+//
+// decode_op() only checks JSON *shape*; nothing checked that the indices name
+// anything real. detail_make_circuit_from_payload() is explicitly a
+// validation-bypass bridge (circuit.cpp: "this bridge does not re-run checks"),
+// so an out-of-range index reached the backends and wrote out of bounds — e.g.
+// {"type":"measure","cubit":1000000} produced a heap OOB write at result.cpp
+// cubit_vals[qc.second] and a SIGSEGV. from_json / load_json_file are public
+// Python API, so untrusted JSON must not be able to do that.
+//
+// The checks below mirror the builder-time invariants (circuit.cpp check_qubit /
+// check_distinct / measure / barrier / if_then) exactly — no stricter — so that
+// to_json() -> from_json() round-trip of any API-built circuit stays lossless
+// Opaque *definition* resolution stays with SemanticValidatorPass
+// transpile()/run() entry, not here.
+
+void vj_check_qubit(QubitIndex q, QubitIndex num_qubits, const char* what) {
+    if (q >= num_qubits) {
+        throw CircuitError{std::string{"circuit.json: "} + what + " qubit " +
+                           std::to_string(q) + " out of range (num_qubits=" +
+                           std::to_string(num_qubits) + ")"};
+    }
+}
+
+// Pairwise distinctness for a multi-qubit gate, matching check_distinct().
+void vj_check_distinct(const std::vector<QubitIndex>& qubits, const std::string& name) {
+    for (std::size_t i = 0; i + 1 < qubits.size(); ++i) {
+        for (std::size_t j = i + 1; j < qubits.size(); ++j) {
+            if (qubits[i] == qubits[j]) {
+                throw CircuitError{"circuit.json: gate \"" + name +
+                                   "\": qubits must be distinct (got " +
+                                   std::to_string(qubits[i]) + " twice)"};
+            }
+        }
+    }
+}
+
+void vj_check_gate(const GateOp& g, QubitIndex num_qubits) {
+    const std::string label = g.name.empty() ? std::string{"<unnamed>"} : g.name;
+    for (QubitIndex q : g.qubits) {
+        vj_check_qubit(q, num_qubits, ("gate \"" + label + "\"").c_str());
+    }
+    // Opaque gates keep user-defined semantics; the builder never runs the
+    // distinctness rule on them, so neither do we (round-trip safety).
+    if (!g.is_opaque && g.qubits.size() > 1) {
+        vj_check_distinct(g.qubits, label);
+    }
+}
+
+void validate_decoded_payload(QubitIndex                            num_qubits,
+                              const std::vector<ClassicalRegister>& regs,
+                              const std::vector<Op>&                ops,
+                              const std::vector<std::string>&       expectation_targets) {
+    // Classical registers: widths must be positive, names unique, and offsets
+    // must match the cumulative layout add_creg() builds. A bogus offset would
+    // silently re-point resolve_cbit() at the wrong global cubit.
+    ClassicalBitIndex expected_offset = 0;
+    for (std::size_t i = 0; i < regs.size(); ++i) {
+        const ClassicalRegister& cr = regs[i];
+        if (cr.width == 0) {
+            throw CircuitError{"circuit.json: classical register \"" + cr.name +
+                               "\": width must be > 0"};
+        }
+        for (std::size_t j = 0; j < i; ++j) {
+            if (regs[j].name == cr.name) {
+                throw CircuitError{"circuit.json: classical register \"" + cr.name +
+                                   "\": duplicate register name"};
+            }
+        }
+        if (cr.offset != expected_offset) {
+            throw CircuitError{"circuit.json: classical register \"" + cr.name +
+                               "\": offset " + std::to_string(cr.offset) +
+                               " does not match the cumulative layout (expected " +
+                               std::to_string(expected_offset) + ")"};
+        }
+        expected_offset += cr.width;
+    }
+    const ClassicalBitIndex total_cubits = expected_offset;
+
+    for (const Op& op : ops) {
+        if (std::holds_alternative<GateOp>(op)) {
+            vj_check_gate(std::get<GateOp>(op), num_qubits);
+        } else if (std::holds_alternative<MeasureOp>(op)) {
+            const MeasureOp& m = std::get<MeasureOp>(op);
+            vj_check_qubit(m.qubit, num_qubits, "measure");
+            if (m.cubit >= total_cubits) {
+                throw CircuitError{"circuit.json: measure cubit " +
+                                   std::to_string(m.cubit) +
+                                   " out of range (total_cubits=" +
+                                   std::to_string(total_cubits) + ")"};
+            }
+        } else if (std::holds_alternative<BarrierOp>(op)) {
+            for (QubitIndex q : std::get<BarrierOp>(op).qubits) {
+                vj_check_qubit(q, num_qubits, "barrier");
+            }
+        } else if (std::holds_alternative<IdleOp>(op)) {
+            vj_check_qubit(std::get<IdleOp>(op).qubit, num_qubits, "idle");
+        } else if (std::holds_alternative<IfOp>(op)) {
+            const IfOp& f = std::get<IfOp>(op);
+            if (f.creg >= regs.size()) {
+                throw CircuitError{"circuit.json: if creg index " +
+                                   std::to_string(f.creg) +
+                                   " out of range (classical_registers=" +
+                                   std::to_string(regs.size()) + ")"};
+            }
+            // Same dead-branch rule Circuit::if_then() enforces; the payload
+            // bridge bypasses if_then() so it must be repeated here (audit #23).
+            const ClassicalBitIndex width = regs[f.creg].width;
+            if (width < 64) {
+                const std::uint64_t max_value = (std::uint64_t{1} << width) - 1;
+                if (f.value > max_value) {
+                    throw CircuitError{"circuit.json: if condition value " +
+                                       std::to_string(f.value) +
+                                       " exceeds maximum " + std::to_string(max_value) +
+                                       " for classical register \"" +
+                                       regs[f.creg].name + "\" of width " +
+                                       std::to_string(width)};
+                }
+            }
+            vj_check_gate(f.body, num_qubits);
+        }
+    }
+
+    // Pauli targets must be readable by expectation_value() later:
+    // I/X/Y/Z only, one char per qubit.
+    for (const std::string& pauli : expectation_targets) {
+        if (pauli.size() != static_cast<std::size_t>(num_qubits)) {
+            throw CircuitError{"circuit.json: expectation target \"" + pauli +
+                               "\": length " + std::to_string(pauli.size()) +
+                               " != num_qubits (" + std::to_string(num_qubits) + ")"};
+        }
+        for (char ch : pauli) {
+            if (ch != 'I' && ch != 'X' && ch != 'Y' && ch != 'Z') {
+                throw CircuitError{std::string{"circuit.json: expectation target \""} +
+                                   pauli + "\": invalid Pauli char '" + ch +
+                                   "' (only I/X/Y/Z allowed)"};
+            }
+        }
+    }
+}
+
 }  // namespace
 
 Circuit deserialize_circuit_json(std::string_view text) {
@@ -495,6 +638,9 @@ Circuit deserialize_circuit_json(std::string_view text) {
 
     CircuitMetadata meta;
     if (root_val.contains("metadata")) meta = decode_metadata(root_val.at("metadata"));
+
+    // Validate before handing the payload to the bypass bridge (audit #2).
+    validate_decoded_payload(num_qubits, regs, ops, expectation_targets);
 
     return detail_make_circuit_from_payload(num_qubits,
                                             std::move(regs),

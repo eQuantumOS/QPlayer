@@ -1,15 +1,19 @@
-// noise_model.cpp — NoiseModel channel registration, query, and Kraus operator
-// construction (..06). Every add_* method validates its
-// parameters immediately (out-of-range -> CircuitError) and lowers the channel
-// to a list of Kraus operators so backends dispatch uniformly via
-// channels_for_gate(). load_device() (T1/T2 ->
-// Kraus) lands with the T1T2Calculator in Phase 8.
+/// @file noise_model.cpp
+/// @brief NoiseModel channel registration, query, and Kraus operator
+///
+/// construction (..06). Every add_* method validates its
+/// parameters immediately (out-of-range -> CircuitError) and lowers the channel
+/// to a list of Kraus operators so backends dispatch uniformly via
+/// channels_for_gate(). load_device() (T1/T2 ->
+/// Kraus) lands with the T1T2Calculator in Phase 8.
 
 #include "noise/noise_model.hpp"
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <limits>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -208,6 +212,18 @@ double relaxation_avg_gate_error_2q(double t1a, double t2a,
 // gate error is r = p*d/(d+1) (verified), so p = r*(d+1)/d. NOTE: this differs
 // from /'s stated r=p(d-1)/d (the lambda-convention (1-p)ρ+pI/d),
 // which does not match depolarizing_ops — the doc formula is being corrected.
+// Quantise an idle duration into the explicit-registry key. An idle
+// window's length is a sum of device gate durations produced by ALAPSchedulePass,
+// so the double a caller recomputes (or reads back from Circuit::to_json()) need
+// not be bit-identical; a 1 fs grid absorbs that without merging real windows,
+// which ALAP builds out of nanosecond-scale device durations.
+std::int64_t idle_duration_key(double duration_ns) {
+    if (!std::isfinite(duration_ns) || duration_ns < 0.0) {
+        throw CircuitError{"add_idle_kraus: duration_ns must be finite and >= 0"};
+    }
+    return static_cast<std::int64_t>(std::llround(duration_ns * 1e6));
+}
+
 double depol_param_from_avg_error(double r, double d) {
     return r * (d + 1.0) / d;
 }
@@ -237,7 +253,26 @@ std::pair<std::string, std::vector<QubitIndex>> split_gate_key(const std::string
 
     std::vector<QubitIndex> qubits;
     for (std::size_t i = split; i < tokens.size(); ++i) {
-        qubits.push_back(static_cast<QubitIndex>(std::stoul(tokens[i])));
+        // std::stoul throws std::out_of_range on a huge numeric token, which is
+        // outside the QPlayerError hierarchy and therefore unmapped by the Python
+        // bindings (error.hpp: "All throws must use one of these types") — a device
+        // JSON key like "cx_99999999999999999999" escaped as a raw std::exception
+        // (audit #20). Also reject values past QubitIndex range instead of
+        // truncating them into a valid-looking qubit id.
+        unsigned long parsed = 0;
+        try {
+            parsed = std::stoul(tokens[i]);
+        } catch (const std::exception&) {
+            throw CircuitError{"device gate key \"" + key +
+                               "\": qubit token \"" + tokens[i] +
+                               "\" is not a representable index"};
+        }
+        if (parsed > std::numeric_limits<QubitIndex>::max()) {
+            throw CircuitError{"device gate key \"" + key +
+                               "\": qubit index " + tokens[i] +
+                               " exceeds the maximum qubit index"};
+        }
+        qubits.push_back(static_cast<QubitIndex>(parsed));
     }
     return {name, qubits};
 }
@@ -249,7 +284,7 @@ NoiseModel& NoiseModel::load_device(const DeviceModel& device) {
     // Dephasing Kraus channels. Each described gate gets a
     // relaxation channel on every operand whose qubit has finite coherence;
     // backends then query channels_for_gate() uniformly (no separate device
-    // path). Idle-period relaxation is handled separately by IdleNoiseInserter
+    // path). Idle-period relaxation is handled separately by ALAPSchedulePass
     // NoiseModel is a friend of DeviceModel so it can enumerate the
     // gate table without widening the public DeviceModel surface.
 
@@ -260,6 +295,7 @@ NoiseModel& NoiseModel::load_device(const DeviceModel& device) {
     // the manual channels AFTER load_device.
     gate_channels_.clear();
     readout_errors_.clear();
+    idle_channels_.clear();
     t1_.clear();
     t2_.clear();
     has_t1_t2_ = false;
@@ -386,8 +422,8 @@ NoiseModel& NoiseModel::load_device(const DeviceModel& device) {
 NoiseModel NoiseModel::project_to_dense(
     const std::unordered_map<QubitIndex, QubitIndex>& dense_to_physical) const {
     // Re-index a physical-keyed model into the dense [0,k) space of a truncated
-    // circuit (handoff). Dense indices are contiguous [0,k) by
-    // QubitTruncationPass construction, so k == map size..
+    // circuit (handoff). Dense indices are contiguous [0,k)
+    // QubitTruncationPass construction, so k == map size. Consequences.
     NoiseModel out;
     const std::size_t k = dense_to_physical.size();
 
@@ -419,6 +455,17 @@ NoiseModel NoiseModel::project_to_dense(
         if (it != readout_errors_.end()) {
             out.readout_errors_[dense] = it->second;
         }
+    }
+
+    // ── explicit idle channels: re-key physical -> dense ──────────
+    // Dropped when the qubit did not survive truncation, mirroring the gate
+    // channel rule; the duration key is a scalar and carries over unchanged.
+    for (const auto& [key, channels] : idle_channels_) {
+        auto it = physical_to_dense.find(key.first);
+        if (it == physical_to_dense.end()) continue;
+        std::vector<KrausChannel> dense_channels = channels;
+        for (KrausChannel& ch : dense_channels) ch.target_qubit = it->second;
+        out.idle_channels_[{it->second, key.second}] = std::move(dense_channels);
     }
 
     // ── gate channels: relabel qubit-specific filters, keep global ones ──────
@@ -462,13 +509,22 @@ bool NoiseModel::has_channels_for_gate(const std::string& gate_name) const {
 }
 
 std::vector<KrausChannel>
-NoiseModel::channels_for_gate(const std::string&      gate_name,
-                              std::vector<QubitIndex> qubits) const {
+NoiseModel::channels_for_gate(const std::string&             gate_name,
+                              const std::vector<QubitIndex>& qubits) const {
     std::vector<KrausChannel> out;
+    channels_for_gate(gate_name, qubits, out);
+    return out;
+}
+
+void NoiseModel::channels_for_gate(const std::string&             gate_name,
+                                   const std::vector<QubitIndex>& qubits,
+                                   std::vector<KrausChannel>&     out) const {
+    out.clear();
     auto it = gate_channels_.find(gate_name);
     if (it == gate_channels_.end()) {
-        return out;
+        return;
     }
+    out.reserve(it->second.size());
     // Ordered exact match of a gate instance's operands against a stored edge
     // signature (a directional device edge, e.g. cx_0_1). Direction matters:
     // cx(0,1) must not pick up the reversed calibration cx_1_0, nor a different
@@ -539,15 +595,44 @@ NoiseModel::channels_for_gate(const std::string&      gate_name,
             }
         }
     }
-    return out;
 }
 
 bool NoiseModel::has_t1_t2() const {
     return has_t1_t2_;
 }
 
+NoiseModel& NoiseModel::add_idle_kraus(QubitIndex qubit, double duration_ns,
+                                       const KrausChannel& channel) {
+    // Same trace-preservation contract as add_kraus: an idle window
+    // is a channel like any other, and a non-CPTP one would corrupt the
+    // trajectory silently rather than at registration time.
+    verify_trace_preserving(channel, "add_idle_kraus");
+    KrausChannel stored = channel;
+    stored.target_qubit = qubit;
+    idle_channels_[{qubit, idle_duration_key(duration_ns)}].push_back(std::move(stored));
+    return *this;
+}
+
+bool NoiseModel::has_idle_kraus(QubitIndex qubit, double duration_ns) const {
+    if (!std::isfinite(duration_ns) || duration_ns < 0.0) return false;
+    auto it = idle_channels_.find({qubit, idle_duration_key(duration_ns)});
+    return it != idle_channels_.end() && !it->second.empty();
+}
+
 std::vector<KrausChannel>
 NoiseModel::idle_channels(QubitIndex q, double duration_ns) const {
+    // Explicit registration wins over the T1/T2 synthesis: the
+    // caller owns the channel, so a twirled (or any other) idle model needs no
+    // transform inside the product. Looked up first because an out-of-range
+    // qubit is legitimate for an explicitly registered window -- the registry
+    // does not require load_device() to have sized t1_.
+    if (!idle_channels_.empty() && std::isfinite(duration_ns) && duration_ns >= 0.0) {
+        auto it = idle_channels_.find({q, idle_duration_key(duration_ns)});
+        if (it != idle_channels_.end() && !it->second.empty()) {
+            return it->second;
+        }
+    }
+
     // Guard: qubit index out of range means no coherence data available.
     // Return empty (no noise) so backends do not have to special-case the
     // missing-device case (idle_channels contract).

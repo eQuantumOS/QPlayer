@@ -11,22 +11,71 @@ ensemble over trajectories (a mixed state), so a single post-run statevector is
 not a meaningful "after" state. The measured Z-basis probability distribution is
 the well-defined observable, so before/after is compared on counts.
 
-Run:  python noise_demo.py        (after `pip install qplayer`,
-      or with PYTHONPATH=bindings)
+Backend / processor selection follows run_qasm.py: --backend picks the
+simulator and --proc the processor. SparseState is rejected up front because it
+is noiseless by construction — every case here would throw.
+
+Run:  python noise_demo.py                        (after `pip install qplayer`,
+      python noise_demo.py --backend tn            or with PYTHONPATH=bindings)
+      python noise_demo.py --proc gpu
 """
 
+import argparse
 import math
+import sys
 
 import qplayer
 
 SHOTS = 8192
 SEED  = 42
 
+_BACKENDS = ("fullstate", "sparse", "tn")
+_PROCS = ("cpu", "gpu", "auto")
+
+# Exit codes mirror run_qasm.py so shell callers can branch on the outcome.
+EXIT_OK     = 0
+EXIT_ERROR  = 1  # circuit / runtime failure
+EXIT_USAGE  = 2  # bad command line (argparse also exits 2)
+EXIT_UNSUPP = 3  # backend cannot run this demo
+
+# Simulator / processor the cases run on; set by main() from the command line.
+# Held at module scope rather than threaded through every case function so the
+# nine case bodies stay focused on the channel they demonstrate.
+SIM_TYPE  = None
+PROC_TYPE = None
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="noise_demo.py",
+        description="Demonstrate every NoiseModel channel ideal vs. noisy.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p.add_argument("--backend", choices=_BACKENDS, default="fullstate",
+                   help="fullstate | tn (default fullstate). sparse parses but "
+                        "exits 3 with a reason: SparseState is noiseless by "
+                        "construction, so it has nothing to demonstrate here "
+                        ". Kept as a value so that naming an "
+                        "existing backend stays distinguishable from a typo "
+                        "-- exit 3 unsupported vs. exit 2 bad command line")
+    p.add_argument("--proc", choices=_PROCS, default="cpu",
+                   help="cpu | gpu | auto processor (default cpu). FullState "
+                        "honours all three (the GPU noisy path routes Kraus "
+                        "application through the host); sparse is "
+                        "CPU-only; tn accepts an explicit gpu to offload SVD "
+                        " and keeps CPU under auto")
+    return p
+
 
 def measure_distribution(noise_model, build, num_qubits, num_cubits,
                          shots=SHOTS, seed=SEED):
-    """Run `build(circ)` on a fresh CPU FullState register, return P(state)."""
-    qr = qplayer.QRegister(qplayer.SimType.FullState, qplayer.ProcType.CPU)
+    """Run `build(circ)` on a fresh register, return P(state).
+
+    The register is built from the module-level SIM_TYPE / PROC_TYPE that main()
+    resolved from --backend / --proc. A null noise model means the ideal
+    (noiseless) reference run.
+    """
+    qr = qplayer.QRegister(SIM_TYPE, PROC_TYPE)
     qr.set_seed(seed)
     if noise_model is not None:
         qr.set_noise_model(noise_model)
@@ -193,17 +242,57 @@ def case_device_noise_from_string():
 
 
 def main():
-    case_depolarizing()
-    case_amplitude_damping()
-    case_phase_damping()
-    case_bit_flip()
-    case_phase_flip()
-    case_readout_error()
-    case_raw_kraus()
-    case_multi_channel()
-    case_device_noise_from_string()
+    global SIM_TYPE, PROC_TYPE
+    args = build_parser().parse_args()
+
+    backend_map = {
+        "fullstate": qplayer.SimType.FullState,
+        "sparse":    qplayer.SimType.SparseState,
+        "tn":        qplayer.SimType.TensorNetwork,
+    }
+    proc_map = {
+        "cpu":  qplayer.ProcType.CPU,
+        "gpu":  qplayer.ProcType.GPU,
+        "auto": qplayer.ProcType.Auto,
+    }
+
+    # Reject SparseState here rather than letting all nine cases throw the same
+    # SimulatorError one at a time: the backend is noiseless by construction, so
+    # there is no partial result worth producing.
+    if args.backend == "sparse":
+        print("unsupported: SparseState is a noiseless backend and rejects any "
+              "NoiseModel", file=sys.stderr)
+        print("(hint: use --backend fullstate or --backend tn)", file=sys.stderr)
+        return EXIT_UNSUPP
+
+    SIM_TYPE  = backend_map[args.backend]
+    PROC_TYPE = proc_map[args.proc]
+    print(f"noise demo: backend={args.backend}, proc={args.proc}, "
+          f"shots={SHOTS}, seed={SEED}\n")
+
+    try:
+        case_depolarizing()
+        case_amplitude_damping()
+        case_phase_damping()
+        case_bit_flip()
+        case_phase_flip()
+        case_readout_error()
+        case_raw_kraus()
+        case_multi_channel()
+        case_device_noise_from_string()
+    except qplayer.NotImplementedError as e:
+        print(f"unsupported: {e}", file=sys.stderr)
+        print(f"(hint: backend '{args.backend}' / proc '{args.proc}' does not "
+              f"support this case; try --backend fullstate --proc cpu)",
+              file=sys.stderr)
+        return EXIT_UNSUPP
+    except qplayer.QPlayerError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+
     print("All noise demo cases completed successfully.")
+    return EXIT_OK
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

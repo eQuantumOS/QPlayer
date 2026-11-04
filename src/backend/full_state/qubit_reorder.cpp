@@ -1,12 +1,14 @@
-// qubit_reorder.cpp — CPU bit-permutation primitive for.
-//
-// Provides reorder_qubits() and inverse_permutation() in qplayer::detail.
-// The GPU coalesced-access variant lives in qubit_reorder.cu.
-// On CPU, full_state_cpu.cpp gate kernels already handle arbitrary target
-// qubits via index arithmetic, so this file is NOT wired into the CPU execute()
-// hot path.  Its purpose is to supply a transparent, round-trip-correct
-// bit-permutation primitive that satisfies the DoD requirement:
-// "round-trip reorder == identity".
+/// @file qubit_reorder.cpp
+/// @brief CPU bit-permutation primitive for.
+///
+///
+/// Provides reorder_qubits() and inverse_permutation() in qplayer::detail.
+/// The GPU coalesced-access variant lives in qubit_reorder.cu.
+/// On CPU, full_state_cpu.cpp gate kernels already handle arbitrary target
+/// qubits via index arithmetic, so this file is NOT wired into the CPU execute()
+/// hot path.  Its purpose is to supply a transparent, round-trip-correct
+/// bit-permutation primitive that satisfies the DoD requirement:
+/// "round-trip reorder == identity".
 
 #include "backend/full_state/qubit_reorder.hpp"
 

@@ -1,15 +1,17 @@
-// basis_gate_translation_pass.cpp — BasisGateTranslationPass (,
-//). Decomposes logical gates into the device native
-// basis:
-//   - 1Q non-basis gate -> ZSX Euler: from its 2x2 unitary extract (theta,phi,lam)
-//     and emit RZ(lam)·SX·RZ(theta+pi)·SX·RZ(phi+pi) (trivial RZ dropped). Global
-//     phase is discarded (unobservable; rz is virtual).
-//   - cx -> ecr template: RZ(-pi/2)_c · RZ(-pi)_t · SX_t · RZ(-pi)_t · ECR(c,t) · X_c
-//     (verified == CX up to global phase with the ecr_matrix_data convention).
-// - cx -> cz template: H_t · CZ(c,t) · H_t, H decomposed via ZSX Euler.
-//   - swap -> cx×3, each cx then translated to the native 2Q gate.
-//   - gates already in basis_gates pass through.
-// No-op when the device declares no basis_gates (nothing to translate to).
+/// @file basis_gate_translation_pass.cpp
+/// @brief BasisGateTranslationPass (,
+///
+///). Decomposes logical gates into the device native
+/// basis:
+/// - 1Q non-basis gate -> ZSX Euler: from its 2x2 unitary extract (theta,phi,lam)
+/// and emit RZ(lam)·SX·RZ(theta+pi)·SX·RZ(phi+pi) (trivial RZ dropped). Global
+/// phase is discarded (unobservable; rz is virtual).
+/// - cx -> ecr template: RZ(-pi/2)_c · RZ(-pi)_t · SX_t · RZ(-pi)_t · ECR(c,t) · X_c
+/// (verified == CX up to global phase with the ecr_matrix_data convention).
+/// - cx -> cz template: H_t · CZ(c,t) · H_t, H decomposed via ZSX Euler.
+/// - swap -> cx×3, each cx then translated to the native 2Q gate.
+/// - gates already in basis_gates pass through.
+/// No-op when the device declares no basis_gates (nothing to translate to).
 
 #include "transpiler/passes/translation/basis_gate_translation_pass.hpp"
 

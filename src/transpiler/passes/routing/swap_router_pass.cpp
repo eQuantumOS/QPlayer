@@ -1,8 +1,10 @@
-// swap_router_pass.cpp — SwapRouterPass implementation ( /,
-//). BFS shortest-path greedy routing: for each two-qubit gate whose
-// operands are not coupling-adjacent, find the shortest physical path between
-// them and insert SWAPs along it, updating the running layout. All state ops
-// are rewritten into physical space; measures stay logical.
+/// @file swap_router_pass.cpp
+/// @brief SwapRouterPass implementation ( /,
+///
+///). BFS shortest-path greedy routing: for each two-qubit gate whose
+/// operands are not coupling-adjacent, find the shortest physical path between
+/// them and insert SWAPs along it, updating the running layout. All state ops
+/// are rewritten into physical space; measures stay logical.
 
 #include "transpiler/passes/routing/swap_router_pass.hpp"
 

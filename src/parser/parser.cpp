@@ -1,17 +1,19 @@
-// parser.cpp — OpenQASM v2 parser facade.
-// Connects the four-stage pipeline:
-//   Lexer → AstParser → SemanticValidator → CircuitBuilder
-// and exposes just two public entry points (parse / parse_file) so callers
-// never depend on the internal AST / token types.
-//
-// parse_file reads the source into a std::string and forwards to the same
-// pipeline with the file path as the error-message label.
-// External includes (anything other than "qelib1.inc") are rejected by
-// CircuitBuilder with QASMParseError — handled transparently in CircuitBuilder.
-//
-// The Impl struct is intentionally left empty; no persistent pipeline state is
-// needed between calls. The pimpl exists solely to give the header a stable ABI
-// across partial recompiles.
+/// @file parser.cpp
+/// @brief OpenQASM v2 parser facade.
+///
+/// Connects the four-stage pipeline:
+/// Lexer → AstParser → SemanticValidator → CircuitBuilder
+/// and exposes just two public entry points (parse / parse_file) so callers
+/// never depend on the internal AST / token types.
+///
+/// parse_file reads the source into a std::string and forwards to the same
+/// pipeline with the file path as the error-message label.
+/// External includes (anything other than "qelib1.inc") are rejected by
+/// CircuitBuilder with QASMParseError — handled transparently in CircuitBuilder.
+///
+/// The Impl struct is intentionally left empty; no persistent pipeline state is
+/// needed between calls. The pimpl exists solely to give the header a stable ABI
+/// across partial recompiles.
 
 #include "parser/parser.hpp"
 

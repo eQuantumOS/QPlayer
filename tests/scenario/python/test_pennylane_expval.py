@@ -3,7 +3,7 @@
 expval/var map the observable to weighted Pauli strings and evaluate exactly on
 the statevector (qplayer Observable Sum(c_i <P_i>) semantics).
 
-    python -m unittest tests.python.test_pennylane_expval -v
+    python -m unittest tests.scenario.python.test_pennylane_expval -v
 """
 import math
 import os

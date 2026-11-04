@@ -1,7 +1,9 @@
-// json_value.cpp -- implementation of the minimal JSON parser + writer used
-// by Circuit serialisation. Hand-rolled recursive-descent parser;
-// rejects extensions (trailing commas, comments, NaN/Inf) so we cannot
-// silently accept malformed inputs from foreign tools.
+/// @file json_value.cpp
+/// @brief -- implementation of the minimal JSON parser + writer used
+///
+/// by Circuit serialisation. Hand-rolled recursive-descent parser;
+/// rejects extensions (trailing commas, comments, NaN/Inf) so we cannot
+/// silently accept malformed inputs from foreign tools.
 
 #include "circuit/detail/json_value.hpp"
 

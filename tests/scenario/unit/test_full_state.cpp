@@ -7,10 +7,13 @@
 #include "../../framework/test_case.hpp"
 #include "../../framework/assertions.hpp"
 
+#include <algorithm>
+#include <array>
 #include <cstdint>
 #include <cstdlib>
 #include <cmath>
 #include <complex>
+#include <vector>
 
 #include "../../../include/backend/full_state/full_state_backend.hpp"
 #include "../../../include/circuit/circuit.hpp"
@@ -109,7 +112,7 @@ TEST_F(FullStateFixture, GetStatevectorRaw_SizeMatchesDimension) {
 }
 
 // ── -4: get_statevector() AoS budget guard throws SimulatorError ─────────
-// replaced the fixed MAX_STATEVECTOR_QUBITS cap on FullState dense
+// replaced the fixed MAX_DENSE_EXPORT_QUBITS cap on FullState dense
 // materialisation with a dynamic memory-budget check: the AoS copy adds
 // 2^n × 16 bytes on top of the resident SoA, and get_statevector() rejects it
 // when that exceeds the budget. init_state() itself has no budget guard, so we
@@ -554,7 +557,7 @@ TEST_F(FullStateFixture, VerifyNorm_OnValidState_DoesNotThrow) {
 // API, so instead we verify the "bad norm" path by confirming the helper passes
 // on the ground state, and verify the guard kicks in using RawStateView +
 // a separate backend instance where we write directly through the pointer.
-// This approach avoids reinterpret_cast forbidden by.
+// This approach avoids reinterpret_cast forbidden.
 
 TEST_F(FullStateFixture, VerifyNorm_AfterIdentityGate_DoesNotThrow) {
     // Identity gate leaves the state unchanged; norm must still be 1.
@@ -713,4 +716,136 @@ TEST_F(FullStateFixture, CacheBlocking_OnVsOff_IdenticalState) {
         EXPECT_NEAR(on[i].real(), off[i].real(), 1e-12);
         EXPECT_NEAR(on[i].imag(), off[i].imag(), 1e-12);
     }
+}
+
+// ── Opaque gate execution ─────────────────────────────────────────
+// The definition/validation machinery predates this (0606/0108) but no
+// backend read it back, so an opaque circuit threw NotImplementedError at run().
+// These cases pin the execution path. The load-bearing one is operand order:
+// the definition matrix's local bit b maps to qubits[b], while the reused
+// apply_fused_gate kernel wants ascending qubits — so the axes must be permuted.
+// A no-op permutation still passes the ascending case, hence the reversed and
+// non-ascending cases below.
+
+namespace {
+
+// CX with control = local bit 0 (first operand), target = local bit 1.
+// Column i (bits b0,b1) maps to row o: ctrl=b0 flips b1 when set.
+std::array<std::array<std::complex<double>, 4>, 4> opaque_cx_matrix() {
+    std::array<std::array<std::complex<double>, 4>, 4> m{};
+    m[0][0] = 1.0;  // 00 -> 00
+    m[3][1] = 1.0;  // b0=1,b1=0 -> b0=1,b1=1
+    m[2][2] = 1.0;  // b0=0,b1=1 -> unchanged
+    m[1][3] = 1.0;  // b0=1,b1=1 -> b0=1,b1=0
+    return m;
+}
+
+// Asymmetric seed state: a symmetric one would hide an operand swap.
+void opaque_seed(qplayer::Circuit& c) { c.h(0).t(0).h(1).s(1); }
+
+std::vector<std::complex<double>> opaque_run_sv(qplayer::Circuit c) {
+    qplayer::QRegister qr(qplayer::SimType::FullState, qplayer::ProcType::CPU);
+    qr.set_seed(42);
+    qr.run(c, 1);
+    return qr.get_statevector();
+}
+
+double opaque_max_diff(const std::vector<std::complex<double>>& a,
+                       const std::vector<std::complex<double>>& b) {
+    if (a.size() != b.size()) return 1.0e9;
+    double m = 0.0;
+    for (std::size_t i = 0; i < a.size(); ++i) {
+        m = std::max(m, std::abs(a[i] - b[i]));
+    }
+    return m;
+}
+
+}  // namespace
+
+TEST(FullStateOpaque, AscendingOperands_MatchesBuiltinCx) {
+    // Arrange
+    qplayer::Circuit ref(2, 0); opaque_seed(ref); ref.cx(0, 1);
+    qplayer::Circuit opq(2, 0); opaque_seed(opq);
+    opq.define_opaque("mycx", opaque_cx_matrix());
+    opq.opaque("mycx", {0, 1});
+
+    // Act / Assert — same unitary, so amplitudes agree to round-off.
+    EXPECT_NEAR(opaque_max_diff(opaque_run_sv(ref), opaque_run_sv(opq)), 0.0, 1e-12);
+}
+
+TEST(FullStateOpaque, ReversedOperands_MatchesBuiltinCxReversed) {
+    qplayer::Circuit ref(2, 0); opaque_seed(ref); ref.cx(1, 0);
+    qplayer::Circuit opq(2, 0); opaque_seed(opq);
+    opq.define_opaque("mycx", opaque_cx_matrix());
+    opq.opaque("mycx", {1, 0});
+
+    // The permutation from operand order to ascending order must be applied.
+    EXPECT_NEAR(opaque_max_diff(opaque_run_sv(ref), opaque_run_sv(opq)), 0.0, 1e-12);
+}
+
+TEST(FullStateOpaque, ReversedOperands_DiffersFromAscending) {
+    // Guard against a no-op permutation: if the axes were not permuted, the
+    // reversed call would produce the ascending result and the test above would
+    // pass vacuously.
+    qplayer::Circuit ref(2, 0); opaque_seed(ref); ref.cx(0, 1);
+    qplayer::Circuit opq(2, 0); opaque_seed(opq);
+    opq.define_opaque("mycx", opaque_cx_matrix());
+    opq.opaque("mycx", {1, 0});
+
+    EXPECT_TRUE(opaque_max_diff(opaque_run_sv(ref), opaque_run_sv(opq)) > 1e-6);
+}
+
+TEST(FullStateOpaque, ThreeQubitNonAscendingOperands_MatchesBuiltinCcx) {
+    // 8x8 CCX in operand order: controls = local bits 0,1; target = local bit 2.
+    qplayer::UnitaryMatrix m(8, std::vector<std::complex<double>>(8, {0.0, 0.0}));
+    for (int i = 0; i < 8; ++i) {
+        const int b0 = i & 1, b1 = (i >> 1) & 1, b2 = (i >> 2) & 1;
+        const int o  = (b0 == 1 && b1 == 1) ? (b0 | (b1 << 1) | ((1 - b2) << 2)) : i;
+        m[static_cast<std::size_t>(o)][static_cast<std::size_t>(i)] = 1.0;
+    }
+    qplayer::Circuit ref(3, 0);
+    ref.h(0).t(0).h(1).s(1).h(2);
+    ref.ccx(2, 0, 1);                       // controls q2,q0 ; target q1
+    qplayer::Circuit opq(3, 0);
+    opq.h(0).t(0).h(1).s(1).h(2);
+    opq.define_opaque("myccx", 3, m);
+    opq.opaque("myccx", {2, 0, 1});         // same operand roles
+
+    EXPECT_NEAR(opaque_max_diff(opaque_run_sv(ref), opaque_run_sv(opq)), 0.0, 1e-12);
+}
+
+TEST(FullStateOpaque, KrausBody_RoutesToPerShotAndCollapses) {
+    // Amplitude damping with gamma = 1: K0 = |0><0|, K1 = |0><1|. Whatever the
+    // input, the outcome is |0>, so a Kraus opaque after X must read back 0 on
+    // every shot. Reaching this at all proves the fast-path guard rerouted the
+    // circuit (the deterministic path refuses a Kraus body).
+    qplayer::QRegister qr(qplayer::SimType::FullState, qplayer::ProcType::CPU);
+    qr.set_seed(7);
+    qplayer::Circuit c(1, 1);
+    qplayer::KrausChannel ch;
+    ch.operators = {
+        {{{1.0, 0.0}, {0.0, 0.0}}, {{0.0, 0.0}, {0.0, 0.0}}},
+        {{{0.0, 0.0}, {1.0, 0.0}}, {{0.0, 0.0}, {0.0, 0.0}}},
+    };
+    c.x(0);
+    c.define_opaque("damp", ch);
+    c.opaque("damp", {0});
+    c.measure(0, 0);
+
+    const auto counts = qr.run(c, 200).counts();
+    EXPECT_EQ(counts.size(), std::size_t{1});
+    EXPECT_EQ(counts.count("0"), std::size_t{1});
+    EXPECT_EQ(counts.at("0"), std::uint64_t{200});
+}
+
+TEST(FullStateOpaque, DeclarationOnlyReachingBackend_ThrowsCircuitError) {
+    // transpile() normally rejects this (SemanticValidatorPass); run() without a
+    // transpile must not fall through to an undefined body.
+    qplayer::QRegister qr(qplayer::SimType::FullState, qplayer::ProcType::CPU);
+    qplayer::Circuit c(1, 1);
+    c.declare_opaque("stub", 1);
+    c.opaque("stub", {0});
+    c.measure(0, 0);
+
+    EXPECT_THROW(qr.run(c, 1).counts(), qplayer::CircuitError);
 }

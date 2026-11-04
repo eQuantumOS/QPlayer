@@ -135,7 +135,7 @@ TEST(FullStateGpuKernel, Hadamard1qOnZeroState_ProducesEqualSuperposition) {
 
     // Assert
     EXPECT_EQ(rc, 0);                 // cudaSuccess
-    EXPECT_NEAR(re[0], h, 1e-12);     // exact analytic value
+    EXPECT_NEAR(re[0], h, 1e-12);     // exact analytic value (NF-PF kernel math)
     EXPECT_NEAR(re[1], h, 1e-12);
     EXPECT_NEAR(im[0], 0.0, 1e-12);
     EXPECT_NEAR(im[1], 0.0, 1e-12);
@@ -217,7 +217,7 @@ TEST(FullStateGpuKernel, CCX_NoopWhenAControlClear) {
     EXPECT_NEAR(re[5], 0.0, 1e-12);  // would-be flipped index if it fired
 }
 
-// : GPU-resident init_state() + the single device->host copy of
+// : GPU-resident init_state() + the single device->host copy
 // get_statevector() must round-trip the |0...0> ground state.
 TEST(FullStateGpuKernel, ResidentInitThenGetStatevector_ReturnsGroundState) {
     if (qplayer_cuda_device_count() <= 0) return;
@@ -532,7 +532,7 @@ TEST(FullStateGpuKernel, CurandStateInitSucceedsAndFrees) {
 // : GPU noisy execute() now fully implemented. An empty NoiseModel
 // selects the Monte Carlo trajectory path; with no channels registered the state
 // evolves noiseless and produces the Bell distribution. Verifies:
-// (a) execute() succeeds without throwing (trajectory body is live in),
+// (a) execute() succeeds without throwing (trajectory body is live),
 //   (b) the returned counts are normalised (non-zero entries only for 00 and 11),
 //   (c) the distribution is within statistical tolerance of 50% each.
 TEST(FullStateGpuExecute, NoisyExecute_EmptyNoiseModel_ProducesBellDistribution) {
@@ -594,3 +594,166 @@ TEST(FullStateGpuKernel, GoogleNativeGates_GpuMatchesCpu) {
 }
 
 #endif  // QPLAYER_BUILD_GPU
+
+// ── QRegister::gpu_available() must agree with the factory (audit #6) ────────
+//
+// The public query was a Phase 0-S placeholder returning a hardcoded false long
+// after the probe existed in factory.cpp, so on an H100 host it reported "no GPU"
+// while ProcType::Auto had already selected the GPU backend — the API answered the
+// opposite of reality. Both now read detail::gpu_runtime_available().
+
+TEST(FullStateGpuFactory, GpuAvailableMatchesRuntimeProbe) {
+    EXPECT_EQ(qplayer::QRegister::gpu_available(), gpu_device_present());
+}
+
+// Stronger form: the reported availability must predict which backend Auto picks.
+// This is the invariant the hardcoded false violated.
+TEST(FullStateGpuFactory, GpuAvailablePredictsAutoBackendChoice) {
+    const bool reported = qplayer::QRegister::gpu_available();
+    auto backend = make_backend(SimType::FullState, ProcType::Auto);
+    const bool chose_gpu = (backend->name() == std::string_view("FullStateGPU"));
+    EXPECT_EQ(reported, chose_gpu);
+}
+
+// ── set_fusion on GPU accepts any width, never throws ────────────
+//
+// The GPU now honours runtime fusion via the fused GEMV kernel, but
+// its width cap is 4 — a thread holds 2^k amplitudes in registers. Over-cap
+// requests clamp and warn once rather than throwing: both arguments are
+// QRegister::run() defaults, so an exception would break every default call.
+
+TEST(FullStateGpuFactory, SetFusionOnGpu_DoesNotThrow) {
+    auto backend = make_backend(SimType::FullState, ProcType::GPU);
+    EXPECT_NO_THROW(backend->set_fusion(true, 4));
+    EXPECT_NO_THROW(backend->set_fusion(true, 8));   // clamped, warns once only
+    EXPECT_NO_THROW(backend->set_fusion(false, 4));  // fusion off: nothing to clamp
+}
+
+// Fusion must not alter GPU results: fusing regroups the same unitaries, so the
+// state is identical whichever width the caller asks for.
+TEST(FullStateGpuFactory, FusionFlagsDoNotChangeGpuState) {
+    if (!gpu_device_present()) return;
+
+    qplayer::Circuit circ(3);
+    circ.h(0).cx(0, 1).cx(1, 2).t(2);
+
+    auto run_with = [&](bool enable, std::uint32_t width) {
+        qplayer::QRegister qr(SimType::FullState, ProcType::GPU);
+        qr.set_seed(7);
+        qr.run(circ, 1, enable, width);
+        return qr.get_statevector();
+    };
+
+    const auto a = run_with(false, 4);
+    const auto b = run_with(true, 8);
+    EXPECT_EQ(a.size(), b.size());
+    for (std::size_t i = 0; i < a.size(); ++i) {
+        EXPECT_NEAR(a[i].real(), b[i].real(), 1e-12);
+        EXPECT_NEAR(a[i].imag(), b[i].imag(), 1e-12);
+    }
+}
+
+// ── CPU-only families report an unhonoured GPU request (audit #37) ───────────
+//
+// SparseState / TensorNetwork ignore `resolved` entirely, so an explicit
+// ProcType::GPU was dropped in silence while FullState warned on its fallback.
+// The request must still succeed — the backend simply runs on CPU.
+
+TEST(FullStateGpuFactory, SparseStateGpuRequest_FallsBackWithoutThrowing) {
+    std::unique_ptr<SimulatorBackend> backend;
+    EXPECT_NO_THROW(backend = make_backend(SimType::SparseState, ProcType::GPU));
+    EXPECT_TRUE(backend != nullptr);
+    EXPECT_TRUE(backend->sim_type() == SimType::SparseState);
+}
+
+TEST(FullStateGpuFactory, TensorNetworkGpuRequest_FallsBackWithoutThrowing) {
+    std::unique_ptr<SimulatorBackend> backend;
+    EXPECT_NO_THROW(backend = make_backend(SimType::TensorNetwork, ProcType::GPU));
+    EXPECT_TRUE(backend != nullptr);
+    EXPECT_TRUE(backend->sim_type() == SimType::TensorNetwork);
+}
+
+// ── : Auto-resolved GPU switches to CPU for Interactive (audit #10) ───
+//
+// ProcType::Auto picks GPU when a device is visible and Interactive is
+// CPU-only, so `QRegister qr; qr.interactive.initialize(n);` — both
+// documented defaults — failed unconditionally on any GPU host. Auto delegates the
+// proc choice, so the owner switches to CPU instead of throwing. An explicit
+// ProcType::GPU stays an error: that is a user decision.
+
+TEST(FullStateGpuFactory, AutoProcInteractive_SwitchesToCpuBackend) {
+    qplayer::QRegister qr;                    // ProcType::Auto (default)
+    EXPECT_NO_THROW(qr.interactive.initialize(3));
+    EXPECT_EQ(qr.interactive.num_qubits(), qplayer::QubitIndex{3});
+    // The switch is permanent, so batch state access sees the same CPU backend.
+    EXPECT_NO_THROW(qr.interactive.h(0));
+    EXPECT_NO_THROW(qr.get_statevector());
+}
+
+TEST(FullStateGpuFactory, ExplicitGpuProcInteractive_StillThrows) {
+    if (!gpu_device_present()) return;  // CPU-only build resolves GPU to CPU
+    qplayer::QRegister qr(SimType::FullState, ProcType::GPU);
+    EXPECT_THROW(qr.interactive.initialize(2), qplayer::SimulatorError);
+}
+
+// ── : NoiseModel accessors (audit #39) ────────────────────────────────
+
+TEST(FullStateGpuFactory, MutableNoiseModel_ArmsNoisyPath_ConstDoesNot) {
+    // The const accessor must leave routing untouched: a read-only inspection that
+    // armed the Monte Carlo path would silently cost tens to hundreds of times the
+    // fast path on an empty model.
+    qplayer::QRegister reader(SimType::FullState, ProcType::CPU);
+    EXPECT_FALSE(reader.noise_model().has_channels_for_gate("h"));
+
+    qplayer::Circuit circ(2, 2);
+    circ.h(0).cx(0, 1).measure(0, 0).measure(1, 1);
+    reader.set_seed(5);
+    const auto before = reader.run(circ, 256).counts();
+
+    // Reading again changes nothing about the result path.
+    (void)reader.noise_model().has_t1_t2();
+    reader.set_seed(5);
+    const auto after = reader.run(circ, 256).counts();
+    EXPECT_TRUE(before == after);
+
+    // The mutable accessor lets a manual channel land on top of whatever is there.
+    qplayer::QRegister writer(SimType::FullState, ProcType::CPU);
+    writer.mutable_noise_model().add_depolarizing("h", 0.05);
+    EXPECT_TRUE(writer.noise_model().has_channels_for_gate("h"));
+}
+
+// ── Interactive::probability() reads the SoA view without densifying (#26) ────
+//
+// It used to call get_statevector() (AoS) on every invocation, allocating and
+// copying the whole 2^n vector — 2 GiB per call at 27 qubits — for a read-only
+// scan. FullState now reads the raw view in place; SparseState keeps the AoS path
+// because it has no SoA form. Values must be identical either way.
+
+TEST(FullStateGpuFactory, InteractiveProbability_MatchesAmplitudeSquares) {
+    qplayer::QRegister qr(SimType::FullState, ProcType::CPU);
+    qr.interactive.initialize(2);
+    qr.interactive.h(0);           // (|00> + |01>)/sqrt2 in q0
+
+    // P(q0 = 0) = P(q0 = 1) = 0.5, P(q1 = 0) = 1.
+    EXPECT_NEAR(qr.interactive.probability(0, 0), 0.5, 1e-12);
+    EXPECT_NEAR(qr.interactive.probability(0, 1), 0.5, 1e-12);
+    EXPECT_NEAR(qr.interactive.probability(1, 0), 1.0, 1e-12);
+    EXPECT_NEAR(qr.interactive.probability(1, 1), 0.0, 1e-12);
+
+    // Cross-check against the AoS statevector the old implementation used.
+    const auto sv = qr.interactive.get_statevector();
+    double p_q0_one = 0.0;
+    for (std::size_t i = 0; i < sv.size(); ++i) {
+        if ((i >> 0) & 1u) p_q0_one += std::norm(sv[i]);
+    }
+    EXPECT_NEAR(qr.interactive.probability(0, 1), p_q0_one, 1e-12);
+}
+
+// SparseState has no SoA representation, so probability() must still work there.
+TEST(FullStateGpuFactory, InteractiveProbability_SparseStateAosPath) {
+    qplayer::QRegister qr(SimType::SparseState, ProcType::CPU);
+    qr.interactive.initialize(2);
+    qr.interactive.h(0);
+    EXPECT_NEAR(qr.interactive.probability(0, 0), 0.5, 1e-12);
+    EXPECT_NEAR(qr.interactive.probability(1, 0), 1.0, 1e-12);
+}

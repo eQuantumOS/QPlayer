@@ -89,7 +89,7 @@ TEST(QRegisterTranspile, EmptyDeviceJson_NoThrow) {
 }
 
 TEST(QRegisterTranspile, NonEmptyDeviceJson_RoutesWithoutThrow) {
-    // Valid device_json now drives the pipeline. An empty
+    // Valid device_json now drives the F-CC pipeline. An empty
     // coupling_map means full connectivity, so routing is a no-op and the
     // compile completes (② ③).
     QRegister qr;

@@ -65,13 +65,13 @@ nvcc --version      # expect 12.0 or newer (only for the GPU build)
 
 This guide assumes you downloaded the release source tarball
 `QPlayer-<codename>-<x.y.z>.tar.gz` from the GitHub Releases page (e.g.
-`QPlayer-Caracal-5.0.0.tar.gz`). A `-clean.tar.gz` variant — identical code with
+`QPlayer-Lynx-6.0.0.tar.gz`). A `-clean.tar.gz` variant — identical code with
 internal design-reference comments removed — is also attached and builds the same
 way. Extract it and build from the extracted directory:
 
 ```bash
-tar -xzf QPlayer-Caracal-5.0.0.tar.gz
-cd QPlayer-Caracal-5.0.0          # extracted directory matches the tarball name
+tar -xzf QPlayer-Lynx-6.0.0.tar.gz
+cd QPlayer-Lynx-6.0.0          # extracted directory matches the tarball name
 
 # Default: CPU-only, Release build, in-house tests enabled
 cmake -B build -DCMAKE_BUILD_TYPE=Release
@@ -119,13 +119,22 @@ pip install . --config-settings=cmake.define.QPLAYER_BUILD_GPU=ON --force-reinst
 
 `pyproject.toml` is preconfigured so that `pip install .` builds only the
 extension module (the test suite is skipped). OpenBLAS and a C++17 compiler must
-be present (see); pybind11 is fetched automatically if not installed
+be present (); pybind11 is fetched automatically if not installed
 system-wide.
 
 Verify the install:
 
 ```bash
 python -c "from qplayer import QRegister, Circuit, SimType; print(QRegister)"
+```
+
+For a GPU install, also confirm the extension was actually compiled with CUDA —
+a CPU-only module loads fine but silently falls back at runtime:
+
+```bash
+# Prints linked CUDA libraries (libcudart, libcublas, …); empty = CPU-only build
+python -c "import qplayer,glob,os;print(glob.glob(os.path.dirname(qplayer.__file__)+'/_qplayer*.so')[0])" \
+    | xargs ldd | grep -i cuda || echo "CPU-only build (no CUDA linked)"
 ```
 
 > **Common GPU pitfall.** Building the C++ tree with `cmake -B build
@@ -184,6 +193,9 @@ cover the native circuit builder, noise models, and the Qiskit / PennyLane
 plugins. Bundled circuits for quick experiments are in `tests/data/qasm/` (e.g.
 `bell.qasm`, `ghz_5.qasm`, `qft_4.qasm`).
 
+> As of `Lynx-v6.4.0` the examples run on every backend — FullState CPU/GPU,
+> SparseState and TensorNetwork (MPS) — and cover noise models and Interactive
+> mode. Most examples take `--backend` / `--proc` to select the simulator.
 
 ### C++ — `run_qasm` CLI
 

@@ -42,6 +42,24 @@ add_executable(qplayer_tests
     scenario/unit/test_pass_chain.cpp
     scenario/unit/test_transpile_acceptance_qasm.cpp
     scenario/unit/test_memory_check.cpp
+    scenario/unit/test_tn.cpp
+    scenario/unit/test_mps.cpp
+    scenario/unit/test_blas_loader.cpp
+    scenario/unit/test_tn_topology.cpp
+    scenario/unit/test_tn_fusion.cpp
+    scenario/unit/test_tn_query.cpp
+    scenario/unit/test_tn_noise.cpp
+    scenario/unit/test_tn_sampling.cpp
+    scenario/unit/test_tn_midcircuit.cpp
+    scenario/unit/test_tn_reset.cpp
+    scenario/unit/test_tn_gpu_svd.cpp
+    scenario/unit/test_mps_canonical.cpp
+    scenario/unit/test_tn_conditional.cpp
+    scenario/unit/test_tn_3q.cpp
+    scenario/unit/test_reset_routing.cpp
+    scenario/unit/test_tn_mpo.cpp
+    scenario/unit/test_amplitude_api.cpp
+    scenario/unit/test_tn_route_api.cpp
     scenario/unit/test_full_state.cpp
     scenario/unit/test_full_state_gpu.cpp
     scenario/unit/test_lazy_sampling.cpp
@@ -68,7 +86,6 @@ add_executable(qplayer_tests
     scenario/unit/test_willow_device.cpp
     scenario/unit/test_t1t2_calculator.cpp
     scenario/unit/test_passes/test_duration_annotation.cpp
-    scenario/unit/test_passes/test_idle_noise_inserter.cpp
     scenario/unit/test_passes/test_alap_schedule.cpp
     scenario/unit/test_noise.cpp
     scenario/unit/test_seed_reproducibility.cpp
@@ -77,11 +94,19 @@ add_executable(qplayer_tests
     scenario/integration/test_noise_cpu_gpu_parity.cpp
     scenario/integration/test_device_noise.cpp
     scenario/integration/test_bell_expectation.cpp
+    scenario/integration/test_tn_integration.cpp
+    scenario/integration/test_tn_noise_parity.cpp
+    scenario/integration/test_tn_qec.cpp
+    scenario/integration/test_pershot_expectation.cpp
+    scenario/integration/test_opt_level3_observation.cpp
     scenario/integration/test_primitives_vqe.cpp
     scenario/integration/test_bell_state.cpp
     scenario/integration/test_ghz.cpp
     scenario/integration/test_golden.cpp
-    scenario/integration/test_golden_gpu.cpp)
+    scenario/integration/test_golden_gpu.cpp
+    scenario/integration/test_runtime_fusion_backends.cpp
+    scenario/unit/test_noise_schedule.cpp
+    scenario/unit/test_noise_intervention.cpp)
 
 # Allow test sources to include framework headers without path prefix.
 target_include_directories(qplayer_tests PRIVATE
@@ -150,3 +175,8 @@ target_compile_options(qplayer_acceptance PRIVATE
     -Wno-unused-function -Wno-unused-parameter)
 
 add_test(NAME qplayer_acceptance COMMAND qplayer_acceptance)
+
+# TN gate (Phase 9): the same acceptance circuits the TN backend can carry, run
+# on SimType::TensorNetwork. A separate entry keeps the cumulative 9/9 summary of
+# the default invocation intact while making the TN claim an executing test.
+add_test(NAME qplayer_acceptance_tn COMMAND qplayer_acceptance --sim=tn)

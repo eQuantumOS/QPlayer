@@ -1,13 +1,16 @@
-// qelib1_signatures.hpp — Compile-time table of OpenQASM v2 standard gate
-// signatures. This header is the SSOT shared by
-// SemanticValidator and qelib1_builtin.cpp. Keeps (name,
-// num_params, num_qubits) for all 25 qelib1 gates plus the 2 built-in aliases
-// U/CX. The GateType enum mapping added by extends this file; the
-// signature table itself is immutable after ships.
-//
-// Design:. The 27-entry array covers every gate accepted by
-// a conforming OpenQASM v2 parser. Non-standard extensions (u0, rxx, ...) are
-// rejected with QASMParseError per spec — see SemanticValidator::validate_gate_call.
+/// @file qelib1_signatures.hpp
+/// @brief Compile-time table of OpenQASM v2 standard gate
+/// @ingroup frontend
+///
+/// signatures. This header is the SSOT shared
+/// SemanticValidator and qelib1_builtin.cpp. Keeps (name,
+/// num_params, num_qubits) for all 25 qelib1 gates plus the 2 built-in aliases
+/// U/CX. The GateType enum mapping added by extends this file; the
+/// signature table itself is immutable after ships.
+///
+/// Design:. The 27-entry array covers every gate accepted
+/// a conforming OpenQASM v2 parser. Non-standard extensions (u0, rxx, ...) are
+/// rejected with QASMParseError per spec — see SemanticValidator::validate_gate_call.
 
 #pragma once
 
@@ -16,9 +19,9 @@
 
 namespace qplayer::detail {
 
-// Carries just the three fields required for argument-count validation.
-// adds a GateType enum field to a separate mapping structure; this struct
-// stays stable so the SemanticValidator never needs rebuilding when lands.
+/// Carries just the three fields required for argument-count validation.
+/// adds a GateType enum field to a separate mapping structure; this struct
+/// stays stable so the SemanticValidator never needs rebuilding when lands.
 struct GateSignature {
     std::string_view name;
     int              num_params = 0;

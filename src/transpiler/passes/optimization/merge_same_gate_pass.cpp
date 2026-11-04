@@ -1,30 +1,32 @@
-// merge_same_gate_pass.cpp — MergeSameGatePass (Phase 4).
-// Merges consecutive same-kind 1Q GateOps on the same qubit:
-//
-//   Self-inverse (result = identity, op removed by RemoveIdentityPass later):
-//     X·X → I,  Y·Y → I,  Z·Z → I,  H·H → I
-//
-//   Fixed-phase table:
-//     S·S   → Z
-//     Sdg·Sdg → Z
-//     T·T   → S
-//     Tdg·Tdg → Sdg
-//
-//   Rotation accumulation:
-//     RZ(θ1)·RZ(θ2) → RZ(θ1+θ2)
-//     U1(λ1)·U1(λ2) → U1(λ1+λ2)
-//
-// Mixed-kind pairs (H·X, S·T, …) are left unchanged by this pass.
-// Boundary ops (Measure, Barrier, If, Idle) and multi-qubit GateOps terminate
-// the per-qubit merge window. Opaque GateOps pass through unchanged.
-//
-// Algorithm: per-qubit pending slot stores the most-recently-seen eligible 1Q
-// gate (index + type + params). When the next eligible 1Q gate arrives on the
-// same qubit and is of the same type, merge and record a replacement; otherwise
-// flush the pending slot and start a new one.
-//
-// Level 2/3 only — not auto-registered at Level 0/1.
-//
+/// @file merge_same_gate_pass.cpp
+/// @brief MergeSameGatePass (Phase 4).
+///
+/// Merges consecutive same-kind 1Q GateOps on the same qubit:
+///
+/// Self-inverse (result = identity, op removed by RemoveIdentityPass later):
+/// X·X → I,  Y·Y → I,  Z·Z → I,  H·H → I
+///
+/// Fixed-phase table:
+/// S·S   → Z
+/// Sdg·Sdg → Z
+/// T·T   → S
+/// Tdg·Tdg → Sdg
+///
+/// Rotation accumulation:
+/// RZ(θ1)·RZ(θ2) → RZ(θ1+θ2)
+/// U1(λ1)·U1(λ2) → U1(λ1+λ2)
+///
+/// Mixed-kind pairs (H·X, S·T, …) are left unchanged by this pass.
+/// Boundary ops (Measure, Barrier, If, Idle) and multi-qubit GateOps terminate
+/// the per-qubit merge window. Opaque GateOps pass through unchanged.
+///
+/// Algorithm: per-qubit pending slot stores the most-recently-seen eligible 1Q
+/// gate (index + type + params). When the next eligible 1Q gate arrives on the
+/// same qubit and is of the same type, merge and record a replacement; otherwise
+/// flush the pending slot and start a new one.
+///
+/// Level 2/3 only — not auto-registered at Level 0/1.
+///
 
 #include "transpiler/passes/optimization/merge_same_gate_pass.hpp"
 

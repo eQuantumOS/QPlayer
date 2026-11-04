@@ -4,7 +4,7 @@ Covers the public import surface and the ``qiskit.providers`` entry point. The
 entry-point resolution test is skipped unless the package was installed with the
 extra (``pip install .[qiskit]``) so a dev tree without reinstall still passes.
 
-    python -m unittest tests.python.test_qiskit_plugin -v
+    python -m unittest tests.scenario.python.test_qiskit_plugin -v
 """
 import importlib.metadata as md
 import os

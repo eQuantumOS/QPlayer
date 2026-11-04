@@ -7,8 +7,8 @@ QPlayer accepts three input paths (OpenQASM v2 text, C++ native API, Python nati
 - **License**: Dual License — GPL v3 (open source) + Commercial License (commercial users, `gicha@etri.re.kr`). See [LICENSE](LICENSE).
 - **Language**: C++17 (core), Python 3.10+ (bindings — progressive introduction from Phase 7).
 - **Build**: CMake ≥ 3.20 (no external package manager required).
-- **Status**: Phase 8 complete — `Caracal-v5.0.0`. OpenQASM v2 parser, optimizer, FullState CPU/GPU + SparseState backends, Python bindings, and the noise model + DeviceModel + Interactive mode + coupling-map compilation are all in place. TensorNetwork (Phase 9–10) is upcoming. See the milestone roadmap for details.
-- **Documentation**: design documents are in Korean — User-facing documents (this README, [INSTALL.md](INSTALL.md), [NOTICE](NOTICE), Doxygen output) are in English.
+- **Status**: Phase 11 complete — `Lynx-v6.0.0`. OpenQASM v2 parser, optimizer, FullState CPU/GPU + SparseState + TensorNetwork (MPS) backends, Python bindings, noise model + DeviceModel, Interactive mode, and coupling-map compilation are all in place. See the milestone roadmap for details.
+- **Documentation**: User-facing documents (this README, [INSTALL.md](INSTALL.md), [NOTICE](NOTICE), Doxygen output) are in English.
 
 ---
 
@@ -22,7 +22,7 @@ QPlayer accepts three input paths (OpenQASM v2 text, C++ native API, Python nati
 - **GPU path** — CUDA-resident state vector, cuBLAS GEMV / GEMM, CUDA Streams pipelining (Compute Capability sm_75 or higher).
 - **Circuit optimization pipeline** — gate cancellation, commutation reordering, single-qubit merge, gate fusion (up to 4-qubit window).
 - **Noise model** — depolarizing, amplitude / phase damping, bit / phase flip, readout error, and arbitrary Kraus channels.
-- **In-house test framework** — `TEST` / `EXPECT_*` macros (12 in total) implemented under `tests/framework/`. No GoogleTest, Catch2, or doctest dependency.
+- **In-house test framework** — `TEST` / `TEST_F` / `TEST_BACKENDS` / `EXPECT_*` macros (13 in total) implemented under `tests/framework/`, with task-group selection (`--group`) and glob filtering. No GoogleTest, Catch2, or doctest dependency.
 
 ---
 
@@ -39,6 +39,8 @@ QPlayer accepts three input paths (OpenQASM v2 text, C++ native API, Python nati
 | Practical qubit cap  |     ~35       |   ~30 (VRAM)  |    ~100+    |    ~100+      |
 
 Legend: ✓ supported · ✗ not supported · ◐ opt-in (cache blocking defaults OFF — net-negative on modern server CPUs,; enable via `QPLAYER_CACHE_BLOCKING=1` or `set_cache_blocking(true)`). Interactive mode is CPU-statevector only; GPU statevector is reachable through the batch `run()` path.
+
+This matrix matches the single source of truth at [CLAUDE.md ](https://github.com/ksjin-git/QPlayer-II/blob/main/CLAUDE.md) and.
 
 ---
 
@@ -100,18 +102,26 @@ QPlayer/
 ├── tests/ # In-house test framework + scenario tests + fixtures
 │   ├── framework/             # Self-implemented TEST / EXPECT_* macros (test engine)
 │   ├── scenario/              # Test code — what is verified
-│   │   ├── unit/              # Per-module unit tests
-│   │   ├── integration/       # Pipeline end-to-end + Golden 4 (Bell, GHZ, QFT, Random Clifford)
-│   │   ├── acceptance/        # QASM acceptance runner
-│   │   └── python/            # Python binding tests
+│   │   ├── unit/              #   Per-module unit tests
+│   │   ├── integration/       #   Pipeline end-to-end + Golden 4 (Bell, GHZ, QFT, Random Clifford)
+│   │   ├── acceptance/        #   QASM acceptance runner
+│   │   └── python/            #   Python binding tests
 │   ├── data/                  # Test inputs / fixtures
-│   │   ├── qasm/              # QASM acceptance inputs + expected/*.json
-│   │   ├── golden/            # Golden reference JSON
-│   │   └── device_json/       # Device-model fixtures (willow, etc.)
+│   │   ├── qasm/              #   QASM acceptance inputs + expected/*.json
+│   │   ├── golden/            #   Golden reference JSON
+│   │   └── device_json/       #   Device-model fixtures (willow, etc.)
 │   └── tools/                 # Auxiliary measurement / dump helpers (non-ctest)
 ├── examples/                  # User examples (C++ + Python)
 │   └── benchmarks/{noise,performance}/  # Runnable benchmark harnesses
 ├── cmake/                     # CMake modules (FindOpenBLAS, detect_cache)
+├── design/ # Design documents (Korean) —
+│   ├── arch/                  # Architecture by layer (00-overview ~ 05-ops)
+│ ├── decisions/ # -<title>.md (130 records, 10 categories CC=01~10)
+│   ├── rules/                 # Coding / testing / performance / documentation rules
+│   ├── docs/                  # Historical archive + how-to guides + technical memos
+│   ├── tools/                 # Design consistency checker
+│ ├── benchmarks/ # Report-only comparison harnesses (Python-only)
+│   └── sessions/              # Per-session work logs
 ├── CMakeLists.txt
 └── pyproject.toml # scikit-build-core ≥ 0.7
 ```
@@ -120,7 +130,7 @@ QPlayer/
 
 ## Development Status
 
-`Caracal-v5.0.0` is complete: on top of the Ocelot foundation (OpenQASM v2 parser, circuit optimizer, FullState CPU/GPU and SparseState backends, Python bindings), the noise model + DeviceModel, Interactive mode, and coupling-map compilation have all landed. TensorNetwork (MPS/SVD) is the next milestone.
+`Lynx-v6.0.0` is the current release; On top of the Caracal foundation (noise model + DeviceModel, Interactive mode, coupling-map compilation), the TensorNetwork backend has landed: an MPS representation with SVD truncation, interaction-topology analysis that lays sites along the circuit's chain, gate fusion, contraction-order planning, and single-amplitude / reduced-density-matrix queries that work past the dense export limit. TensorNetwork noise (MPO and Monte Carlo trajectory) plus mid-circuit measurement, reset and classical conditionals followed in Phase 10, and the Python binding surface was completed in Phase 11 (opaque definitions, the full six-class exception hierarchy, zero-copy raw statevector views, `py.typed`). `Lynx-v6.0.0` makes the noisy trajectory paths of all backends share one canonical operation order (TensorNetwork noise now keeps the noiseless bond dimension), applies device reset errors, splits MPS two-qubit gates in canonical gauge, speeds up TensorNetwork noise sampling, and adds per-shot trajectory diagnostics and explicit idle-channel registration. A formal release is declared separately from phase completion.
 
 ---
 

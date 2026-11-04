@@ -131,11 +131,11 @@ TEST(StatevectorDump, GetNonzeroAmplitudes_FullState_BellState_TwoEntries) {
     EXPECT_NEAR(std::norm(amps[1].second), 0.5, 1e-10);
 }
 
-// SparseState: get_statevector_nonzero() works above MAX_STATEVECTOR_QUBITS=25
+// SparseState: get_statevector_nonzero() works above MAX_DENSE_EXPORT_QUBITS=25
 // without densifying. H on qubit 0 of a 30-qubit circuit produces exactly 2
 // nonzero states at indices 0 and 1.
 TEST(StatevectorDump, GetNonzeroAmplitudes_SparseState_30q_NoDensifyError) {
-    // Arrange — 30 qubits is above the MAX_STATEVECTOR_QUBITS=25 densify cap.
+    // Arrange — 30 qubits is above the MAX_DENSE_EXPORT_QUBITS=25 densify cap.
     QRegister qr{SimType::SparseState};
     Circuit   circ{30, 0};
     circ.h(0);  // Only qubit 0 in superposition; all others in |0>.
@@ -156,7 +156,7 @@ TEST(StatevectorDump, GetNonzeroAmplitudes_SparseState_30q_NoDensifyError) {
 // and emits the correct 30-character bitstrings in the oracle format.
 // This is the primary regression guard for the densify-bypass rewrite.
 TEST(StatevectorDump, DumpStatevector_SparseState_30q_NoDensifyError) {
-    // Arrange — 30 qubits is above the MAX_STATEVECTOR_QUBITS=25 densify cap.
+    // Arrange — 30 qubits is above the MAX_DENSE_EXPORT_QUBITS=25 densify cap.
     QRegister qr{SimType::SparseState};
     Circuit   circ{30, 0};
     circ.h(0);

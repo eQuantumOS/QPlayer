@@ -2,7 +2,7 @@
 
 Validates state/probs/sample/counts against PennyLane's default.qubit reference.
 
-    python -m unittest tests.python.test_pennylane_device -v
+    python -m unittest tests.scenario.python.test_pennylane_device -v
 """
 import os
 import sys

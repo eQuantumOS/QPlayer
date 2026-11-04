@@ -1,20 +1,22 @@
-// circuit_draw.cpp -- Circuit -> human-readable text diagram.
-// Implements draw_circuit_text(const Circuit&, CircuitDrawStyle) used by
-// Circuit::draw(). A sibling of qasm_emitter.cpp / serializer.cpp: walks ops()
-// only (no backend), so Circuit owns the logic (QRegister keeps a thin delegate).
-//
-// Layout model (single line per qubit, Qiskit-text inspired):
-//   * Each qubit q owns wire row 2*q; odd rows in between hold vertical
-//     connectors for multi-qubit gates. A trailing classical wire row holds
-//     measurement / conditional targets (only emitted when present).
-//   * Ops are packed into columns ("layers") greedily: an op reserves the
-//     contiguous qubit span it touches so connectors never collide.
-//   * Single-qubit gates render as a boxed label [H] / [RX(1.5708)]; controlled
-//     gates show a control marker on the control wire and a boxed target;
-//     swap shows the swap marker on both wires; barriers show a dashed band.
-//
-// The grid stores one glyph per cell as a std::string so multi-byte box-drawing
-// characters never break column alignment (display width == cell count).
+/// @file circuit_draw.cpp
+/// @brief -- Circuit -> human-readable text diagram.
+///
+/// Implements draw_circuit_text(const Circuit&, CircuitDrawStyle) used by
+/// Circuit::draw(). A sibling of qasm_emitter.cpp / serializer.cpp: walks ops()
+/// only (no backend), so Circuit owns the logic (QRegister keeps a thin delegate).
+///
+/// Layout model (single line per qubit, Qiskit-text inspired):
+/// * Each qubit q owns wire row 2*q; odd rows in between hold vertical
+/// connectors for multi-qubit gates. A trailing classical wire row holds
+/// measurement / conditional targets (only emitted when present).
+/// * Ops are packed into columns ("layers") greedily: an op reserves the
+/// contiguous qubit span it touches so connectors never collide.
+/// * Single-qubit gates render as a boxed label [H] / [RX(1.5708)]; controlled
+/// gates show a control marker on the control wire and a boxed target;
+/// swap shows the swap marker on both wires; barriers show a dashed band.
+///
+/// The grid stores one glyph per cell as a std::string so multi-byte box-drawing
+/// characters never break column alignment (display width == cell count).
 
 #include "circuit/circuit.hpp"
 

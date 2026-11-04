@@ -714,7 +714,7 @@ TEST(CircuitBuilder, LnNonPositive_ThrowsQASMParseError) {
 }
 
 TEST(CircuitBuilder, ExternalInclude_ThrowsQASMParseError) {
-    // Arrange — only qelib1.inc is built-in; other includes are rejected
+    // Arrange — only qelib1.inc is built-; other includes are rejected
     const std::string qasm =
         "OPENQASM 2.0;\n"
         "include \"other.inc\";\n"
@@ -862,4 +862,96 @@ TEST(CircuitBuilder, AcceptanceQasm_Qft4_Parseable) {
     Parser p;
     EXPECT_NO_THROW(p.parse_file(
         QPLAYER_ACCEPTANCE_DATA_DIR "/qasm/qft_4.qasm"));
+}
+
+// ── Power-expression domain guard (audit #7 side finding) ────────────────────
+//
+// BinaryOp::Pow called std::pow() with no domain check, so (-1)^0.5 produced NaN
+// and that NaN travelled into a gate parameter. With no NaN guard on the
+// noiseless execute() path (also audit #7) it only surfaced far later as a
+// diverged state, if at all. Both domain errors now fail at parse time with a
+// located QASMParseError.
+
+TEST(CircuitBuilder, PowNegativeBaseFractionalExponent_Throws) {
+    const std::string qasm =
+        "OPENQASM 2.0;\n"
+        "include \"qelib1.inc\";\n"
+        "qreg q[1];\n"
+        "rz((-1)^0.5) q[0];\n";
+
+    Parser p;
+    EXPECT_THROW(p.parse(qasm), QASMParseError);
+}
+
+TEST(CircuitBuilder, PowZeroBaseNegativeExponent_Throws) {
+    const std::string qasm =
+        "OPENQASM 2.0;\n"
+        "include \"qelib1.inc\";\n"
+        "qreg q[1];\n"
+        "rz(0^(-2)) q[0];\n";
+
+    Parser p;
+    EXPECT_THROW(p.parse(qasm), QASMParseError);
+}
+
+// Integral exponents on a negative base stay legal — (-2)^3 = -8 is real.
+TEST(CircuitBuilder, PowNegativeBaseIntegralExponent_Accepted) {
+    const std::string qasm =
+        "OPENQASM 2.0;\n"
+        "include \"qelib1.inc\";\n"
+        "qreg q[1];\n"
+        "rz((-2)^3) q[0];\n";
+
+    Parser p;
+    Circuit c = p.parse(qasm);
+    EXPECT_EQ(count_gate_ops(c), std::size_t{1});
+    const GateOp& g = std::get<GateOp>(c.ops()[0]);
+    EXPECT_NEAR(g.params.at(0), -8.0, 1e-12);
+}
+
+// ── if(...) with an unreachable value is rejected on every entry point (#23) ──
+//
+// The audit reported the QASM path as unchecked; it is not — SemanticValidatorPass
+// already throws ("exceeds maximum"). The real gap was the C++ API: if_then()
+// validated the creg index and body qubits but not the value, so the same typo was
+// an error through QASM and a silent dead branch through Circuit. Both now reject.
+
+TEST(CircuitBuilder, IfValueWiderThanRegister_QasmRejected) {
+    const std::string qasm =
+        "OPENQASM 2.0;\n"
+        "include \"qelib1.inc\";\n"
+        "qreg q[1];\n"
+        "creg c[2];\n"
+        "measure q[0] -> c[0];\n"
+        "if(c==5) x q[0];\n";
+
+    Parser p;
+    EXPECT_THROW(p.parse(qasm), QASMParseError);
+}
+
+TEST(CircuitBuilder, IfValueWithinRegisterWidth_QasmAccepted) {
+    const std::string qasm =
+        "OPENQASM 2.0;\n"
+        "include \"qelib1.inc\";\n"
+        "qreg q[1];\n"
+        "creg c[2];\n"
+        "measure q[0] -> c[0];\n"
+        "if(c==3) x q[0];\n";
+
+    Parser p;
+    EXPECT_NO_THROW(p.parse(qasm));
+}
+
+TEST(CircuitBuilder, IfThenApi_ValueWiderThanRegister_Throws) {
+    Circuit c(1, 0);
+    c.add_creg("c", 2);
+    GateOp body;
+    body.type   = GateType::X;
+    body.name   = "x";
+    body.qubits = {0};
+
+    // 3 is the widest value a 2-bit register can hold.
+    EXPECT_NO_THROW(c.if_then(c.creg("c"), 3, body));
+    EXPECT_THROW(c.if_then(c.creg("c"), 4, body), CircuitError);
+    EXPECT_THROW(c.if_then(c.creg("c"), 5, body), CircuitError);
 }

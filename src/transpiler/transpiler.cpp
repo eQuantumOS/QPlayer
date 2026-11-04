@@ -1,21 +1,23 @@
-// transpiler.cpp — Transpiler facade implementing QRegister::transpile()
-// delegation (+ Level 2/3).
-//
-// PassPolicy summary:
-//   Level 0:  ⓪ SemanticValidatorPass only
-//   Level 1:  ⓪ + ① CancelInverse → CommutationReorder → MergeSingleQubit
-//   Level 2:  Level 1 + DiagonalPhase → RemoveIdentity → MergeSameGate
-//             → PatternReplace → MergeSingleQubitUnitary (full-unitary 1Q merge)
-//   Level 3:  Level 2 + RemoveIdleQubit → MergeTwoQubit (2Q + qubit pruning)
-//   Level <0 or >3: CircuitError — unknown level.
-//   device bound (valid device_json or member DeviceModel): append the
-//             ② InitialLayout → ③ SwapRouter → ④ BasisGateTranslation →
-//             ⑤ (CancelInverse → SwapCancel → MergeSingleQubit) →
-// ⑤ verify (CouplingValidator) →
-//             ⑥ DurationAnnotation (physical space, when a T1/T2 NoiseModel is
-//             bound) → truncation (QubitTruncation) → ALAPSchedule (dense
-// space, slot-aware idle) stages (, handoff,
-//).
+/// @file transpiler.cpp
+/// @brief Transpiler facade implementing QRegister::transpile()
+///
+/// delegation (+ Level 2/3).
+///
+/// PassPolicy summary:
+/// Level 0:  ⓪ SemanticValidatorPass only
+/// Level 1:  ⓪ + ① CancelInverse → CommutationReorder → MergeSingleQubit
+/// Level 2:  Level 1 + DiagonalPhase → RemoveIdentity → MergeSameGate
+/// → PatternReplace → MergeSingleQubitUnitary (full-unitary 1Q merge)
+/// Level 3:  Level 2 + RemoveIdleQubit → MergeTwoQubit (2Q + qubit pruning)
+/// Level <0 or >3: CircuitError — unknown level.
+/// device bound (valid device_json or member DeviceModel): append the
+/// ② InitialLayout → ③ SwapRouter → ④ BasisGateTranslation →
+/// ⑤ (CancelInverse → SwapCancel → MergeSingleQubit) →
+/// ⑤ verify (CouplingValidator) →
+/// ⑥ DurationAnnotation (physical space, when a T1/T2 NoiseModel is
+/// bound) → truncation (QubitTruncation) → ALAPSchedule (dense
+/// space, slot-aware idle) stages (, handoff,
+///).
 
 #include "transpiler/transpiler.hpp"
 
@@ -105,7 +107,7 @@ Circuit Transpiler::transpile(Circuit            circuit,
     pm.add_pass(std::make_unique<SemanticValidatorPass>());
 
     if (optimization_level >= 1) {
-        // Stage ①: Level-1 passes.
+        // Stage ①: Level-1 F-OPT passes.
         pm.add_pass(std::make_unique<CancelInversePass>());
         pm.add_pass(std::make_unique<CommutationReorderPass>());
         pm.add_pass(std::make_unique<MergeSingleQubitPass>());
@@ -185,7 +187,8 @@ Circuit Transpiler::transpile(Circuit            circuit,
         // inserted only for the k live qubits — inserting them pre-truncation
         // would mark every device qubit as "used" and defeat the compaction. It
         // schedules the circuit into time slots and materialises each qubit's
-        // idle windows as IdleOps, replacing the per-gate IdleNoiseInserterPass:
+        // idle windows as IdleOps. It replaced the per-gate IdleNoiseInserterPass,
+        // which was removed in Phase 8-F :
         // parallel gates share a slot, so bystander idle is counted once, not
         // once per foreign gate (supersedes 's per-gate model).
         if (want_idle_noise) {

@@ -76,7 +76,7 @@ TEST(PassChain, Level1Equivalent_CleanBellLike_NoThrow) {
 }
 
 // ── Case 2: Full Level-2/3 pass set — cumulative reduction on a composite circuit.
-// Registers all 9 passes directly (bypassing optimization_level policy)
+// Registers all 9 F-OPT passes directly (bypassing optimization_level policy)
 // to verify that each pass's output feeds the next one.
 //
 // Circuit design notes:

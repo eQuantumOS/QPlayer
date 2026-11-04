@@ -21,8 +21,10 @@ Bindings notes (vs run_qasm.cpp): the Python binding exposes no set_omp_threads
 or dump_statevector, so --threads is applied via the OMP_NUM_THREADS environment
 variable BEFORE qplayer is imported (OpenMP reads it at library load), and
 --statevector calls qr.get_statevector_nonzero() to emit the same
-oracle .data layout as the C++ dump_statevector() without the 25-qubit densify
-cap — SparseState circuits up to 128 qubits are supported.
+layout as the C++ dump_statevector() (nonzero states only, trailing header)
+without the 25-qubit densify cap — SparseState circuits up to 128 qubits are
+supported. Note this is not the acceptance oracle .data layout, which is
+header-first, dense over all 2^n states, and uses %+.12e.
 
 Circuit diagram: --draw / --draw-ascii print a text diagram
 via Circuit.draw(); --draw-image PATH saves a matplotlib image via

@@ -4,7 +4,7 @@ Covers the text path (str / ascii / __str__), the unified output= dispatch,
 the matplotlib image path (skipped cleanly when matplotlib is absent), and the
 ImportError contract for the optional viz dependency.
 
-    python -m unittest tests.python.test_draw -v
+    python -m unittest tests.scenario.python.test_draw -v
 """
 import os
 import sys

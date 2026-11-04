@@ -1,13 +1,15 @@
-// ast_parser.cpp — Recursive-descent parser for OpenQASM v2.
-//
-// Grammar reference:.
-// Error model: every error throws QASMParseError with (file, line, col, msg).
-// No external parsing libraries are used.
-//
-// Expression parsing uses precedence climbing (highest-to-lowest):
-//   primary → unary → power (right-assoc) → multiplicative → additive
-// `pi`, `sin`, `cos`, etc. are preserved as IdentExpr / CallExpr so the
-// expression evaluator in can fold them at parameter resolution time.
+/// @file ast_parser.cpp
+/// @brief Recursive-descent parser for OpenQASM v2.
+///
+///
+/// Grammar reference:.
+/// Error model: every error throws QASMParseError with (file, line, col, msg).
+/// No external parsing libraries are used.
+///
+/// Expression parsing uses precedence climbing (highest-to-lowest):
+/// primary → unary → power (right-assoc) → multiplicative → additive
+/// `pi`, `sin`, `cos`, etc. are preserved as IdentExpr / CallExpr so the
+/// expression evaluator in can fold them at parameter resolution time.
 
 #include "parser/detail/ast_parser.hpp"
 #include "error.hpp"

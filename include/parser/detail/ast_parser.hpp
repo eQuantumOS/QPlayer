@@ -1,14 +1,17 @@
-// ast_parser.hpp — Recursive-descent parser for OpenQASM v2.
-// Consumes a Token stream produced by Lexer and emits a Program AST.
-// Hidden behind the Parser facade (parser.hpp); not part of the public ABI.
-//
-// Error model: every parse failure throws QASMParseError stamped with
-// (file_name, line, col, message) so callers can report precise source
-// locations.
-//
-// The expression sub-parser uses precedence climbing:
-//   additive (+/-) > multiplicative (*/) > power (^, right-assoc)
-//   > unary neg > primary (number, ident, call, parens).
+/// @file ast_parser.hpp
+/// @brief Recursive-descent parser for OpenQASM v2.
+/// @ingroup frontend
+///
+/// Consumes a Token stream produced by Lexer and emits a Program AST.
+/// Hidden behind the Parser facade (parser.hpp); not part of the public ABI.
+///
+/// Error model: every parse failure throws QASMParseError stamped with
+/// (file_name, line, col, message) so callers can report precise source
+/// locations.
+///
+/// The expression sub-parser uses precedence climbing:
+/// additive (+/-) > multiplicative (*/) > power (^, right-assoc)
+/// > unary neg > primary (number, ident, call, parens).
 
 #pragma once
 
@@ -21,6 +24,7 @@
 
 namespace qplayer::detail {
 
+/// Recursive-descent parser turning a token stream into the AST.
 class AstParser {
 public:
     // Constructs the parser from a pre-built token stream and a source label

@@ -7,8 +7,8 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(qplayer
-    VERSION 5.0.0
-    DESCRIPTION "QPlayer (Caracal series, Caracal-v5.0.0 — noise + DeviceModel + Interactive + device-noise benchmark width-aware sampling) — high-performance quantum circuit emulator"
+    VERSION 6.0.0
+    DESCRIPTION "QPlayer (Lynx series, Lynx-v6.0.0 — noise trajectory canonical op order + reset noise, canonical-gauge MPS splits, TN noise-path speedups, trajectory diagnostics and explicit idle-channel APIs) — high-performance quantum circuit emulator"
     LANGUAGES CXX)
 
 # ── 1. Platform and compiler guards ───────────────────────────────
@@ -53,10 +53,18 @@ option(QPLAYER_BUILD_PYTHON   "Build the pybind11 Python module (Phase 7+)" OFF)
 option(QPLAYER_BUILD_TESTS    "Build the in-house test framework and unit tests" ON)
 option(QPLAYER_BUILD_GPU      "Build the CUDA FullState GPU backend (requires CUDA Toolkit)" OFF)
 option(QPLAYER_BUILD_EXAMPLES "Build the C++ usage examples in examples/ (e.g. run_qasm CLI)" ON)
+option(QPLAYER_BUILD_DOCS     "Define the 'docs' target generating the Doxygen API reference" ON)
 
 # ── 4. External dependencies — three permitted only ──────────────────────────
-find_package(OpenBLAS REQUIRED)
-message(STATUS "[qplayer] OpenBLAS ${OpenBLAS_VERSION} located: ${OpenBLAS_LIBRARY}")
+# OpenBLAS supplies the LAPACK zgesvd_ used by MPS SVD truncation
+# Site tensors are complex<double>, so the real dgesvd_ named in the
+# original design sketch does not apply — corrected 2026-08-25.
+find_package(OpenBLAS)
+if(OpenBLAS_FOUND)
+    message(STATUS "[qplayer] OpenBLAS ${OpenBLAS_VERSION} located: ${OpenBLAS_LIBRARY} (dlopen'd at run time, not linked --)")
+else()
+    message(STATUS "[qplayer] OpenBLAS not found at configure time; TensorNetwork needs libopenblas.so.0 at run time")
+endif()
 
 # OpenMP is a compiler-builtin (libgomp on GCC) — not a third-party package, so
 # it sits outside the "three permitted dependencies" rule (C).
@@ -162,7 +170,6 @@ add_library(qplayer_core STATIC
     src/transpiler/passes/optimization/remove_idle_qubit_pass.cpp
     src/transpiler/passes/optimization/merge_two_qubit_pass.cpp
     src/transpiler/passes/scheduling/alap_schedule.cpp
-    src/transpiler/passes/scheduling/idle_noise_inserter_pass.cpp
     src/transpiler/passes/validation/semantic_validator_pass.cpp
 
     # Simulator backends + factory.
@@ -171,11 +178,27 @@ add_library(qplayer_core STATIC
     src/backend/full_state/cpu_dispatcher.cpp
     src/backend/full_state/full_state_cpu.cpp
     src/backend/full_state/gate_fusion.cpp
+    src/backend/full_state/pauli_expectation.cpp
     src/backend/full_state/qubit_reorder.cpp
     src/backend/full_state/full_state_gpu.cpp
+    src/backend/noise_schedule.cpp
     src/backend/sparse_state/sparse_state_backend.cpp
     src/backend/sparse_state/feasibility.cpp
     src/backend/tensor_network/tn_backend.cpp
+    src/backend/tensor_network/tn_cpu.cpp
+    src/backend/tensor_network/blas_loader.cpp
+    src/backend/tensor_network/mps.cpp
+    src/backend/tensor_network/topology.cpp
+    src/backend/tensor_network/tn_fusion.cpp
+    src/backend/tensor_network/contraction_order.cpp
+    src/backend/tensor_network/tn_amplitude.cpp
+    src/backend/tensor_network/tn_rdm.cpp
+    src/backend/tensor_network/tn_expectation.cpp
+    src/backend/tensor_network/tn_measure.cpp
+    src/backend/tensor_network/tn_noise.cpp
+    src/backend/tensor_network/tn_sampling.cpp
+    src/backend/tensor_network/tn_mpo.cpp
+    src/backend/tensor_network/tn_svd_gpu.cpp
 
     # Public entry point.
     src/qregister.cpp)
@@ -183,8 +206,12 @@ add_library(qplayer_core STATIC
 target_include_directories(qplayer_core PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>)
 
+# OpenBLAS is NOT linked: it builds a thread pool at library-initialisation
+# time, which every FullState-only process would pay for without ever calling
+# BLAS. The TensorNetwork backend dlopen's it instead, so the build
+# needs the dynamic loader rather than the library.
 target_link_libraries(qplayer_core PUBLIC
-    OpenBLAS::OpenBLAS
+    ${CMAKE_DL_LIBS}
     OpenMP::OpenMP_CXX)
 
 # -Wpedantic flags GCC line-directive style inside nvcc-generated stubs, so the
@@ -200,11 +227,14 @@ target_compile_options(qplayer_core PRIVATE
 if(QPLAYER_BUILD_GPU)
     target_sources(qplayer_core PRIVATE
         src/backend/full_state/full_state_gpu.cu
-        src/backend/full_state/qubit_reorder.cu)
+        src/backend/full_state/qubit_reorder.cu
+        src/backend/tensor_network/tn_svd_gpu.cu)
     # CUDA::curand for the GPU Monte Carlo trajectory PRNG (curand_kernel.h device
     # API, curandStatePhilox4_32_10 —). Part of the CUDA Toolkit, not a
     # new external dependency.
-    target_link_libraries(qplayer_core PUBLIC CUDA::cudart CUDA::curand)
+    # CUDA::cusolver for the TensorNetwork two-site SVD offload
+    # Part of the CUDA Toolkit, not a new external dependency.
+    target_link_libraries(qplayer_core PUBLIC CUDA::cudart CUDA::curand CUDA::cusolver)
     # Multi-target sm_75+ so one binary ships native kernels for Turing through
     # Hopper without JIT recompile (: sm_75 minimum).
     set_target_properties(qplayer_core PROPERTIES
@@ -233,7 +263,7 @@ if(QPLAYER_BUILD_PYTHON)
     target_compile_options(_qplayer PRIVATE -Wall -Wextra -Wpedantic)
     # Propagate project() VERSION to the binding as a preprocessor macro so
     # qplayer.__version__ tracks CMakeLists VERSION without manual edits.
-    # pyproject.toml is verified against PROJECT_VERSION in
+    # pyproject.toml is verified against PROJECT_VERSION
     target_compile_definitions(_qplayer PRIVATE
         QPLAYER_VERSION_STRING="${PROJECT_VERSION}")
     # scikit-build-core installs the .so into bindings/qplayer/ where
@@ -254,6 +284,87 @@ if(QPLAYER_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
 
+# ── 8.6. Doxygen API reference ─────────────────────────
+# Opt-in and non-fatal: Doxygen is a documentation generator, not a link-time
+# dependency, so a host without it must still configure and build. The target
+# is only defined when the tool is found; `--target docs` on a bare host then
+# fails with CMake's own "no rule to make target" rather than a build error
+# planted in the library graph.
+if(QPLAYER_BUILD_DOCS)
+    find_package(Doxygen QUIET COMPONENTS dot)
+    if(DOXYGEN_FOUND)
+        set(QPLAYER_DOXYGEN_VERSION    "${PROJECT_VERSION}")
+        set(QPLAYER_DOXYGEN_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/docs")
+        # One unified reference: include/ and src/ together, so a
+        # reader can follow a call from the public entry point into the kernel
+        # that implements it. The English user-facing markdown files
+        # join them so their cross-links resolve inside the HTML output instead
+        # of dangling. Korean design docs stay out by policy.
+        set(QPLAYER_DOXYGEN_INPUT      "${CMAKE_SOURCE_DIR}/include \
+${CMAKE_SOURCE_DIR}/src \
+${CMAKE_SOURCE_DIR}/README.md \
+${CMAKE_SOURCE_DIR}/INSTALL.md \
+${CMAKE_SOURCE_DIR}/examples/README.md \
+${CMAKE_SOURCE_DIR}/tests/README.md")
+        set(QPLAYER_DOXYGEN_STRIP_PATH "${CMAKE_SOURCE_DIR}")
+        set(QPLAYER_DOXYGEN_EXAMPLE_PATH "${CMAKE_SOURCE_DIR}/examples")
+        set(QPLAYER_DOXYGEN_MAINPAGE   "${CMAKE_SOURCE_DIR}/README.md")
+        set(QPLAYER_DOXYGEN_WARN_LOG   "${CMAKE_BINARY_DIR}/doxygen-warnings.log")
+        if(TARGET Doxygen::dot)
+            set(QPLAYER_DOXYGEN_HAVE_DOT YES)
+        else()
+            set(QPLAYER_DOXYGEN_HAVE_DOT NO)
+        endif()
+
+        # Tags shared by all three configs are extracted into Doxyfile.common,
+        # which each concrete config pulls in with @INCLUDE ( set
+        # the three-config count as the threshold for this indirection).
+        set(QPLAYER_DOXYGEN_COMMON "${CMAKE_BINARY_DIR}/Doxyfile.common")
+        configure_file("${CMAKE_SOURCE_DIR}/cmake/Doxyfile.common.in"
+                       "${QPLAYER_DOXYGEN_COMMON}" @ONLY)
+
+        configure_file("${CMAKE_SOURCE_DIR}/cmake/Doxyfile.in"
+                       "${CMAKE_BINARY_DIR}/Doxyfile" @ONLY)
+
+        add_custom_target(docs
+            COMMAND ${DOXYGEN_EXECUTABLE} "${CMAKE_BINARY_DIR}/Doxyfile"
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+            COMMENT "Generating Doxygen API reference into docs/html"
+            VERBATIM)
+
+        # Coverage gate. A second Doxygen config is required
+        # because Doxygen silently disables WARN_IF_UNDOCUMENTED while
+        # EXTRACT_ALL is YES, and the docs target keeps EXTRACT_ALL on so
+        # undocumented declarations still render as a structural map.
+        set(QPLAYER_DOXYGEN_COV_DIR "${CMAKE_BINARY_DIR}/doxygen-coverage")
+        set(QPLAYER_DOXYGEN_COV_LOG "${CMAKE_BINARY_DIR}/doxygen-coverage.log")
+        configure_file("${CMAKE_SOURCE_DIR}/cmake/Doxyfile.coverage.in"
+                       "${CMAKE_BINARY_DIR}/Doxyfile.coverage" @ONLY)
+
+        # The verdict script is Python; without an interpreter the measurement
+        # config is still configured but the target is not defined, matching the
+        # non-fatal documentation policy.
+        find_package(Python3 COMPONENTS Interpreter QUIET)
+        if(Python3_Interpreter_FOUND)
+            add_custom_target(docs-coverage
+                COMMAND ${DOXYGEN_EXECUTABLE} "${CMAKE_BINARY_DIR}/Doxyfile.coverage"
+                COMMAND ${CMAKE_COMMAND} -E echo
+                        "[qplayer] undocumented-entity log: ${QPLAYER_DOXYGEN_COV_LOG}"
+                COMMAND ${Python3_EXECUTABLE}
+                        "${CMAKE_SOURCE_DIR}/"
+                        "${QPLAYER_DOXYGEN_COV_DIR}/xml"
+                WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+                COMMENT "Measuring Doxygen documentation coverage"
+                VERBATIM)
+            message(STATUS "[qplayer] Doxygen ${DOXYGEN_VERSION} found — 'docs' + 'docs-coverage' targets available (dot: ${QPLAYER_DOXYGEN_HAVE_DOT})")
+        else()
+            message(STATUS "[qplayer] Doxygen ${DOXYGEN_VERSION} found — 'docs' target available; 'docs-coverage' needs a Python 3 interpreter (dot: ${QPLAYER_DOXYGEN_HAVE_DOT})")
+        endif()
+    else()
+        message(STATUS "[qplayer] Doxygen not found — 'docs' target unavailable")
+    endif()
+endif()
+
 # ── 9. Build summary ─────────────────────────────────────────────────────────
 message(STATUS "[qplayer] Build configuration:")
 message(STATUS "  CMAKE_BUILD_TYPE       = ${CMAKE_BUILD_TYPE}")
@@ -262,3 +373,4 @@ message(STATUS "  QPLAYER_BUILD_PYTHON   = ${QPLAYER_BUILD_PYTHON}")
 message(STATUS "  QPLAYER_BUILD_TESTS    = ${QPLAYER_BUILD_TESTS}")
 message(STATUS "  QPLAYER_BUILD_GPU      = ${QPLAYER_BUILD_GPU}")
 message(STATUS "  QPLAYER_BUILD_EXAMPLES = ${QPLAYER_BUILD_EXAMPLES}")
+message(STATUS "  QPLAYER_BUILD_DOCS     = ${QPLAYER_BUILD_DOCS}")

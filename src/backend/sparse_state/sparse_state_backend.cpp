@@ -1,11 +1,13 @@
-// sparse_state_backend.cpp — SparseState backend full implementation.
-// : unordered_map amplitude storage, threshold truncation,
-//       init_state(), get_statevector(), get_statevector_raw() permanent error.
-// : apply_gate() sparse unitary, apply_measure/reset (Born collapse),
-// prepare(), execute() with fast-path and per-shot path,
-// set_seed() reproducible PRNG.
-// Noise model unsupported. IdleOp rejected.
-// expectation_value remains NotImplementedError (+ scope).
+/// @file sparse_state_backend.cpp
+/// @brief SparseState backend full implementation.
+///
+/// : unordered_map amplitude storage, threshold truncation,
+/// init_state(), get_statevector(), get_statevector_raw() permanent error.
+/// : apply_gate() sparse unitary, apply_measure/reset (Born collapse),
+/// prepare(), execute() with fast-path and per-shot path,
+/// set_seed() reproducible PRNG.
+/// Noise model unsupported. IdleOp rejected.
+/// expectation_value(): O(nnz) walk over stored non-zero entries, no qubit cap.
 
 #include "backend/sparse_state/sparse_state_backend.hpp"
 
@@ -54,7 +56,7 @@ namespace {
 //          into shard[q] in place. Updates to existing keys reuse nodes (no
 //          alloc); only genuinely new keys allocate, only removed keys free.
 //
-// Why lock-free (4, revised after the perf finding): the
+// Why lock-free (Decision 4, revised after the perf finding): the
 // earlier mutex+stage claim serialised cross-partition pairs and collapsed under
 // 144-thread futex contention on large dense states (surface_d5 regressed to
 // 1491s). Here STEP1 never writes the store, so reads need no locks; STEP2 owns
@@ -125,6 +127,62 @@ std::pair<double, double> masked_norm_sum(const std::vector<Entry>& sorted,
     double total = 0.0, masked = 0.0;  // combine in fixed block order (deterministic)
     for (std::size_t b = 0; b < nblk; ++b) { total += bt[b]; masked += bm[b]; }
     return {total, masked};
+}
+
+// Population count over the full 128-bit StateIndex. The FullState kernels get
+// away with a single popcountll because n <= ~35 there, but SparseState runs to
+// 128 qubits (kMaxSparseQubits) so the high half must be counted too.
+int popcount_state_index(StateIndex v) {
+    return __builtin_popcountll(static_cast<std::uint64_t>(v)) +
+           __builtin_popcountll(static_cast<std::uint64_t>(v >> 64));
+}
+
+// Deterministic parallel reduction for <psi|P|psi> over the canonical (sorted)
+// entry vector, mirroring masked_norm_sum's fixed-block scheme so the result is
+// independent of partition and thread count (0919).
+//
+// P|j> = coeff(j) |j ^ flip_mask| with coeff(j) = i^num_y * (-1)^popcount(j & sign_mask),
+// so <psi|P|psi> = sum_j conj(psi[j ^ flip]) * coeff(j) * psi[j]. Only stored
+// entries carry psi[j] != 0, so iterating them covers every non-vanishing term —
+// this is what makes the sparse cost O(nnz) instead of O(2^n)
+// psi[j ^ flip] comes from store.get(), which yields 0 for
+// absent indices; concurrent const lookups on the shard maps are read-only and
+// never rehash, so the parallel block loop is safe.
+double pauli_expectation_sum(const std::vector<Entry>&        sorted,
+                             const PersistentAmplitudeStore&  store,
+                             StateIndex                       flip_mask,
+                             StateIndex                       sign_mask,
+                             cd                               phase) {
+    const std::size_t S = sorted.size();
+    constexpr std::size_t kBlk = std::size_t{1} << 16;
+    const std::size_t nblk = (S + kBlk - 1) / kBlk;
+
+    // P is Hermitian, so the imaginary part is numerical noise; only Re is kept
+    // (same contract as FullStateCpuBackend::expectation_value).
+    const auto block_sum = [&](std::size_t lo, std::size_t hi) {
+        double acc = 0.0;
+        for (std::size_t k = lo; k < hi; ++k) {
+            const StateIndex j = sorted[k].first;
+            const int parity = popcount_state_index(j & sign_mask) & 1;
+            const cd coeff = parity ? -phase : phase;
+            acc += (std::conj(store.get(j ^ flip_mask)) * coeff * sorted[k].second)
+                       .real();
+        }
+        return acc;
+    };
+
+    if (nblk <= 1) {  // small: serial (avoids parallel-region overhead)
+        return block_sum(0, S);
+    }
+    std::vector<double> ba(nblk, 0.0);
+    #pragma omp parallel for schedule(dynamic)
+    for (std::size_t b = 0; b < nblk; ++b) {
+        const std::size_t lo = b * kBlk;
+        ba[b] = block_sum(lo, std::min(S, lo + kBlk));
+    }
+    double acc = 0.0;  // combine in fixed block order (deterministic)
+    for (std::size_t b = 0; b < nblk; ++b) acc += ba[b];
+    return acc;
 }
 
 // inplace_controlled1q — in-place controlled-1Q gate: 1Q gates (control_mask==0),
@@ -471,10 +529,14 @@ void SparseStateBackend::apply_gate(const GateOp& op) {
         return;
     }
 
-    // Opaque gates not yet supported in SparseState (scope).
+    // Opaque is refused by policy, not pending implementation.
+    // An arbitrary k-qubit dense unitary fans each stored entry into up to 2^k
+    // entries (k=8 -> 256x), which defeats the sparsity assumption the whole
+    // backend rests on. Same class of constraint as noise.
     if (type == GateType::Opaque) {
-        throw NotImplementedError{"SparseState",
-            "Opaque gate not yet supported"};
+        throw SimulatorError{"SparseState",
+            "Opaque gate not supported. "
+            "Use FullState backend for opaque gates."};
     }
 
     // All gates mutate the persistent store in place: partition-parallel
@@ -636,7 +698,7 @@ void SparseStateBackend::apply_reset_rng(QubitIndex qubit,
 // and random otherwise (FullState line 995 pattern).
 int SparseStateBackend::apply_measure(QubitIndex qubit) {
     const std::uint64_t seed =
-        master_seed_ != 0
+        has_seed_
             ? qplayer::detail::splitmix64(master_seed_ ^
                   (static_cast<std::uint64_t>(qubit) << 16))
             : static_cast<std::uint64_t>(std::random_device{}());
@@ -651,7 +713,7 @@ void SparseStateBackend::apply_reset(QubitIndex qubit) {
             "apply_reset called before init_state"};
     }
     const std::uint64_t seed =
-        master_seed_ != 0
+        has_seed_
             ? qplayer::detail::splitmix64(master_seed_ ^
                   (static_cast<std::uint64_t>(qubit) << 24))
             : static_cast<std::uint64_t>(std::random_device{}());
@@ -689,17 +751,18 @@ Result SparseStateBackend::execute(const Circuit&     circuit,
             "Use FullState backend for noisy simulation."};
     }
 
-    // Seed the PRNG: use master_seed_ if set (non-zero), otherwise random device.
-    const std::uint64_t seed =
-        master_seed_ != 0
-            ? master_seed_
-            : static_cast<std::uint64_t>(std::random_device{}());
+    // Seed the PRNG: use master_seed_ when set_seed() has been called, otherwise a
+    // random device. set-ness is the flag, not the value — 0 is valid.
+    const bool          seeded = has_seed_;
+    const std::uint64_t seed   =
+        seeded ? master_seed_
+               : static_cast<std::uint64_t>(std::random_device{}());
 
     Result r;
     std::map<std::string, std::uint64_t> counts;
     const ClassicalBitIndex total_c = circuit.total_cubits();
 
-    if (!circuit.has_classical_control()) {
+    if (!circuit.requires_per_shot()) {
         // ── fast path — no IfOp, no mid-circuit measurement ──────────
         // Apply all gate ops once, then sample the final distribution nshots times.
         // Dense 2^n probability vector is NOT built — sparse inverse-CDF sampling
@@ -715,8 +778,9 @@ Result SparseStateBackend::execute(const Circuit&     circuit,
                     if (node.type == GateType::Reset) {
                         apply_reset(node.qubits[0]);
                     } else if (node.type == GateType::Opaque) {
-                        throw NotImplementedError{"SparseState",
-                            "Opaque gate not yet supported"};
+                        throw SimulatorError{"SparseState",
+                            "Opaque gate not supported. "
+                            "Use FullState backend for opaque gates."};
                     } else {
                         apply_gate(node);
                     }
@@ -767,14 +831,14 @@ Result SparseStateBackend::execute(const Circuit&     circuit,
         }
 
         // Expose statevector only when densification is feasible.
-        if (num_qubits_ <= MAX_STATEVECTOR_QUBITS) {
+        if (num_qubits_ <= MAX_DENSE_EXPORT_QUBITS) {
             result_set_statevector(r, get_statevector());
         }
 
-        // Lazy sampling (sparse mode): defer the nshots draw to
+        // Lazy sampling (sparse mode): defer the nshots draw
         // Result::counts(). The normalised sparse (basis_index, prob) snapshot is
         // O(nnz) — sampling needs no dense statevector, so it works beyond
-        // MAX_STATEVECTOR_QUBITS (e.g. 100-qubit sparse circuits). counts()
+        // MAX_DENSE_EXPORT_QUBITS (e.g. 100-qubit sparse circuits). counts()
         // rebuilds the sparse CDF identically, so a fixed seed reproduces the
         // eager result bit-for-bit.
         std::vector<std::pair<QubitIndex, ClassicalBitIndex>> measure_map;
@@ -825,10 +889,9 @@ Result SparseStateBackend::execute(const Circuit&     circuit,
             // Per-shot RNG derived from master seed and shot index for reproducibility
             // ( — thread_seed() uses splitmix64 decorrelation).
             const std::uint64_t shot_seed =
-                seed != 0
-                    ? qplayer::detail::thread_seed(seed,
-                          static_cast<std::uint32_t>(shot))
-                    : static_cast<std::uint64_t>(std::random_device{}());
+                seeded ? qplayer::detail::thread_seed(seed,
+                             static_cast<std::uint32_t>(shot))
+                       : static_cast<std::uint64_t>(std::random_device{}());
             std::mt19937_64 shot_rng(shot_seed);
 
             for (const Op& op : circuit.ops()) {
@@ -839,8 +902,9 @@ Result SparseStateBackend::execute(const Circuit&     circuit,
                         if (node.type == GateType::Reset) {
                             apply_reset_rng(node.qubits[0], shot_rng);
                         } else if (node.type == GateType::Opaque) {
-                            throw NotImplementedError{"SparseState",
-                                "Opaque gate not yet supported"};
+                            throw SimulatorError{"SparseState",
+                                "Opaque gate not supported. "
+                                "Use FullState backend for opaque gates."};
                         } else {
                             apply_gate(node);
                         }
@@ -864,8 +928,9 @@ Result SparseStateBackend::execute(const Circuit&     circuit,
                             if (node.body.type == GateType::Reset) {
                                 apply_reset_rng(node.body.qubits[0], shot_rng);
                             } else if (node.body.type == GateType::Opaque) {
-                                throw NotImplementedError{"SparseState",
-                                    "Opaque gate in IfOp not yet supported"};
+                                throw SimulatorError{"SparseState",
+                                    "Opaque gate in IfOp not supported. "
+                                    "Use FullState backend for opaque gates."};
                             } else {
                                 apply_gate(node.body);
                             }
@@ -894,7 +959,7 @@ Result SparseStateBackend::execute(const Circuit&     circuit,
         }  // end shot loop
 
         // Expose statevector from last shot when feasible.
-        if (num_qubits_ > 0 && num_qubits_ <= MAX_STATEVECTOR_QUBITS) {
+        if (num_qubits_ > 0 && num_qubits_ <= MAX_DENSE_EXPORT_QUBITS) {
             result_set_statevector(r, get_statevector());
         }
     }
@@ -928,16 +993,17 @@ Result SparseStateBackend::execute(const Circuit&     circuit,
 
 void SparseStateBackend::set_seed(std::uint64_t seed) {
     master_seed_ = seed;
+    has_seed_    = true;  // any value, 0 included
 }
 
 // ── State access ───────────────────────────────────────────────────────
 
 // Densifies the sparse amplitude map into an AoS StateVector.
-// Only allowed when num_qubits_ <= MAX_STATEVECTOR_QUBITS to bound memory use.
+// Only allowed when num_qubits_ <= MAX_DENSE_EXPORT_QUBITS to bound memory use.
 StateVector SparseStateBackend::get_statevector() {
-    if (num_qubits_ > MAX_STATEVECTOR_QUBITS) {
+    if (num_qubits_ > MAX_DENSE_EXPORT_QUBITS) {
         throw SimulatorError{"SparseState",
-            "get_statevector exceeds MAX_STATEVECTOR_QUBITS"};
+            "get_statevector exceeds MAX_DENSE_EXPORT_QUBITS"};
     }
     // 2^num_qubits_ entries; StateIndex{1} << n uses the alias constructor form
     // (— no __uint128_t literal).
@@ -958,20 +1024,90 @@ RawStateView SparseStateBackend::get_statevector_raw() {
         "raw SoA view not available (SparseState has no SoA buffer)"};
 }
 
-// expectation_value is out of scope — deferred to + (design).
-double SparseStateBackend::expectation_value(std::string_view /*pauli*/) {
-    throw NotImplementedError{"SparseState",
-        "expectation_value not yet implemented (scope)"};
+// expectation_value() — <psi|P|psi> for a Pauli string, computed by walking the
+// stored non-zero entries only ( policy table,
+//). Supported at every qubit count: unlike get_statevector() there is no
+// MAX_DENSE_EXPORT_QUBITS densify cap, so a 100-qubit sparse state is fine.
+// Semantics match FullStateCpuBackend::expectation_value() exactly — empty
+// string means all-Z, Qiskit qubit order, I/X/Y/Z only.
+double SparseStateBackend::expectation_value(std::string_view pauli) {
+    if (num_qubits_ == 0 && amplitudes_.empty()) {
+        throw SimulatorError{"SparseState",
+            "expectation_value called before init_state"};
+    }
+
+    // An empty Pauli string defaults to all-Z over every qubit: <Z...Z>.
+    // The local string outlives the view for the rest of this call.
+    std::string all_z;
+    if (pauli.empty()) {
+        all_z.assign(static_cast<std::size_t>(num_qubits_), 'Z');
+        pauli = all_z;
+    }
+    if (pauli.size() != static_cast<std::size_t>(num_qubits_)) {
+        throw CircuitError{"expectation_value: Pauli string length (" +
+                           std::to_string(pauli.size()) + ") != num_qubits (" +
+                           std::to_string(num_qubits_) + ")"};
+    }
+
+    // flip_mask = X|Y qubits (P maps |j> to |j ^ flip_mask>); sign_mask = Y|Z
+    // qubits (each contributes (-1)^bit); num_y feeds the global i^num_y phase.
+    StateIndex flip_mask = StateIndex{0};
+    StateIndex sign_mask = StateIndex{0};
+    int        num_y     = 0;
+    for (std::size_t k = 0; k < pauli.size(); ++k) {
+        const QubitIndex q = num_qubits_ - 1 - static_cast<QubitIndex>(k);  // Qiskit order
+        switch (pauli[k]) {
+            case 'I': break;
+            case 'X': flip_mask |= (StateIndex{1} << q); break;
+            case 'Y': flip_mask |= (StateIndex{1} << q);
+                      sign_mask |= (StateIndex{1} << q); ++num_y; break;
+            case 'Z': sign_mask |= (StateIndex{1} << q); break;
+            default:
+                throw CircuitError{std::string("expectation_value: invalid Pauli char '") +
+                                   pauli[k] + "' (only I/X/Y/Z allowed)"};
+        }
+    }
+
+    // Global phase i^num_y from the Y factors (bit dependence folded into sign).
+    cd phase{1.0, 0.0};
+    switch (num_y & 3) {
+        case 0: phase = cd{ 1.0,  0.0}; break;
+        case 1: phase = cd{ 0.0,  1.0}; break;
+        case 2: phase = cd{-1.0,  0.0}; break;
+        case 3: phase = cd{ 0.0, -1.0}; break;
+    }
+
+    // Canonical StateIndex order keeps the floating-point sum bit-reproducible
+    // across partition and thread counts, same basis as measurement.
+    return pauli_expectation_sum(amplitudes_.sorted_entries(), amplitudes_,
+                                 flip_mask, sign_mask, phase);
 }
 
 // nonzero_amplitudes() — return sorted_entries() directly.
-// No densify, no MAX_STATEVECTOR_QUBITS cap — works up to 128 qubits.
+// No densify, no MAX_DENSE_EXPORT_QUBITS cap — works up to 128 qubits.
 // Only entries above threshold_ are stored, so every entry is nonzero by
 // invariant (set_amplitude() prunes sub-threshold entries on insertion).
 // Returns an empty vector before init_state() (amplitudes_ is empty).
 std::vector<std::pair<StateIndex, std::complex<double>>>
 SparseStateBackend::nonzero_amplitudes() const {
     return amplitudes_.sorted_entries();
+}
+
+// Single amplitude. A miss is zero by definition: entries
+// below the truncation threshold were dropped, so "absent" and
+// "negligible" are the same statement here.
+std::complex<double> SparseStateBackend::amplitude(StateIndex basis) const {
+    if (basis >= (StateIndex{1} << num_qubits())) {
+        throw SimulatorError{"SparseState", "amplitude basis index out of range"};
+    }
+    return amplitudes_.get(basis);
+}
+
+// TensorNetwork-only.
+std::vector<std::complex<double>>
+SparseStateBackend::reduced_density_matrix(std::vector<QubitIndex>) const {
+    throw SimulatorError{"SparseState",
+        "reduced_density_matrix is TensorNetwork-only; partial-trace get_statevector() instead"};
 }
 
 // num_qubits() — active qubit count (0 before init_state). Used by
@@ -990,7 +1126,7 @@ std::string_view SparseStateBackend::name()           const { return "SparseStat
 // max_qubits() — report the structural 128-qubit ceiling. Sparse
 // storage is bounded by non-zero count, not qubit count, so the dense-equivalent
 // host bound is irrelevant here; whether a specific circuit fits memory is the
-// feasibility analysis's job. The densify cap MAX_STATEVECTOR_QUBITS=25
+// feasibility analysis's job. The densify cap MAX_DENSE_EXPORT_QUBITS=25
 // is a separate get_statevector() policy. ws is unused.
 std::uint32_t SparseStateBackend::max_qubits(detail::WorkingSet /*ws*/) const noexcept {
     return kMaxSparseQubits;

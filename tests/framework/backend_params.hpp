@@ -61,7 +61,7 @@ inline std::vector<::qplayer::ProcType> testable_procs() {
 //
 //   TEST_BACKENDS(BellState, Distribution_MatchesTheory) {
 //       QRegister qr(SimType::FullState, proc);  // proc is in scope
-// ..
+//       ...
 //   }
 //
 // Macro hygiene: all generated symbols include suite+name to avoid link-time

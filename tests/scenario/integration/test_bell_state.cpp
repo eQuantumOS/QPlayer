@@ -4,7 +4,7 @@
 // delegate correctly to the backend.
 // All tests migrated to TEST_BACKENDS: distribution, AoS/SoA
 // consistency, and expectation values hold on both CPU and GPU.
-// .
+//
 
 #include "../../framework/test_case.hpp"
 #include "../../framework/assertions.hpp"

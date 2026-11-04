@@ -13,17 +13,55 @@ a miniature VQE-style energy curve.
 
 Pauli qubit order is Qiskit big-endian: pauli[0] is the highest qubit.
 
-Run:  python estimator_demo.py        (after `pip install qplayer`,
-      or with PYTHONPATH=bindings)
+Backend / processor selection follows run_qasm.py: --backend picks the
+simulator and --proc the processor. Both parts are noiseless and small, so
+every backend can run them.
+
+Run:  python estimator_demo.py                      (after `pip install qplayer`,
+      python estimator_demo.py --backend sparse      or with PYTHONPATH=bindings)
+      python estimator_demo.py --backend tn --proc cpu
 """
 
+import argparse
 import math
+import sys
 
 import qplayer
 
+_BACKENDS = ("fullstate", "sparse", "tn")
+_PROCS = ("cpu", "gpu", "auto")
+
+# Exit codes mirror run_qasm.py so shell callers can branch on the outcome.
+EXIT_OK     = 0
+EXIT_ERROR  = 1  # circuit / runtime failure
+EXIT_USAGE  = 2  # bad command line (argparse also exits 2)
+EXIT_UNSUPP = 3  # backend does not support a part
+
+# Simulator / processor the parts run on; set by main() from the command line.
+# Module scope keeps each part body focused on the primitive it demonstrates.
+SIM_TYPE  = qplayer.SimType.FullState
+PROC_TYPE = qplayer.ProcType.CPU
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="estimator_demo.py",
+        description="Demonstrate the Qiskit-compatible Observable / Estimator / "
+                    "Sampler primitives.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p.add_argument("--backend", choices=_BACKENDS, default="fullstate",
+                   help="fullstate | sparse | tn (default fullstate)")
+    p.add_argument("--proc", choices=_PROCS, default="cpu",
+                   help="cpu | gpu | auto processor (default cpu; gpu needs a "
+                        "CUDA build, else warns + CPU fallback; auto picks GPU "
+                        "when available). sparse is CPU-only; tn accepts an "
+                        "explicit gpu to offload SVD")
+    return p
+
 
 def bell_energy() -> None:
-    qr = qplayer.QRegister(qplayer.SimType.FullState)
+    qr = qplayer.QRegister(SIM_TYPE, PROC_TYPE)
     estimator = qplayer.Estimator(qr)
 
     # |Phi+> = (|00> + |11>)/sqrt(2) — state prep only, no measurement.
@@ -43,7 +81,7 @@ def bell_energy() -> None:
 
 
 def vqe_energy_sweep() -> None:
-    qr = qplayer.QRegister(qplayer.SimType.FullState)
+    qr = qplayer.QRegister(SIM_TYPE, PROC_TYPE)
     estimator = qplayer.Estimator(qr)
 
     # H = ZI + IZ. For a product Ry(t) ansatz, <ZI> = <IZ> = cos(t).
@@ -58,10 +96,37 @@ def vqe_energy_sweep() -> None:
         print(f"  {t:6.3f}   {energy:+.4f}   {2.0 * math.cos(t):+.4f}")
 
 
-def main() -> None:
-    bell_energy()
-    vqe_energy_sweep()
+def main() -> int:
+    global SIM_TYPE, PROC_TYPE
+    args = build_parser().parse_args()
+
+    backend_map = {
+        "fullstate": qplayer.SimType.FullState,
+        "sparse":    qplayer.SimType.SparseState,
+        "tn":        qplayer.SimType.TensorNetwork,
+    }
+    proc_map = {
+        "cpu":  qplayer.ProcType.CPU,
+        "gpu":  qplayer.ProcType.GPU,
+        "auto": qplayer.ProcType.Auto,
+    }
+    SIM_TYPE  = backend_map[args.backend]
+    PROC_TYPE = proc_map[args.proc]
+    print(f"estimator demo: backend={args.backend}, proc={args.proc}\n")
+
+    try:
+        bell_energy()
+        vqe_energy_sweep()
+    except qplayer.NotImplementedError as e:
+        print(f"unsupported: {e}", file=sys.stderr)
+        print(f"(hint: backend '{args.backend}' is not available in this "
+              f"build; try --backend fullstate)", file=sys.stderr)
+        return EXIT_UNSUPP
+    except qplayer.QPlayerError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    return EXIT_OK
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

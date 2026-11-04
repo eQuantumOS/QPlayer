@@ -12,6 +12,7 @@
 
 #include <array>
 #include <complex>
+#include <string>
 #include <type_traits>
 #include <variant>
 
@@ -491,6 +492,67 @@ TEST(Circuit, DefineOpaque_2Q_IdentityPasses) {
     EXPECT_TRUE(std::holds_alternative<qplayer::UnitaryMatrix>(def.body));
 }
 
+// ── Circuit::opaque() — opaque CALL on the program path ───────────
+// Before this the only way to place an opaque op in a circuit was the QASM
+// parser; define_opaque() stored a body nobody could invoke.
+
+TEST(Circuit, Opaque_AppendsGateOpMatchingParserFields) {
+    // Arrange
+    Circuit c(2, 0);
+    c.declare_opaque("g2", 2);
+
+    // Act
+    c.opaque("g2", {1, 0});
+
+    // Assert — field layout must match CircuitBuilder's opaque call so both
+    // paths hand the backend an identical GateOp.
+    EXPECT_EQ(c.num_ops(), std::size_t{1});
+    const auto& g = std::get<GateOp>(c.ops()[0]);
+    EXPECT_TRUE(g.type == GateType::Opaque);
+    EXPECT_TRUE(g.is_opaque);
+    EXPECT_EQ(g.opaque_name, std::string{"g2"});
+    EXPECT_EQ(g.name, std::string{"g2"});
+    // Operand order is preserved verbatim — the definition matrix's local bit b
+    // maps to qubits[b], so {1,0} must not be normalised to {0,1}.
+    EXPECT_EQ(g.qubits.size(), std::size_t{2});
+    EXPECT_EQ(g.qubits[0], QubitIndex{1});
+    EXPECT_EQ(g.qubits[1], QubitIndex{0});
+}
+
+TEST(Circuit, Opaque_UndefinedName_IsAllowedAtCallTime) {
+    // QASM v2's "declare first, define later" order is preserved on the program
+    // path: an unknown name is legal here and rejected by SemanticValidatorPass
+    // at transpile() time instead (not duplicated in Circuit).
+    Circuit c(1, 0);
+    EXPECT_NO_THROW(c.opaque("not_registered_yet", {0}));
+    EXPECT_EQ(c.num_ops(), std::size_t{1});
+}
+
+TEST(Circuit, Opaque_ArityMismatchAgainstDefinition_ThrowsCircuitError) {
+    // When a definition IS present the arity is a settled error, so it is caught
+    // immediately rather than deferred to transpile.
+    Circuit c(2, 0);
+    c.declare_opaque("g1", 1);
+    EXPECT_THROW(c.opaque("g1", {0, 1}), CircuitError);
+}
+
+TEST(Circuit, Opaque_RepeatedQubit_ThrowsCircuitError) {
+    // One local matrix bit per operand — repeating a qubit has no meaning.
+    Circuit c(2, 0);
+    c.declare_opaque("g2", 2);
+    EXPECT_THROW(c.opaque("g2", {1, 1}), CircuitError);
+}
+
+TEST(Circuit, Opaque_QubitOutOfRange_ThrowsCircuitError) {
+    Circuit c(2, 0);
+    EXPECT_THROW(c.opaque("g", {5}), CircuitError);
+}
+
+TEST(Circuit, Opaque_EmptyName_ThrowsCircuitError) {
+    Circuit c(1, 0);
+    EXPECT_THROW(c.opaque("", {0}), CircuitError);
+}
+
 TEST(Circuit, DefineOpaque_RedefiningConcreteBody_ThrowsCircuitError) {
     // single-direction promotion: once a body is concrete, it cannot
     // be redefined (no Unitary -> Unitary overwrite, no Unitary <-> Kraus swap).
@@ -566,4 +628,91 @@ TEST(Circuit, HasClassicalControl_AnyIfOpPresent_ReturnsTrue) {
     body.qubits.push_back(1);
     c.if_then(0, 1, body);
     EXPECT_TRUE(c.has_classical_control());
+}
+
+// ── Distinctness error message names both operands (audit #14) ───────────────
+//
+// check_distinct() printed `a` twice, so "cx q[1],q[1]" reported "(got 1, 1)"
+// for every input pair — the message could not distinguish which operands were
+// passed. Only the second argument was wrong, so the fix is one character; the
+// test pins it because a duplicated-argument bug is invisible when both happen
+// to be equal (which is exactly when this throw fires).
+TEST(CircuitIR, CheckDistinct_ErrorMessageNamesBothOperands) {
+    Circuit c(3);
+    bool threw = false;
+    try {
+        c.cx(2, 2);
+    } catch (const qplayer::CircuitError& e) {
+        threw = true;
+        const std::string msg = e.what();
+        // Both operands are 2 here, so the message must show "2, 2" — and with
+        // distinct-but-equal formatting we also assert the gate name is present.
+        EXPECT_TRUE(msg.find("cx") != std::string::npos);
+        EXPECT_TRUE(msg.find("2, 2") != std::string::npos);
+    }
+    EXPECT_TRUE(threw);
+}
+
+// ── define_opaque num_qubits is bounded (audit #22) ──────────────────────────
+//
+// verify_unitary() is O(N^3) with N = 2^num_qubits, and `std::size_t{1} <<
+// num_qubits` is itself UB at >= 64. Nothing capped the value, so
+// define_opaque("x", 20, m) meant O(2^60) and 64+ was undefined.
+
+TEST(CircuitIR, DefineOpaque_QubitCountAboveCap_Throws) {
+    Circuit c(2);
+    c.declare_opaque("big", 20);
+    qplayer::UnitaryMatrix tiny{{{1.0, 0.0}, {0.0, 0.0}}, {{0.0, 0.0}, {1.0, 0.0}}};
+    // Rejected on the qubit count before any O(N^3) work touches the matrix.
+    EXPECT_THROW(c.define_opaque("big", 20, tiny), qplayer::CircuitError);
+    EXPECT_THROW(c.define_opaque("big", 64, tiny), qplayer::CircuitError);
+    EXPECT_THROW(c.define_opaque("big", 0,  tiny), qplayer::CircuitError);
+}
+
+TEST(CircuitIR, DefineOpaque_QubitCountAtCap_Accepted) {
+    // 1 qubit stays legal: the cap only rejects sizes that cannot be verified.
+    Circuit c(1);
+    c.declare_opaque("u", 1);
+    qplayer::UnitaryMatrix id{{{1.0, 0.0}, {0.0, 0.0}}, {{0.0, 0.0}, {1.0, 0.0}}};
+    EXPECT_NO_THROW(c.define_opaque("u", 1, id));
+}
+
+// ── has_classical_control() linear rewrite keeps its verdicts (audit #28) ─────
+//
+// The former shape re-scanned every following op per MeasureOp — O(ops^2) — and
+// QRegister::run() plus all three backends' execute() call it on every run. The
+// single-pass version must agree on every shape that decides fast path vs
+// per-shot routing.
+
+TEST(CircuitIR, HasClassicalControl_MatchesExpectedVerdicts) {
+    // No measure at all -> fast path.
+    { Circuit c(2); c.h(0).cx(0, 1);
+      EXPECT_FALSE(c.has_classical_control()); }
+
+    // Terminal measurement only -> still fast path.
+    { Circuit c(2, 2); c.h(0).cx(0, 1).measure(0, 0).measure(1, 1);
+      EXPECT_FALSE(c.has_classical_control()); }
+
+    // Gate AFTER a measure on the same qubit -> mid-circuit, per-shot.
+    { Circuit c(2, 2); c.h(0).measure(0, 0).x(0);
+      EXPECT_TRUE(c.has_classical_control()); }
+
+    // Gate after a measure on a DIFFERENT qubit -> still fast path.
+    { Circuit c(2, 2); c.h(0).measure(0, 0).x(1);
+      EXPECT_FALSE(c.has_classical_control()); }
+
+    // Multi-qubit gate touching a measured qubit -> per-shot.
+    { Circuit c(2, 2); c.h(0).measure(0, 0).cx(1, 0);
+      EXPECT_TRUE(c.has_classical_control()); }
+
+    // Barrier and a repeated measure do not reactivate the qubit.
+    { Circuit c(2, 2); c.h(0).measure(0, 0).barrier({0, 1}).measure(0, 1);
+      EXPECT_FALSE(c.has_classical_control()); }
+
+    // Any IfOp short-circuits to true regardless of position.
+    { Circuit c(1, 1);
+      GateOp body; body.type = GateType::X; body.name = "x"; body.qubits = {0};
+      c.add_creg("c2", 1);
+      c.if_then(0, 1, body);
+      EXPECT_TRUE(c.has_classical_control()); }
 }

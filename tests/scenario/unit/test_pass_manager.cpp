@@ -114,7 +114,7 @@ TEST(PassManager, Run_TwoPasses_EachCalledOnce) {
 
 TEST(PassManager, MakeDefault_IsCallable) {
     PassManager pm = PassManager::make_default();
-    // : make_default() registers exactly 3 Level-1 passes.
+    // : make_default() registers exactly 3 Level-1 F-OPT passes.
     EXPECT_EQ(pm.size(), std::size_t{3});
 }
 

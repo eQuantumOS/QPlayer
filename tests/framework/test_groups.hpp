@@ -32,15 +32,17 @@ inline const std::vector<GroupDef>& group_defs() {
     static const std::vector<GroupDef> defs = {
         {"parser", {
             "Lexer", "Parser", "ParserAst", "SemanticValidator", "CircuitBuilder",
-            "ConventionFixture", "Broadcast", "Circuit", "CircuitIR", "CircuitMetadata",
+            "ConventionFixture", "Broadcast", "Circuit", "CircuitIR", "CircuitMetadata", "ResetRouting",
         }},
         {"backend", {
             "FullStateFixture", "FullStateGpuKernel", "FullStateGpuExecute",
-            "FullStateGpuFactory", "SparseStateFixture", "SparseState",
+            "FullStateGpuFactory", "FullStateOpaque", "SparseStateFixture", "SparseState",
             "SparseStateParity", "SparsePartitionStore",
             "StatevectorDump", "Observable", "AddExpectation", "GoogleGates",
             "EcrGate", "MemoryCheckFixture", "BellState", "GHZState",
-            "BellExpectation", "Interactive", "QRegisterPipeline", "LazySampling",
+            "BellExpectation", "PerShotExpectation",
+            "Interactive", "QRegisterPipeline", "LazySampling",
+            "TensorGraph", "TensorNetworkBackend", "Mps", "MpsCanonical", "TnTopology", "TnFusion", "TnContraction", "TnQuery", "TnSampling", "TnMidcircuit", "TnReset", "TnConditional", "TnThreeQubit", "TnMpo", "TnIntegration", "TnQec", "TnRouteApi", "TnGpuSvd", "AmplitudeApi", "BlasLoader",
         }},
         {"golden", {
             "Golden", "GoldenGpu",
@@ -48,20 +50,20 @@ inline const std::vector<GroupDef>& group_defs() {
         {"optimizer", {
             "CancelInversePass", "CommutationReorderPass", "MergeSingleQubitPass",
             "MergeSingleQubitUnitaryPass", "MergeTwoQubitPass", "MergeSameGatePass",
-            "DiagonalPhasePass", "RemoveIdentityPass", "RemoveIdleQubitPass",
+            "DiagonalPhasePass", "RemoveIdentityPass", "RemoveIdleQubitPass", "OptLevel3Observation",
             "PatternReplacePass", "InitialLayout", "SwapRouter", "SwapCancel",
             "BasisGateTranslation", "ALAPSchedule", "DurationAnnotation",
             "SemanticValidatorPass", "QubitTruncation", "PassManager", "PassChain",
             "Transpiler", "QRegisterTranspile", "TranspileAcceptanceQasm",
             "TranspileDeviceJson", "Compiler", "CompileSwapRoundtrip",
-            "ExecuteFixture", "FusionFixture", "CacheBlockingFixture",
+            "ExecuteFixture", "FusionFixture", "RuntimeFusion", "CacheBlockingFixture",
             "CacheBlocking", "QubitReorder", "ReorderFixture", "CircuitSerializer",
             "CircuitDraw", "QasmEmitter", "JsonValue",
         }},
         {"noise", {
-            "NoiseModel", "NoiseModelReadout", "NoiseCpu", "NoiseGpu",
+            "NoiseModel", "NoiseModelReadout", "NoiseCpu", "NoiseGpu", "TnNoise", "TnNoiseParity",
             "DeviceModel", "DeviceNoise", "T1T2Calculator", "QRegisterLoadDevice",
-            "WillowDevice", "IdleNoiseInserter",
+            "WillowDevice", "NoiseSchedule", "ResetNoise", "NoiseIntervention",
         }},
         {"parallel", {
             "NoiseParity", "SeedReproducibility", "SeedFixture", "Seed",

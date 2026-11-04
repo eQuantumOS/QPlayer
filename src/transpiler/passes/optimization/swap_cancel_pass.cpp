@@ -1,8 +1,10 @@
-// swap_cancel_pass.cpp — SwapCancelPass implementation.
-// Cancels redundant SWAP pairs left by routing: for each atomic SWAP{a,b}, scan
-// forward; if the next op that touches a or b is another SWAP on the same
-// unordered pair, both are removed (SWAP·SWAP = I commuting past disjoint ops).
-// Any other op touching a or b blocks the cancellation.
+/// @file swap_cancel_pass.cpp
+/// @brief SwapCancelPass implementation (second F-OPT round).
+///
+/// Cancels redundant SWAP pairs left by routing: for each atomic SWAP{a,b}, scan
+/// forward; if the next op that touches a or b is another SWAP on the same
+/// unordered pair, both are removed (SWAP·SWAP = I commuting past disjoint ops).
+/// Any other op touching a or b blocks the cancellation.
 
 #include "transpiler/passes/optimization/swap_cancel_pass.hpp"
 

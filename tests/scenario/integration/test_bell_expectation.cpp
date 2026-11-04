@@ -4,7 +4,7 @@
 // Non-registered targets are absent (has_expectation == false, expectation()
 // throws). Migrated to TEST_BACKENDS: statevector path and
 // error handling are backend-independent.
-// .
+//
 
 #include "../../framework/test_case.hpp"
 #include "../../framework/assertions.hpp"

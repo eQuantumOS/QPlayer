@@ -1,4 +1,4 @@
-// compile_swap.qasm — SWAP routing acceptance (Phase 8 gate target).
+// compile_swap.qasm — F-CC SWAP routing acceptance (Phase 8 gate target).
 // Logical 2-qubit gate between q[0] and q[3] forces SWAP insertion when the
 // device coupling map is a linear chain (0-1-2-3). After transpile() the
 // physical circuit contains additional SWAPs; run() output must still be

@@ -3,7 +3,7 @@
 The entry-point discovery test (qml.device("qplayer.qubit")) is skipped unless the
 package was installed with the extra (``pip install .[pennylane]``).
 
-    python -m unittest tests.python.test_pennylane_plugin -v
+    python -m unittest tests.scenario.python.test_pennylane_plugin -v
 """
 import importlib.metadata as md
 import os

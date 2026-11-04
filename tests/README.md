@@ -123,10 +123,10 @@ In `-V` output each line is prefixed with its test index (`1:` = `qplayer_tests`
 truncated, lift the cap with `--test-output-size-passed 0`. The same per-case
 log is available by running a binary directly.
 
-Backend-parameterized cases appear with a `_CPU` / `_GPU` suffix in
+Backend-parameterized cases appear with a `_CPU` / `_GPU` suffix
 the `-V` output: a CPU-only build runs the `_CPU` cases only, while a CUDA build
 (`-DQPLAYER_BUILD_GPU=ON`) with a visible GPU runs **both** `_CPU` and `_GPU`
-variants — see.
+variants —.
 
 ### 2.3 Run a subset of C++ cases
 

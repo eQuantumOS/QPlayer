@@ -7,6 +7,7 @@
 
 #include "../../framework/test_case.hpp"
 #include "../../framework/assertions.hpp"
+#include "../../framework/backend_params.hpp"
 
 #include <cmath>
 #include <cstdint>
@@ -520,4 +521,70 @@ TEST(NoiseGpu, ReadoutError_MisreadsExcitedStateAsZero) {
                         ? static_cast<double>(counts.at("0")) / nshots : 0.0;
     EXPECT_NEAR(p0, 0.30, 0.04);
     EXPECT_EQ(total_shots(counts), static_cast<std::uint64_t>(nshots));
+}
+
+// ── Conditional-body gate noise ────────────────────────────
+//
+// The noisy trajectory path used to run an IfOp body with apply_gate_to_buffer()
+// and no channel at all, while the identical unconditional gate got its full
+// treatment. A conditional gate that RUNS was a pulse on the hardware and
+// decohered like any other; skipping the channel made the two circuits disagree
+// where physics says they cannot.
+//
+// The fixture pins q0 to 1 so the branch ALWAYS fires. That is what turns the
+// comparison into an equality rather than a distribution argument: with the
+// condition always true, the conditional and unconditional circuits differ only
+// in how the gate is spelled.
+namespace {
+
+qplayer::GateOp x_on(QubitIndex q) {
+    qplayer::GateOp op;
+    op.type   = qplayer::GateType::X;
+    op.name   = "x";
+    op.qubits = {q};
+    return op;
+}
+
+std::map<std::string, std::uint64_t> run_noisy(SimType sim, ProcType proc,
+                                               const Circuit& circ,
+                                               const NoiseModel& nm,
+                                               std::uint32_t shots) {
+    QRegister qr(sim, proc);
+    qr.set_seed(77);
+    qr.set_noise_model(nm);
+    return qr.run(circ, shots).counts();
+}
+
+}  // namespace
+
+TEST_BACKENDS(NoiseCpu, AlwaysTakenConditionalBody_CarriesTheSameGateNoise) {
+    // Arrange: q0 is deterministically 1, so `if (c == 1) x q1` always runs and
+    // is physically the same circuit as a bare `x q1`.
+    const std::uint32_t shots = 20000;
+    NoiseModel nm;
+    nm.add_depolarizing("x", 0.06);
+
+    Circuit conditional(2, 2);
+    conditional.x(0).measure(0, 0);
+    conditional.if_then(0, 1, x_on(1));
+    conditional.measure(1, 1);
+
+    Circuit unconditional(2, 2);
+    unconditional.x(0).measure(0, 0).x(1).measure(1, 1);
+
+    // Act
+    const auto cond   = run_noisy(SimType::FullState, proc, conditional,   nm, shots);
+    const auto uncond = run_noisy(SimType::FullState, proc, unconditional, nm, shots);
+
+    // Assert: "01" is the shot where q0 read 1 but q1 came out wrong — i.e. the
+    // body's own error rate. Before the fix the conditional's "01" was EXACTLY
+    // absent, so the bar is not the tolerance but the presence.
+    const auto frac = [shots](const std::map<std::string, std::uint64_t>& c,
+                              const std::string& key) {
+        const auto it = c.find(key);
+        return (it == c.end()) ? 0.0 : static_cast<double>(it->second) / shots;
+    };
+    EXPECT_TRUE(frac(cond, "01") > 0.01);
+    // Tolerance 0.01 covers shot noise on a ~2.6% branch at 20000 shots.
+    EXPECT_NEAR(frac(cond, "01"), frac(uncond, "01"), 0.01);
 }

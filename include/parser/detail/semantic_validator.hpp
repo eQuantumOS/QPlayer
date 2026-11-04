@@ -1,23 +1,26 @@
-// semantic_validator.hpp — AST-level semantic validation for OpenQASM v2
-// Sits between the AstParser and CircuitBuilder
-// in the pipeline: Lexer → AstParser → SemanticValidator → CircuitBuilder.
-//
-// Responsibilities (SSOT):
-//   • Symbol table: duplicate qreg/creg/gate/opaque names (gate + opaque share
-//     one namespace — collision forbidden).
-//   • Register-index range: q[i] requires i < qreg.size, c[j] requires j < creg.size.
-//   • Argument counts: gate calls must match the declared (#params, #qubits).
-//   • if-condition register type: only creg is legal as condition operand.
-//   • if-condition value range: 0 ≤ N < 2^creg.width.
-//   • gate_def body: formal qubit / param names only; direct qreg indexing forbidden.
-//
-// NOT in scope (deferred to other pipeline stages):
-// • opaque definition-existence check → IR-level SemanticValidatorPass.
-// • Expression evaluation (pi, sin, cos,...) → evaluator.
-// • `include` path resolution → qelib1_builtin.cpp.
-//
-// Error model: the first violation throws qplayer::QASMParseError stamped with
-// (file, line, col, message) — same as AstParser.
+/// @file semantic_validator.hpp
+/// @brief AST-level semantic validation for OpenQASM v2
+/// @ingroup frontend
+///
+/// Sits between the AstParser and CircuitBuilder
+/// in the pipeline: Lexer → AstParser → SemanticValidator → CircuitBuilder.
+///
+/// Responsibilities (SSOT):
+/// • Symbol table: duplicate qreg/creg/gate/opaque names (gate + opaque share
+/// one namespace — collision forbidden).
+/// • Register-index range: q[i] requires i < qreg.size, c[j] requires j < creg.size.
+/// • Argument counts: gate calls must match the declared (\#params, \#qubits).
+/// • if-condition register type: only creg is legal as condition operand.
+/// • if-condition value range: 0 ≤ N < 2^creg.width.
+/// • gate_def body: formal qubit / param names only; direct qreg indexing forbidden.
+///
+/// NOT in scope (deferred to other pipeline stages):
+/// • opaque definition-existence check → IR-level SemanticValidatorPass.
+/// • Expression evaluation (pi, sin, cos,...) → evaluator.
+/// • `include` path resolution → qelib1_builtin.cpp.
+///
+/// Error model: the first violation throws qplayer::QASMParseError stamped with
+/// (file, line, col, message) — same as AstParser.
 
 #pragma once
 
@@ -30,6 +33,7 @@
 
 namespace qplayer::detail {
 
+/// Checks a parsed AST against QASM v2 semantics before IR construction.
 class SemanticValidator {
 public:
     // Constructs the validator with the source label used in error messages.

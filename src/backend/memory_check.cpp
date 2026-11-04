@@ -1,13 +1,16 @@
-// memory_check.cpp — Pre-allocation memory budget guard.
-// FullState CPU/GPU backends call check_memory_budget() inside prepare() before
-// allocating the 2^n state vector. SparseState / TensorNetwork skip the guard
-// because their footprint is circuit-dependent and cannot be bounded ahead of
-// time — they rely on the post-hoc bad_alloc wrap of.
+/// @file memory_check.cpp
+/// @brief Pre-allocation memory budget guard.
+///
+/// FullState CPU/GPU backends call check_memory_budget() inside prepare() before
+/// allocating the 2^n state vector. SparseState / TensorNetwork skip the guard
+/// because their footprint is circuit-dependent and cannot be bounded ahead of
+/// time — they rely on the post-hoc bad_alloc wrap.
 
 #include "backend/memory_check.hpp"
 
 #include <algorithm>
 #include <cstdint>
+#include <limits>
 #include <cstdlib>
 #include <fstream>
 #include <iomanip>
@@ -21,7 +24,7 @@ namespace qplayer::detail {
 
 namespace {
 
-// One GiB in bytes — binary unit
+// One GiB in bytes — binary unit (product-spec NF-PF uses GiB).
 constexpr std::uint64_t kBytesPerGiB = std::uint64_t{1} << 30;
 
 // 80% safety margin (-1): leaving the system 20% headroom keeps the
@@ -42,12 +45,19 @@ bool budget_from_env(const char* var_name, std::uint64_t& out_bytes) {
     }
     try {
         const double gb = std::stod(raw);
-        if (!(gb >= 0.0) || gb > 1e12) {  // reject NaN, negative, absurd values
+        // The upper bound must keep gb * 2^30 inside uint64: the old limit of
+        // 1e12 GiB is ~1.07e21 bytes against a uint64 max of ~1.84e19, and
+        // converting an out-of-range double to an integer type is UB, not a
+        // wrap (audit #18). Bound the *byte* product instead of the GiB figure.
+        constexpr double kMaxBytes =
+            static_cast<double>(std::numeric_limits<std::uint64_t>::max());
+        const double bytes = gb * static_cast<double>(kBytesPerGiB);
+        if (!(gb >= 0.0) || !(bytes <= kMaxBytes)) {  // rejects NaN, negative, overflow
             log::warn(std::string(var_name) +
                       " is out of range; using /proc/meminfo instead.");
             return false;
         }
-        out_bytes = static_cast<std::uint64_t>(gb * static_cast<double>(kBytesPerGiB));
+        out_bytes = static_cast<std::uint64_t>(bytes);
         return true;
     } catch (...) {
         log::warn(std::string(var_name) +
@@ -161,8 +171,23 @@ void check_memory_budget(std::uint64_t    required_bytes,
                          QubitIndex       num_qubits) {
     const std::uint64_t available = available_memory_bytes();
 
-    // required <= available passes; kNoLimit (unreadable budget) always passes
-    // and defers to the post-hoc path.
+    // required == kNoLimit means peak_state_bytes() refused to model this n (>= 59)
+    // because 2^(n+5) overflows uint64. That must fail unconditionally: when both
+    // /proc/meminfo and the cgroup limit are unreadable, `available` is kNoLimit
+    // too and the comparison below became the tautology kNoLimit <= kNoLimit, so
+    // even n = 100 passed. The state allocation then truncated 2^100 bytes to 0
+    // (size_t cast in the backend) and wrote into a zero-byte block (audit #17).
+    if (required_bytes == kNoLimit) {
+        throw SimulatorError{
+            std::string{backend_name},
+            "state vector size is not representable for n_qubits = " +
+                std::to_string(num_qubits) +
+                " (2^(n+5) exceeds 64-bit byte counts); the maximum modellable "
+                "size is n_qubits = 58"};
+    }
+
+    // required <= available passes; kNoLimit (unreadable budget) on the *available*
+    // side still passes and defers to the post-hoc path.
     if (required_bytes <= available) {
         return;
     }
@@ -180,7 +205,8 @@ void check_memory_budget(std::uint64_t    required_bytes,
         "insufficient memory: requires " + to_gib(required_bytes) +
             " GiB, available " + to_gib(available) +
             " GiB (n_qubits = " + std::to_string(num_qubits) +
-            "); set QPLAYER_MEMORY_BUDGET_GB to relax this check"};
+            "); QPLAYER_MEMORY_BUDGET_GB overrides this check but does not shrink"
+            " the allocation, so the host may swap or be OOM-killed instead"};
 }
 
 std::uint64_t peak_state_bytes(QubitIndex num_qubits, WorkingSet ws) {

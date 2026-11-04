@@ -2,7 +2,7 @@
 # Phase 7: promoted from Phase 0 dry-run skeleton to a formal sdist
 # build.  `python -m build --sdist` produces a self-contained source
 # distribution that `pip install` compiles against OpenBLAS + pybind11.
-# PEP 440 numeric `version` field only — codename ("Caracal") appears in
+# PEP 440 numeric `version` field only — codename ("Lynx") appears in
 # `description` and Git tags but never in the version field.
 
 [build-system]
@@ -11,8 +11,8 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "qplayer"
-version = "5.0.0"
-description = "QPlayer (Caracal-v5.0.0 — noise + DeviceModel + Interactive) — high-performance quantum circuit emulator"
+version = "6.0.0"
+description = "QPlayer (Lynx-v6.0.0 — noise trajectory canonical op order + reset noise, canonical-gauge MPS splits, TN noise-path speedups, trajectory diagnostics and explicit idle-channel APIs) — high-performance quantum circuit emulator"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "GPL-3.0-or-later OR Commercial" }
@@ -35,9 +35,9 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage   = "https://github.com/xxx/yyy"
-Issues     = "https://github.com/xxx/yyy/issues"
-Repository = "https://github.com/xxx/yyy.git"
+Homepage   = "https://github.com/ksjin-git/QPlayer-II"
+Issues     = "https://github.com/ksjin-git/QPlayer-II/issues"
+Repository = "https://github.com/ksjin-git/QPlayer-II.git"
 
 # Optional runtime dependency for the Qiskit backend plugin.
 # qiskit >= 1.1 (both 1.x and 2.x): the plugin uses only the BackendV2 + JobV1 +
@@ -67,7 +67,16 @@ qplayer = "qplayer.qiskit.provider:QPlayerProvider"
 # Phase 7: formal sdist — module is now built.
 minimum-version = "0.7"
 build-dir = "build/{wheel_tag}"
-cmake.args = ["-DQPLAYER_BUILD_PYTHON=ON", "-DQPLAYER_BUILD_TESTS=OFF"]
+# QPLAYER_BUILD_EXAMPLES=OFF: a wheel has no use for the C++ CLI examples, and
+# their sources are excluded from the sdist — leaving them ON made `pip install`
+# of the sdist fail at configure time ("Cannot find source file: run_qasm.cpp").
+# Detected by the clean-venv install gate.
+cmake.args = [
+    "-DQPLAYER_BUILD_PYTHON=ON",
+    "-DQPLAYER_BUILD_TESTS=OFF",
+    "-DQPLAYER_BUILD_EXAMPLES=OFF",
+    "-DQPLAYER_BUILD_DOCS=OFF",
+]
 # sdist.include: all sources required to compile the extension from scratch.
 # bindings/qplayer/qplayer_bindings.cpp + package dir, all C++ headers (.hpp),
 # GPU sources (.cu/.cuh), cmake helpers, top-level project files.
@@ -76,7 +85,6 @@ sdist.include = [
     "pyproject.toml",
     "README.md",
     "INSTALL.md",
-    "QUICKSTART.md",
     "LICENSE",
     "NOTICE",
     "cmake/*.cmake",
@@ -93,14 +101,17 @@ sdist.include = [
 # source distribution.  Compiled extensions (.so) inside the package tree are
 # development installs and must be stripped out.
 sdist.exclude = [
-    "design/",
-    "tests/",
-    "benchmarks/",
-    "examples/",
-    "build/",
-    "build-py/",
-    "build-gpu/",
-    "dist/",
+    ".claude/**",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "design/**",
+    "tests/**",
+    "benchmarks/**",
+    "examples/**",
+    "build/**",
+    "build-py/**",
+    "build-gpu/**",
+    "dist/**",
     "**/*.so",
     "**/*.pyc",
     "**/__pycache__",

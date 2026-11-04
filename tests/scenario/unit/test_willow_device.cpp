@@ -27,7 +27,7 @@ namespace {
 // Path to the committed test fixture. QPLAYER_ACCEPTANCE_DATA_DIR is the tests/
 // source dir (tests/CMakeLists.txt target_compile_definitions). The fixture is
 // kept inside tests/ so the test suite is self-contained (no reference outside
-// tests/); the sc17-willow harness keeps its own copy under
+// tests/); the sc17-willow harness keeps its own copy
 std::string willow_json_path() {
     return std::string(QPLAYER_ACCEPTANCE_DATA_DIR) +
            "/device_json/willow_like.json";

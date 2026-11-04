@@ -1,11 +1,13 @@
-// cancel_inverse.cpp — CancelInversePass implementation (Phase 4).
-// Removes adjacent self-inverse or mutually-inverse gate pairs on the same qubits.
-// Self-inverse: X, Y, Z, H, CX, CY, CZ, CH, SWAP, CCX, CSwap.
-// Mutually-inverse pairs: S/Sdg, T/Tdg, SX/SXdg.
-// Boundary ops (Measure, Barrier, If, Idle) flush the pending-ops stack.
-// Opaque GateOps and rotation gates (RX/RY/RZ/U1/U2/U3/CRZ/CU1/CU3) pass through
-// unchanged — angle-based cancellation is out of scope for this pass.
-//
+/// @file cancel_inverse.cpp
+/// @brief CancelInversePass implementation (Phase 4).
+///
+/// Removes adjacent self-inverse or mutually-inverse gate pairs on the same qubits.
+/// Self-inverse: X, Y, Z, H, CX, CY, CZ, CH, SWAP, CCX, CSwap.
+/// Mutually-inverse pairs: S/Sdg, T/Tdg, SX/SXdg.
+/// Boundary ops (Measure, Barrier, If, Idle) flush the pending-ops stack.
+/// Opaque GateOps and rotation gates (RX/RY/RZ/U1/U2/U3/CRZ/CU1/CU3) pass through
+/// unchanged — angle-based cancellation is out of scope for this pass.
+///
 
 #include "transpiler/passes/optimization/cancel_inverse.hpp"
 

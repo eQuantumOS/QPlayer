@@ -1,11 +1,13 @@
-// remove_identity_pass.cpp — RemoveIdentityPass (Phase 4).
-// Filters out GateType::I (identity) GateOps from the circuit. The pass is a
-// simple linear scan — no windowing or accumulation required. Opaque GateOps
-// (is_opaque == true) are preserved even when their type field happens to be
-// GateType::I, because opaque semantics are user-defined.
-//
-// Level 2/3 only — not auto-registered at Level 0/1.
-//
+/// @file remove_identity_pass.cpp
+/// @brief RemoveIdentityPass (Phase 4).
+///
+/// Filters out GateType::I (identity) GateOps from the circuit. The pass is a
+/// simple linear scan — no windowing or accumulation required. Opaque GateOps
+/// (is_opaque == true) are preserved even when their type field happens to be
+/// GateType::I, because opaque semantics are user-defined.
+///
+/// Level 2/3 only — not auto-registered at Level 0/1.
+///
 
 #include "transpiler/passes/optimization/remove_identity_pass.hpp"
 

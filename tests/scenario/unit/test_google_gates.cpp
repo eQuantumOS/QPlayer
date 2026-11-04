@@ -287,7 +287,7 @@ TEST(GoogleGates, Fusion_EqualsDirect_ForAllThreeGates) {
 
     // Act: path B (fused).
     backB.init_state(n);
-    const std::vector<FusedOp> prog = fuse_circuit(circ.ops(), 4);
+    const std::vector<FusedOp> prog = fuse_circuit(circ.ops(), 4, circ.num_qubits());
     backB.apply_fused_program(prog);
     const StateVector svB = backB.get_statevector();
 

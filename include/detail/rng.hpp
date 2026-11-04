@@ -1,8 +1,11 @@
-// rng.hpp — SplitMix64 seed-derivation helpers.
-// A master seed (QRegister::set_seed / QPLAYER_SEED) is mixed into independent,
-// deterministic per-thread seeds for the OpenMP parallel sampling and Monte
-// Carlo trajectory loops. SplitMix64's finalizer decorrelates adjacent seeds —
-// a plain `master + tid` would leave mt19937_64 initial states correlated.
+/// @file rng.hpp
+/// @brief SplitMix64 seed-derivation helpers.
+/// @ingroup core
+///
+/// A master seed (QRegister::set_seed / QPLAYER_SEED) is mixed into independent,
+/// deterministic per-thread seeds for the OpenMP parallel sampling and Monte
+/// Carlo trajectory loops. SplitMix64's finalizer decorrelates adjacent seeds —
+/// a plain `master + tid` would leave mt19937_64 initial states correlated.
 
 #pragma once
 

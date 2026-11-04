@@ -184,7 +184,7 @@ TEST(LazySampling, Sparse_DeferredCounts_MatchesAndReproducible) {
     EXPECT_TRUE(a == b);
 }
 
-// SparseState lazy beyond MAX_STATEVECTOR_QUBITS (=25): a 30-qubit GHZ has only
+// SparseState lazy beyond MAX_DENSE_EXPORT_QUBITS (=25): a 30-qubit GHZ has only
 // two non-zero amplitudes, so no dense statevector is attached — sparse lazy must
 // still produce counts from the O(nnz) snapshot. This is the capability the dense
 // (statevector_) path could not provide.

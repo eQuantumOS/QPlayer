@@ -1,13 +1,15 @@
-// semantic_validator_pass.cpp — IR-level opaque gate validator pass
-// (⓪).
-//
-// Why this pass exists at the IR level (not only at parse time):
-//   The QASM parser's SemanticValidator only sees what was textually present in
-//   the .qasm source. A Circuit built programmatically via the C++ / Python API
-//   can add opaque GateOp nodes whose definitions are registered later — or
-//   never. Running this pass as the unconditional first pass in PassManager
-//   catches the "declared but not defined" case before any backend or
-// optimisation pass silently treats the gate as identity.
+/// @file semantic_validator_pass.cpp
+/// @brief IR-level opaque gate validator pass
+///
+/// (⓪).
+///
+/// Why this pass exists at the IR level (not only at parse time):
+/// The QASM parser's SemanticValidator only sees what was textually present in
+/// the .qasm source. A Circuit built programmatically via the C++ / Python API
+/// can add opaque GateOp nodes whose definitions are registered later — or
+/// never. Running this pass as the unconditional first pass in PassManager
+/// catches the "declared but not defined" case before any backend or
+/// optimisation pass silently treats the gate as identity.
 
 #include "transpiler/passes/validation/semantic_validator_pass.hpp"
 

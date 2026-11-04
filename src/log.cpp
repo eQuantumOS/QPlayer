@@ -1,9 +1,11 @@
-// log.cpp — qplayer::log facade — real implementation.
-// Phase 0-S kept the dispatchers as no-ops; Phase 1 replaces them with:
-// 1. One-time env-var bootstrap via std::call_once.
-//   2. current_level() gate so sub-threshold messages are free.
-// 3. std::clog output serialized with std::mutex.
-// Format: "[QPlayer/<LEVEL>] <message>\n"
+/// @file log.cpp
+/// @brief qplayer::log facade — real implementation.
+///
+/// Phase 0-S kept the dispatchers as no-ops; Phase 1 replaces them with:
+/// 1. One-time env-var bootstrap via std::call_once.
+/// 2. current_level() gate so sub-threshold messages are free.
+/// 3. std::clog output serialized with std::mutex.
+/// Format: "[QPlayer/<LEVEL>] <message>\n"
 
 #include "log.hpp"
 

@@ -1,7 +1,10 @@
-// lexer.hpp — Internal Lexer for the OpenQASM v2 parser pipeline.
-// Hidden behind the Parser facade (parser.hpp); not part of the public ABI
-// because callers never link against AST/token types (
-// self-implemented parser, no external library).
+/// @file lexer.hpp
+/// @brief Internal Lexer for the OpenQASM v2 parser pipeline.
+/// @ingroup frontend
+///
+/// Hidden behind the Parser facade (parser.hpp); not part of the public ABI
+/// because callers never link against AST/token types (
+/// self-implemented parser, no external library).
 
 #pragma once
 
@@ -12,15 +15,15 @@
 
 namespace qplayer::detail {
 
-// Token categories emitted by the Lexer. The Parser dispatches on `kind` and
-// re-reads `text` (the lexeme) when the value is required (numeric literals,
-// identifier names, etc.). Position fields are 1-based to match human-facing
-// error messages (QASMParseError reports line/col verbatim).
-//
-// KEYWORD is the reserved word set listed in plus
-// `OPENQASM` for the version header. `pi` and other math symbols stay as
-// IDENT — the expression evaluator treats them as named constants,
-// not lexical keywords, per OpenQASM v2 spec.
+/// Token categories emitted by the Lexer. The Parser dispatches on `kind` and
+/// re-reads `text` (the lexeme) when the value is required (numeric literals,
+/// identifier names, etc.). Position fields are 1-based to match human-facing
+/// error messages (QASMParseError reports line/col verbatim).
+///
+/// KEYWORD is the reserved word set listed in plus
+/// `OPENQASM` for the version header. `pi` and other math symbols stay as
+/// IDENT — the expression evaluator treats them as named constants,
+/// not lexical keywords, per OpenQASM v2 spec.
 enum class TokenKind {
     Keyword,
     Ident,
@@ -30,6 +33,7 @@ enum class TokenKind {
     EndOfFile,
 };
 
+/// One lexed token: its kind, source text and (line, col) position.
 struct Token {
     TokenKind   kind = TokenKind::EndOfFile;
     std::string text;          // exact lexeme as it appeared in source
@@ -37,13 +41,13 @@ struct Token {
     int         col  = 0;      // 1-based column of the first character
 };
 
-// Lexer tokenises an entire QASM source string in one pass. `file_name`
-// labels the source for QASMParseError messages — pass "<text>" for in-memory
-// strings (matches Parser::parse) or the file path for parse_file callers.
-//
-// Error model: tokenize() throws QASMParseError on the first illegal character
-// or unterminated literal. The Lexer never silently skips characters — every
-// byte either becomes a token or raises an error (location tracking).
+/// Lexer tokenises an entire QASM source string in one pass. `file_name`
+/// labels the source for QASMParseError messages — pass "<text>" for in-memory
+/// strings (matches Parser::parse) or the file path for parse_file callers.
+///
+/// Error model: tokenize() throws QASMParseError on the first illegal character
+/// or unterminated literal. The Lexer never silently skips characters — every
+/// byte either becomes a token or raises an error (location tracking).
 class Lexer {
 public:
     Lexer(std::string_view source, std::string file_name);

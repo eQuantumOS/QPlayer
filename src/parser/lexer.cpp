@@ -1,14 +1,16 @@
-// lexer.cpp — OpenQASM v2 Lexer implementation.
-//
-// Strategy: hand-written single-pass scanner over std::string_view. Each call
-// to next_token() classifies the next non-whitespace byte and dispatches to a
-// dedicated lex_* helper. Position counters (line_, col_) advance on every
-// byte read so QASMParseError messages always pinpoint the offending column.
-//
-// SSOT:. Keyword list mirrors the design
-// document exactly — adding a new reserved word requires updating both ends.
-// `pi` and other math constants stay as IDENT so the expression
-// evaluator can fold them at parameter resolution time.
+/// @file lexer.cpp
+/// @brief OpenQASM v2 Lexer implementation.
+///
+///
+/// Strategy: hand-written single-pass scanner over std::string_view. Each call
+/// to next_token() classifies the next non-whitespace byte and dispatches to a
+/// dedicated lex_* helper. Position counters (line_, col_) advance on every
+/// byte read so QASMParseError messages always pinpoint the offending column.
+///
+/// SSOT:. Keyword list mirrors the design
+/// document exactly — adding a new reserved word requires updating both ends.
+/// `pi` and other math constants stay as IDENT so the expression
+/// evaluator can fold them at parameter resolution time.
 
 #include "parser/detail/lexer.hpp"
 

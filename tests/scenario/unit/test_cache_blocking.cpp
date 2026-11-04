@@ -407,22 +407,58 @@ TEST(CacheBlocking, EnvDisable_ConstructionSetsBlockingOff) {
     // Clean up env before assertions so later tests are not affected.
     ::unsetenv("QPLAYER_CACHE_BLOCKING");
 
-    // Assert: applying a gate should use the unblocked path (same result as
-    // a baseline unblocked backend).
-    FullStateCpuBackend baseline;
-    baseline.set_cache_blocking(false);
-
-    const std::vector<GateOp> ops = {gate1q(GateType::H, 0)};
-    const StateVector sv_env = run_gates(backend_env, QubitIndex{4}, ops);
-    const StateVector sv_base = run_gates(baseline, QubitIndex{4}, ops);
-
-    const std::string err = compare_sv(sv_env, sv_base);
-    EXPECT_TRUE(err.empty());
+    // Assert: the flag itself is off. Comparing state vectors cannot show this
+    // because blocked and unblocked kernels are numerically identical.
+    EXPECT_FALSE(backend_env.cache_blocking_enabled());
 }
 
-// ── Env absent (default): cache blocking is on ───────────────────────────────
+// ── Env absent: default is OFF ────────────────────────────────────
+// Renamed from EnvAbsent_DefaultIsEnabled, which carried the pre-
+// (default ON) expectation and asserted only that two state vectors
+// matched — true for either default, so it could not detect a regression in
+// the default at all (testing gap #4).
 
-TEST(CacheBlocking, EnvAbsent_DefaultIsEnabled) {
+TEST(CacheBlocking, EnvAbsent_DefaultIsDisabled) {
+    ::unsetenv("QPLAYER_CACHE_BLOCKING");
+
+    const FullStateCpuBackend backend_default;
+
+    // : blocking measured net-negative -> default OFF, opt-in only.
+    EXPECT_FALSE(backend_default.cache_blocking_enabled());
+}
+
+// ── Env opt-in: QPLAYER_CACHE_BLOCKING=1 turns blocking on ───────────────────
+
+TEST(CacheBlocking, EnvEnable_ConstructionSetsBlockingOn) {
+    ::setenv("QPLAYER_CACHE_BLOCKING", "1", 1);
+
+    const FullStateCpuBackend backend_env;
+
+    ::unsetenv("QPLAYER_CACHE_BLOCKING");
+
+    EXPECT_TRUE(backend_env.cache_blocking_enabled());
+}
+
+// ── set_cache_blocking() round-trip ──────────────────────────────────────────
+
+TEST(CacheBlocking, SetCacheBlocking_TogglesFlag_RoundTrip) {
+    ::unsetenv("QPLAYER_CACHE_BLOCKING");
+
+    FullStateCpuBackend backend;
+    EXPECT_FALSE(backend.cache_blocking_enabled());
+
+    backend.set_cache_blocking(true);
+    EXPECT_TRUE(backend.cache_blocking_enabled());
+
+    backend.set_cache_blocking(false);
+    EXPECT_FALSE(backend.cache_blocking_enabled());
+}
+
+// ── Blocked and unblocked paths stay numerically identical ───────────────────
+// This is what the old EnvAbsent_DefaultIsEnabled actually verified; keep it as
+// an explicitly named equivalence check rather than a default-value claim.
+
+TEST(CacheBlocking, DefaultAndBlocked_ProduceIdenticalStateVector) {
     ::unsetenv("QPLAYER_CACHE_BLOCKING");
 
     FullStateCpuBackend backend_default;

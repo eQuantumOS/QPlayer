@@ -114,3 +114,54 @@ TEST(NoiseParity, AmplitudeDamping_CpuVsGpu_WithinTolerance) {
     // Assert
     expect_distributions_close(cpu, gpu, 0.01);
 }
+
+// ── Leading MeasureOp: pinned host buffers must be downloaded first ──────────
+//
+// Audit #4: the GPU trajectory loop started with the "host buffers are current"
+// flag set to false, so a MeasureOp before any gate skipped the D2H and folded
+// *uninitialized* pinned memory into the Born-rule sum (or, from trajectory 1 on,
+// the previous trajectory's final state). It then uploaded that garbage, wiping
+// |0...0>, and the trajectory aborted with
+//   SimulatorError: [FullStateGPU] numerical divergence at trajectory 0:
+//   |psi|^2 = 0.000000
+// while CPU produced the correct distribution. The flag now starts stale.
+
+TEST(NoiseParity, LeadingMeasure_CpuVsGpu_WithinTolerance) {
+    if (!gpu_available()) return;
+
+    // Arrange — the reported repro shape: measure is the very first op, so
+    // nothing has touched the host buffers yet.
+    const std::uint32_t nshots = 8000;
+    const std::uint64_t seed   = 20260729ULL;
+    Circuit circ(2, 2);
+    circ.measure(0, 0).h(1).measure(1, 1);
+    NoiseModel nm;
+    nm.add_depolarizing("h", 0.05);
+
+    // Act — this threw SimulatorError on GPU before the fix.
+    const auto cpu = run_probs(ProcType::CPU, circ, nm, nshots, seed);
+    const auto gpu = run_probs(ProcType::GPU, circ, nm, nshots, seed);
+
+    // Assert — q0 stays |0>, q1 is an even superposition: 00/01 near 0.5 each.
+    expect_distributions_close(cpu, gpu, 0.01);
+    EXPECT_TRUE(gpu.count("00") > 0);
+    EXPECT_NEAR(gpu.count("00") ? gpu.at("00") : 0.0, 0.5, 0.05);
+}
+
+// A measure-only circuit has no gate at all, so the end-of-trajectory norm check
+// is the first reader of the host buffers — the same staleness bug reached it.
+TEST(NoiseParity, MeasureOnlyCircuit_Gpu_NormCheckPasses) {
+    if (!gpu_available()) return;
+
+    const std::uint32_t nshots = 512;
+    const std::uint64_t seed   = 4242ULL;
+    Circuit circ(1, 1);
+    circ.measure(0, 0);
+    NoiseModel nm;
+    nm.add_depolarizing("h", 0.05);  // registered but never triggered
+
+    const auto gpu = run_probs(ProcType::GPU, circ, nm, nshots, seed);
+
+    // |0> measured in the Z basis is deterministic: every shot reports "0".
+    EXPECT_NEAR(gpu.count("0") ? gpu.at("0") : 0.0, 1.0, 1e-12);
+}

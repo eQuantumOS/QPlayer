@@ -1,7 +1,7 @@
 // test_transpile_device_json.cpp — QRegister Batch pipeline wiring:
 // - transpile() device_json policy (⓪.5): empty -> device-
 //     independent; invalid -> fall back to device-less; valid coupling map ->
-//     routing pipeline (② layout → ③ routing → ⑤ verify).
+//     F-CC routing pipeline (② layout → ③ routing → ⑤ verify).
 //   - parse() delegates to the Phase 3 Parser facade.
 // - run() drives the fast path end-to-end (counts populated).
 // - set_omp_threads() applies without error.
@@ -53,7 +53,7 @@ TEST(TranspileDeviceJson, InvalidDeviceJson_FallsBackToDeviceLess) {
     EXPECT_NO_THROW(qr.transpile(circ, 1, "device.json"));
 }
 
-// Valid device_json (JSON CONTENT) with a coupling map drives routing.
+// Valid device_json (JSON CONTENT) with a coupling map drives F-CC routing.
 TEST(TranspileDeviceJson, ValidCouplingMap_RoutesWithoutThrow) {
     QRegister qr(SimType::FullState);
     Circuit circ(3);

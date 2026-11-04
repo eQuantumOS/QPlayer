@@ -1,15 +1,19 @@
-// t1t2_calculator.hpp — T1/T2 coherence -> relaxation Kraus conversion
-// Used by
-// NoiseModel::load_device (gate relaxation) and the IdleNoiseInserter /
-// backend idle path wherever a duration is known:
-//   gamma  = 1 - exp(-t / T1)                Amplitude Damping
-//   T_phi  = 1 / (1/T2 - 1/(2 T1))           pure dephasing time
-// lambda = 1 - exp(-2 t / T_phi) Dephasing (: the factor 2
-//            compensates phase_damping_ops' sqrt(1-lambda) coherence factor so
-//            the total coherence decays as exp(-t/T2), not exp(-t/2 T_phi extra)).
-// All times share units (ns). Infinite T1/T2 (unknown qubits) and the
-// unphysical T2 > 2 T1 case clamp to a zero rate (no-op) rather than throwing,
-// so callers can pass device data through unvalidated.
+/// @file t1t2_calculator.hpp
+/// @brief Converts T1/T2 coherence times into relaxation Kraus parameters.
+/// @ingroup noise
+///
+/// T1/T2 coherence -> relaxation Kraus conversion
+/// Used
+/// NoiseModel::load_device (gate relaxation) and the ALAPSchedulePass /
+/// backend idle path wherever a duration is known:
+/// gamma  = 1 - exp(-t / T1)                Amplitude Damping
+/// T_phi  = 1 / (1/T2 - 1/(2 T1))           pure dephasing time
+/// lambda = 1 - exp(-2 t / T_phi) Dephasing (: the factor 2
+/// compensates phase_damping_ops' sqrt(1-lambda) coherence factor so
+/// the total coherence decays as exp(-t/T2), not exp(-t/2 T_phi extra)).
+/// All times share units (ns). Infinite T1/T2 (unknown qubits) and the
+/// unphysical T2 > 2 T1 case clamp to a zero rate (no-op) rather than throwing,
+/// so callers can pass device data through unvalidated.
 
 #pragma once
 
@@ -20,6 +24,8 @@
 
 namespace qplayer {
 
+/// Derives amplitude-damping gamma and dephasing lambda for a given duration (factor convention).
+/// @ingroup noise
 struct T1T2Calculator {
     // gamma = 1 - exp(-t/T1); 0 when T1 is infinite/non-positive (no damping).
     static double amplitude_damping_gamma(double t1, double t_gate);

@@ -1,26 +1,28 @@
-// pattern_replace_pass.cpp — PatternReplacePass (Phase 4).
-// Applies a fixed table of single-qubit gate-sequence patterns to the circuit.
-// Patterns are matched on consecutive same-qubit eligible 1Q GateOps using a
-// per-qubit sliding window of up to 4 ops. Global phase is ignored throughout.
-//
-// Pattern table (same-qubit, adjacent — no intervening gates on that qubit):
-//   4-gate:  T·T·T·T → Z
-//   3-gate:  H·X·H   → Z
-//            H·Z·H   → X
-//   2-gate:  T·T     → S
-//            S·S     → Z
-//            Tdg·Tdg → Sdg
-//            Sdg·Sdg → Z
-//            H·H     → I  (identity — op removed)
-//            X·X     → I  (identity — op removed)
-//
-// When the window reaches length 4, 3-length and 4-length patterns are tried
-// first. When a match is found the consumed ops are removed and the window is
-// reset (conservative: earlier pending ops are re-emitted as-is). A match also
-// sets changed_ = true.
-//
-// Level 2/3 only — not auto-registered at Level 0/1.
-//
+/// @file pattern_replace_pass.cpp
+/// @brief PatternReplacePass (Phase 4).
+///
+/// Applies a fixed table of single-qubit gate-sequence patterns to the circuit.
+/// Patterns are matched on consecutive same-qubit eligible 1Q GateOps using a
+/// per-qubit sliding window of up to 4 ops. Global phase is ignored throughout.
+///
+/// Pattern table (same-qubit, adjacent — no intervening gates on that qubit):
+/// 4-gate:  T·T·T·T → Z
+/// 3-gate:  H·X·H   → Z
+/// H·Z·H   → X
+/// 2-gate:  T·T     → S
+/// S·S     → Z
+/// Tdg·Tdg → Sdg
+/// Sdg·Sdg → Z
+/// H·H     → I  (identity — op removed)
+/// X·X     → I  (identity — op removed)
+///
+/// When the window reaches length 4, 3-length and 4-length patterns are tried
+/// first. When a match is found the consumed ops are removed and the window is
+/// reset (conservative: earlier pending ops are re-emitted as-is). A match also
+/// sets changed_ = true.
+///
+/// Level 2/3 only — not auto-registered at Level 0/1.
+///
 
 #include "transpiler/passes/optimization/pattern_replace_pass.hpp"
 

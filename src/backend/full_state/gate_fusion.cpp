@@ -1,20 +1,23 @@
-// gate_fusion.cpp — Runtime Gate Fusion implementation.
-// Greedy-window algorithm: consecutive unitary GateOps whose qubit union fits
-// within max_width are accumulated into one FusedGate via matrix product.
-// Boundary ops (Measure/Barrier/If/Idle) and non-unitary GateOps flush the
-// window and pass through unchanged.
-//
-// Matrix conventions (consistent with full_state_cpu.cpp apply_gate):
-//   - State index bit ordering: bit q of index i = (i >> q) & 1.
-//   - Local index inside a k-qubit subspace: qubits are sorted ascending;
-//     the lowest-indexed qubit contributes bit 0 of the local index.
-//   - FusedGate.matrix is row-major: element [r][c] = matrix[r*(1<<k) + c].
-//   - Product order: M_fused = M_last * ... * M_first  (later gates left-multiply).
+/// @file gate_fusion.cpp
+/// @brief Runtime Gate Fusion implementation.
+///
+/// Greedy-window algorithm: consecutive unitary GateOps whose qubit union fits
+/// within max_width are accumulated into one FusedGate via matrix product.
+/// Boundary ops (Measure/Barrier/If/Idle) and non-unitary GateOps flush the
+/// window and pass through unchanged.
+///
+/// Matrix conventions (consistent with full_state_cpu.cpp apply_gate):
+/// - State index bit ordering: bit q of index i = (i >> q) & 1.
+/// - Local index inside a k-qubit subspace: qubits are sorted ascending;
+/// the lowest-indexed qubit contributes bit 0 of the local index.
+/// - FusedGate.matrix is row-major: element [r][c] = matrix[r*(1<<k) + c].
+/// - Product order: M_fused = M_last * ... * M_first  (later gates left-multiply).
 
 #include "backend/full_state/gate_fusion.hpp"
 #include "backend/full_state/cpu_dispatcher.hpp"  // select_for_host
 #include "backend/full_state/gate_matrix.hpp"     // ecr/iswap/sqrt_iswap/fsim matrix data (0610)
 #include "error.hpp"
+#include "log.hpp"
 
 #include <algorithm>    // std::sort, std::set_union, std::find
 #include <cassert>
@@ -22,6 +25,7 @@
 #include <complex>
 #include <cstring>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #ifdef _OPENMP
@@ -48,7 +52,7 @@ using Cx = std::complex<double>;
 // The local-bit↔qubit mapping must match the state-vector indexing used by
 // apply_fused_gate so that the fused matrix is composed consistently.
 
-static std::vector<Cx> gate_full_matrix(const GateOp& op) {
+std::vector<Cx> gate_full_matrix(const GateOp& op) {
     const GateType type = op.type;
     const auto& qubits  = op.qubits;
     const auto& params  = op.params;
@@ -401,6 +405,72 @@ static std::vector<Cx> embed_matrix(
     return M;
 }
 
+// Left-multiply the window accumulator by one gate, in place.
+//
+// The dense route (embed the gate into a dim x dim matrix, then matmul) costs
+// O(dim^3) = O(2^3k) per gate. But a gate touches only g <= 3 of the window's k
+// qubits, so all it does is mix 2^g rows at a time — cost O(dim^2 * 2^g), which
+// is 2^(k-g) times cheaper (8x for a 1Q gate in a width-4 window).
+//
+// That factor is not academic: fusing a 3149-gate circuit at width 4 spent more
+// host time composing matrices than the device spent running them (q13_gcm ran
+// 8.7 ms unfused against 26.8 ms fused before this change), because compose cost
+// scales with gate count while the saving scales with state size.
+//
+// gate_qubits carries the gate's ORIGINAL operand order, matching the local bit
+// order of gate_full_matrix() (bit j of the gate index selects gate_qubits[j]).
+// window_qubits is sorted ascending and gives the window-local bit positions.
+static void left_apply_gate(std::vector<Cx>&               M_acc,
+                            const std::vector<Cx>&         gate_mat,
+                            const std::vector<QubitIndex>& gate_qubits,
+                            const std::vector<QubitIndex>& window_qubits) {
+    const int k    = static_cast<int>(window_qubits.size());
+    const int dim  = 1 << k;
+    const int g    = static_cast<int>(gate_qubits.size());
+    const int gdim = 1 << g;
+
+    // Window-local bit position of each gate operand.
+    int pos[3] = {0, 0, 0};   // g <= 3 for every fusable gate type
+    int fixed_mask = 0;
+    for (int j = 0; j < g; ++j) {
+        const auto it = std::find(window_qubits.begin(), window_qubits.end(),
+                                  gate_qubits[static_cast<std::size_t>(j)]);
+        pos[j] = static_cast<int>(std::distance(window_qubits.begin(), it));
+        fixed_mask |= 1 << pos[j];
+    }
+
+    // Scatter a gate-local index across the window-local bit positions.
+    const auto spread = [&](int i) {
+        int s = 0;
+        for (int j = 0; j < g; ++j) {
+            if ((i >> j) & 1) s |= 1 << pos[j];
+        }
+        return s;
+    };
+
+    std::vector<int> row_off(static_cast<std::size_t>(gdim));
+    for (int i = 0; i < gdim; ++i) row_off[static_cast<std::size_t>(i)] = spread(i);
+
+    Cx x[8];   // gdim <= 8
+    for (int rb = 0; rb < dim; ++rb) {
+        if (rb & fixed_mask) continue;          // enumerate row groups once
+        for (int c = 0; c < dim; ++c) {
+            for (int i = 0; i < gdim; ++i) {
+                x[i] = M_acc[static_cast<std::size_t>(
+                    (rb | row_off[static_cast<std::size_t>(i)]) * dim + c)];
+            }
+            for (int i = 0; i < gdim; ++i) {
+                Cx sum{0, 0};
+                for (int j = 0; j < gdim; ++j) {
+                    sum += gate_mat[static_cast<std::size_t>(i * gdim + j)] * x[j];
+                }
+                M_acc[static_cast<std::size_t>(
+                    (rb | row_off[static_cast<std::size_t>(i)]) * dim + c)] = sum;
+            }
+        }
+    }
+}
+
 // Dense matrix-matrix product: C = A * B, all dim x dim.
 static std::vector<Cx> matmul(const std::vector<Cx>& A,
                                const std::vector<Cx>& B,
@@ -419,10 +489,66 @@ static std::vector<Cx> matmul(const std::vector<Cx>& A,
     return C;
 }
 
+// ── Cost model ─────────────────────────────────────────────────────
+// Weight of running one gate on its dedicated kernel, in 1Q-full-pass units.
+//
+// apply_gate() reduces most types to apply_controlled_1q. With c control bits
+// that kernel still *iterates* dim/2 indices — the control mask only skips the
+// body — but it only *touches* 2^-c of the amplitudes. So the cost splits into a
+// fixed scan half and a subspace-proportional half:
+//
+//     w(c) = 0.5 + 0.5 * 2^-c        1Q 1.000 | 1 ctrl 0.750 | 2 ctrl 0.625
+//
+// q26 measurement (120 gates, mid-range qubits, net of the allocation floor,
+// median of 7): h 1.04, rz 0.97, cx 0.75, cz 1.13, ccx 0.54 — the formula tracks
+// the trend. The naive 2^-c (pure traffic) is wrong here: it predicts cx 0.5 and
+// ccx 0.25, understating both because the scan is not vectorised (see the
+// control branch of apply_controlled_1q) and pays for indices it then skips.
+//
+// Gates dispatched to apply_dense_2q_kernel (ECR, the Google natives) and all 1Q
+// gates sweep the whole state, hence 1.0. Swap/CSwap never reach a window
+// (flushes them first), so they need no weight here.
+double gate_kernel_weight(const GateOp& g) {
+    switch (g.type) {
+        case GateType::CX:
+        case GateType::CY:
+        case GateType::CZ:
+        case GateType::CH:
+        case GateType::CRZ:
+        case GateType::CU1:
+        case GateType::CU3:
+            return 0.75;   // one control
+
+        case GateType::CCX:
+            return 0.625;  // two controls
+
+        default:
+            return 1.0;    // no control
+    }
+}
+
 // ── fuse_circuit ──────────────────────────────────────────────────────────────
 
 std::vector<FusedOp> fuse_circuit(const std::vector<Op>& ops,
-                                   std::uint32_t          max_width) {
+                                   std::uint32_t          max_width,
+                                   QubitIndex             num_qubits,
+                                   const FusionCostModel& cost) {
+    // The GEMV kernels hold a local block of (1 << k) amplitudes in fixed stack
+    // scratch, so k must stay within kMaxFusionWidth. Nothing on the way here
+    // checked the user-supplied width (QRegister::run -> set_fusion ->
+    // fusion_max_width_), and a width >= 9 wrote past the scratch: real stack
+    // corruption, observed as "stack smashing detected" abort (audit #1). Clamp
+    // rather than throw — enable_fusion/fusion_max_width are run() defaults, so a
+    // throw would turn a tuning mistake into a failed simulation. Widths above 8
+    // are useless anyway: the window matmul is O((2^k)^3).
+    if (max_width > kMaxFusionWidth) {
+        log::warn("fuse_circuit: fusion_max_width " + std::to_string(max_width) +
+                  " exceeds the supported maximum " +
+                  std::to_string(kMaxFusionWidth) + "; clamping to " +
+                  std::to_string(kMaxFusionWidth));
+        max_width = kMaxFusionWidth;
+    }
+
     std::vector<FusedOp> result;
     result.reserve(ops.size());
 
@@ -430,24 +556,53 @@ std::vector<FusedOp> fuse_circuit(const std::vector<Op>& ops,
     std::vector<QubitIndex>              window_qubits;  // sorted union of accumulated qubits
     std::vector<std::vector<Cx>>         window_mats;    // one full matrix per accumulated gate
     std::vector<std::vector<QubitIndex>> window_gate_qubits; // per-gate qubit list (sorted)
+    std::vector<GateOp>                  window_gates;   // originals, for the pass-through path
+    double                               window_weight = 0.0;  // sum of gate_kernel_weight
+    // sum of 2^arity(g): the gate-count-dependent half of the host composition
+    // cost. The 2^(2k) half waits for flush, when the width is final.
+    double                               window_arity_units = 0.0;
 
     // Flush the current window: compose all accumulated gate matrices into a
-    // single FusedGate on window_qubits and push to result.
+    // single FusedGate on window_qubits and push to result — but only when the
+    // window pays for itself. Deciding here rather than during
+    // accumulation is what makes the check sound: the final width, and thus
+    // C(k), is only known once the window is closed.
     auto flush = [&]() {
         if (window_mats.empty()) return;
 
         const int k   = static_cast<int>(window_qubits.size());
         const int dim = 1 << k;
 
-        // Compose: M_fused = M_last * ... * M_first.
-        // First, embed each gate matrix into the full window subspace; then multiply.
+        // Not worth fusing: emit the originals so the backend runs each on its
+        // dedicated kernel. Controlled gates land here when too few of them (or
+        // too little 1Q work) share a window to outweigh a whole-state GEMV
+        // sweep — absorbing them would widen their access from a 2^-c subspace
+        // to the entire state vector. Small states land here too: composing the
+        // window costs host time that fusion cannot earn back when a pass over
+        // the state is cheap — and passing through skips the
+        // composition, so the verdict avoids that cost rather than paying it.
+        const std::uint32_t kw = static_cast<std::uint32_t>(k);
+        const double threshold = cost.window_cost(kw)
+                               + cost.compose_cost(kw, window_arity_units, num_qubits);
+        if (window_weight <= threshold) {
+            for (GateOp& g : window_gates) result.emplace_back(std::move(g));
+            window_qubits.clear();
+            window_mats.clear();
+            window_gate_qubits.clear();
+            window_gates.clear();
+            window_weight = 0.0;
+            window_arity_units = 0.0;
+            return;
+        }
+
+        // Compose: M_fused = M_last * ... * M_first, applying each gate in place
+        // (later gate = left factor). left_apply_gate() mixes only the 2^g rows
+        // the gate touches, so this is O(dim^2 * 2^g) per gate rather than the
+        // O(dim^3) of embed-then-matmul.
         std::vector<Cx> M_acc = identity_matrix(dim);
         for (std::size_t gi = 0; gi < window_mats.size(); ++gi) {
-            // Embed gate gi into the window subspace.
-            std::vector<Cx> M_emb = embed_matrix(
-                window_mats[gi], window_gate_qubits[gi], window_qubits);
-            // Left-multiply: M_acc = M_emb * M_acc (later gate = left factor).
-            M_acc = matmul(M_emb, M_acc, dim);
+            left_apply_gate(M_acc, window_mats[gi], window_gate_qubits[gi],
+                            window_qubits);
         }
 
         FusedGate fg;
@@ -458,6 +613,9 @@ std::vector<FusedOp> fuse_circuit(const std::vector<Op>& ops,
         window_qubits.clear();
         window_mats.clear();
         window_gate_qubits.clear();
+        window_gates.clear();
+        window_weight = 0.0;
+        window_arity_units = 0.0;
     };
 
     for (const Op& op : ops) {
@@ -511,11 +669,17 @@ std::vector<FusedOp> fuse_circuit(const std::vector<Op>& ops,
                     window_qubits     = std::move(g_qubits_sorted);
                     window_mats.push_back(gate_full_matrix(g));
                     window_gate_qubits.push_back(g.qubits);  // original order
+                    window_gates.push_back(g);
+                    window_weight = gate_kernel_weight(g);
+                    window_arity_units = std::ldexp(1.0, static_cast<int>(g.qubits.size()));
                 } else {
                     // Accumulate into the current window.
                     window_qubits = std::move(candidate);
                     window_mats.push_back(gate_full_matrix(g));
                     window_gate_qubits.push_back(g.qubits);  // original order
+                    window_gates.push_back(g);
+                    window_weight += gate_kernel_weight(g);
+                    window_arity_units += std::ldexp(1.0, static_cast<int>(g.qubits.size()));
                 }
 
             } else if constexpr (std::is_same_v<T, MeasureOp>) {
@@ -548,12 +712,18 @@ std::vector<FusedOp> fuse_circuit(const std::vector<Op>& ops,
 // stride-1 contiguous, so it vectorises under #pragma omp simd with std::fma
 // (FMA3). amp/out scratch is alignas(64); matT is loaded unaligned.
 // AVX2 and AVX-512 variants differ only in the target attribute and the simd
-// alignment width (coding-rules, performance-rules, single binary via
+// alignment width (coding-rules, performance-rules, single binary
 // select_for_host). The OpenMP parallel-for over base blocks
 // lives inside each worker so the kernel pointer is selected once, not per block.
 //
-// amp/out are sized 256 = 2^8 (k <= 8 by FusedGate invariant); fusion_max_width
+// amp/out are sized kFusedScratchDim = 1 << kMaxFusionWidth, and fuse_circuit()
+// clamps max_width to kMaxFusionWidth so local_dim can never exceed it (audit #1:
+// an unchecked fusion_max_width >= 9 smashed the stack here). fusion_max_width
 // defaults to 4 (local_dim 16) on the runtime path.
+
+// Stack scratch dimension for one local amplitude block. Tied to the public cap
+// so the two cannot drift apart.
+constexpr int kFusedScratchDim = 1 << kMaxFusionWidth;
 
 using FusedLoopFn = void (*)(double*, double*, int, int, std::int64_t,
                              const int*, const StateIndex*,
@@ -574,10 +744,10 @@ static void fused_gemv_loop_avx2(
             }
         }
 
-        alignas(64) double amp_re[256];
-        alignas(64) double amp_im[256];
-        alignas(64) double out_re[256];
-        alignas(64) double out_im[256];
+        alignas(64) double amp_re[kFusedScratchDim];
+        alignas(64) double amp_im[kFusedScratchDim];
+        alignas(64) double out_re[kFusedScratchDim];
+        alignas(64) double out_im[kFusedScratchDim];
         for (int p = 0; p < local_dim; ++p) {
             const StateIndex idx = base_idx | gate_contrib[p];
             amp_re[p] = re[idx];
@@ -623,10 +793,10 @@ static void fused_gemv_loop_avx512(
             }
         }
 
-        alignas(64) double amp_re[256];
-        alignas(64) double amp_im[256];
-        alignas(64) double out_re[256];
-        alignas(64) double out_im[256];
+        alignas(64) double amp_re[kFusedScratchDim];
+        alignas(64) double amp_im[kFusedScratchDim];
+        alignas(64) double out_re[kFusedScratchDim];
+        alignas(64) double out_im[kFusedScratchDim];
         for (int p = 0; p < local_dim; ++p) {
             const StateIndex idx = base_idx | gate_contrib[p];
             amp_re[p] = re[idx];
@@ -751,11 +921,52 @@ void apply_fused_gate(double* re, double* im, StateIndex dim,
 
     // Parallel loop over all base indices (n_base = 2^n_free independent blocks).
     // The CPUID-selected worker (AVX2 / AVX-512) runs the OpenMP parallel-for and
-    // the vectorised GEMV internally (single binary via).
+    // the vectorised GEMV internally (single binary).
     const std::int64_t n_base_i = static_cast<std::int64_t>(n_base);
     fused_loop_kernel()(re, im, local_dim, n_free, n_base_i,
                         free_bits.data(), gate_contrib.data(),
                         matT_re.data(), matT_im.data());
+}
+
+// make_dense_gate — operand-order matrix -> sorted-qubit FusedGate.
+// Reuses embed_matrix with union == sorted(qubits): the "extra qubit" set is
+// empty, so the embedding degenerates to exactly the axis permutation needed.
+FusedGate make_dense_gate(const std::vector<QubitIndex>& qubits,
+                          const std::vector<Cx>&         matrix) {
+    const std::size_t k = qubits.size();
+    if (k == 0) {
+        throw SimulatorError{"FullState", "dense gate has no qubits"};
+    }
+    // apply_fused_gate's amp/out scratch is a fixed 1 << kMaxFusionWidth stack
+    // array and does not range-check; fuse_circuit() normally guarantees the
+    // bound by clamping max_width. Callers bypassing it must check here.
+    if (k > static_cast<std::size_t>(kMaxFusionWidth)) {
+        throw SimulatorError{"FullState",
+            "dense gate spans " + std::to_string(k) +
+            " qubits, exceeding the " + std::to_string(kMaxFusionWidth) +
+            "-qubit kernel limit"};
+    }
+    const std::size_t expected = (std::size_t{1} << k) * (std::size_t{1} << k);
+    if (matrix.size() != expected) {
+        throw SimulatorError{"FullState",
+            "dense gate matrix has " + std::to_string(matrix.size()) +
+            " entries, expected " + std::to_string(expected) +
+            " for " + std::to_string(k) + " qubits"};
+    }
+
+    std::vector<QubitIndex> sorted = qubits;
+    std::sort(sorted.begin(), sorted.end());
+    if (std::adjacent_find(sorted.begin(), sorted.end()) != sorted.end()) {
+        throw SimulatorError{"FullState", "dense gate has repeated qubits"};
+    }
+
+    FusedGate g;
+    g.qubits = sorted;
+    // Already ascending in operand order -> permutation is the identity, so skip
+    // the O(4^k) embed pass (the common 1Q case and any ascending operand list).
+    g.matrix = (sorted == qubits) ? matrix
+                                  : embed_matrix(matrix, qubits, sorted);
+    return g;
 }
 
 }  // namespace detail

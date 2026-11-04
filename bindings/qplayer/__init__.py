@@ -1,14 +1,23 @@
 """QPlayer Python package — re-exports the pybind11 native module.
 
-Phase 8 (Caracal-v5.0.0): Batch API + FullState CPU/GPU + SparseState
+Phase 8 (Caracal-v5.1.0): Batch API + FullState CPU/GPU + SparseState
 + Interactive + NoiseModel + DeviceModel + full exception hierarchy.
  early expose: GateType, Op variant types (GateOp, MeasureOp,
 BarrierOp, IfOp, IdleOp), Circuit.ops(), and Interactive facade.
 
-Deferred to later phases:
-  Phase 9  — TensorNetwork backend, Result.truncation_errors()
-  Phase 10 — TN noise (MPO/Trajectory)
-  Phase 11 — opaque definitions, py.typed, examples, sdist formal verification
+Phase 9: TensorNetwork backend usable (MPS execution),
+Result.truncation_errors() / has_truncation_errors(), and
+QRegister.amplitude() / reduced_density_matrix().
+
+Phase 10 / 10-A: TN noise (MPO and Monte Carlo trajectory) plus mid-circuit
+measurement collapse, Reset and classical conditionals (,
+).
+
+Phase 11 (Lynx-v6.3.0): binding surface complete — opaque declare /
+define / call and the read-only OpaqueDefinition view, the full six-class
+exception hierarchy (QASMParseError, CircuitError, ConnectivityError,
+SimulatorError, GPUError, NotImplementedError), zero-copy raw statevector
+views, and py.typed.
 """
 
 from ._qplayer import (
@@ -27,8 +36,10 @@ from ._qplayer import (
     Interactive,
     KrausChannel,
     MeasureOp,
+    NoiseDrawEvent,
     NoiseModel,
     Observable,
+    OpaqueDefinition,
     ProcType,
     QPlayerError,
     QASMParseError,
@@ -58,8 +69,10 @@ __all__ = [
     "Interactive",
     "KrausChannel",
     "MeasureOp",
+    "NoiseDrawEvent",
     "NoiseModel",
     "Observable",
+    "OpaqueDefinition",
     "ProcType",
     "QPlayerError",
     "QASMParseError",

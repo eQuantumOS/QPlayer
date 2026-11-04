@@ -1,0 +1,41 @@
+# Doxyfile.coverage.in — measurement-only Doxygen configuration for the
+# documentation coverage gate. CMake configures this
+# ${CMAKE_BINARY_DIR}/Doxyfile.coverage; the `docs-coverage` target runs it and
+# then hands the XML
+#
+# This file exists because the human-facing `docs` config cannot measure itself:
+# Doxygen disables WARN_IF_UNDOCUMENTED whenever EXTRACT_ALL is YES, and `docs`
+# keeps EXTRACT_ALL on so undocumented declarations still appear as a structural
+# map. Coverage therefore needs a second pass with EXTRACT_ALL off.
+#
+# The input set is inherited unchanged from Doxyfile.common.in — measuring a
+# different surface than the published one would make the percentage meaningless
+# That inheritance is why the shared prefix exists at all.
+
+@INCLUDE               = @QPLAYER_DOXYGEN_COMMON@
+
+# ── Project identity ─────────────────────────────────────────────────────────
+PROJECT_NAME           = "QPlayer (coverage)"
+OUTPUT_DIRECTORY       = @QPLAYER_DOXYGEN_COV_DIR@
+
+# ── Extraction ───────────────────────────────────────────────────────────────
+# EXTRACT_ALL = NO is the whole point: with it off, Doxygen emits one warning per
+# undocumented entity, naming file and line. The gate verdict itself comes from
+# XML parsing (accurate under either setting) — these warnings are for the author
+# fixing the gap, not for the judgment.
+EXTRACT_ALL            = NO
+
+# ── Warnings ─────────────────────────────────────────────────────────────────
+WARN_IF_UNDOCUMENTED   = YES
+WARN_NO_PARAMDOC       = YES
+WARN_LOGFILE           = @QPLAYER_DOXYGEN_COV_LOG@
+
+# ── Output: XML only ─────────────────────────────────────────────────────────
+# The checker needs structured entity data, not rendered pages. HTML here would
+# duplicate the docs target and cost seconds per run for nothing.
+GENERATE_HTML          = NO
+GENERATE_LATEX         = NO
+GENERATE_MAN           = NO
+GENERATE_XML           = YES
+XML_PROGRAMLISTING     = NO
+HAVE_DOT               = NO

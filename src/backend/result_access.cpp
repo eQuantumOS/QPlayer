@@ -1,9 +1,11 @@
-// result_access.cpp — SimulatorBackend protected helpers that write into the
-// private fields of Result.
-// SimulatorBackend is a friend of Result (result.hpp), so these static methods
-// can reach counts_ / shots_ / statevector_ directly.  Derived backends (e.g.
-// FullStateCpuBackend) call them via the protected interface; the actual write
-// to the private member does not require the derived class itself to be a friend.
+/// @file result_access.cpp
+/// @brief SimulatorBackend protected helpers that write into the
+///
+/// private fields of Result.
+/// SimulatorBackend is a friend of Result (result.hpp), so these static methods
+/// can reach counts_ / shots_ / statevector_ directly.  Derived backends (e.g.
+/// FullStateCpuBackend) call them via the protected interface; the actual write
+/// to the private member does not require the derived class itself to be a friend.
 
 #include "backend/simulator_backend.hpp"
 #include "result.hpp"
@@ -26,6 +28,34 @@ void SimulatorBackend::result_set_shots(Result& r, std::uint64_t shots) {
 // static
 void SimulatorBackend::result_set_statevector(Result& r, StateVector sv) {
     r.statevector_ = std::move(sv);
+}
+
+// static
+void SimulatorBackend::result_set_expectations(
+        Result& r, std::map<std::string, double> exp) {
+    r.expectations_ = std::move(exp);
+}
+
+// static
+void SimulatorBackend::result_set_truncation_errors(Result& r, std::vector<double> errors) {
+    r.truncation_errors_ = std::move(errors);
+}
+
+// static
+void SimulatorBackend::result_set_trajectory_diagnostics(
+        Result& r, std::vector<std::uint32_t> bonds, std::vector<double> drifts,
+        std::vector<double> totals) {
+    r.bond_dimensions_    = std::move(bonds);
+    r.norm_drifts_        = std::move(drifts);
+    r.truncation_totals_  = std::move(totals);
+}
+
+// static
+void SimulatorBackend::result_set_noise_draws(
+        Result& r, std::vector<std::uint32_t> interventions,
+        std::vector<std::vector<NoiseDrawEvent>> ledger) {
+    r.noise_interventions_ = std::move(interventions);
+    r.noise_draw_ledger_   = std::move(ledger);
 }
 
 // static

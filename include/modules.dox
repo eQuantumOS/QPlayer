@@ -1,0 +1,74 @@
+/// @file modules.dox
+/// @brief Doxygen module group definitions for the QPlayer API reference
+///
+///
+/// Documentation-only input: no C++ declarations live here, so nothing needs a
+/// CMake target_sources entry. Each public header joins exactly one group with
+/// an \@ingroup tag.
+///
+/// Group boundaries follow the existing source directory structure rather than
+/// introducing a second classification axis.
+
+/// @defgroup api User-facing API
+/// @brief The surface a QPlayer program calls directly.
+///
+/// QRegister is the sole entry point: it owns a simulator backend and drives both
+/// Batch execution (parse, transpile, run) and Interactive immediate dispatch.
+/// Circuit builds the program, Result carries what a run produced, and Observable
+/// with the Sampler / Estimator facades cover the Qiskit-compatible primitives.
+
+/// @defgroup ir Circuit IR
+/// @brief The op stream a Circuit holds and every pass rewrites.
+///
+/// Op is a variant over gate, measure, barrier, conditional, reset and idle
+/// nodes. Parameter carries symbolic gate arguments and CircuitMetadata carries
+/// circuit-level annotations such as the qubit layout produced by routing.
+
+/// @defgroup frontend OpenQASM v2 front end
+/// @brief Turns QASM source text into a Circuit.
+///
+/// Lexer, parser, semantic validator and circuit builder are self-implemented; no
+/// external parser generator is used. Only the Parser facade is public — the
+/// stages live under parser/detail and stay out of this reference.
+
+/// @defgroup transpiler Transpiler and passes
+/// @brief Rewrites a circuit before execution.
+///
+/// Transpiler is the single compile entry point. It assembles a PassManager from
+/// the requested optimisation level and the bound device, then runs the pipeline:
+/// validation, optimisation, layout, routing, translation, analysis and
+/// scheduling. Every stage is an IPass, so adding one means adding a class here.
+
+/// @defgroup backend Simulator backends
+/// @brief Executes a compiled circuit and holds the quantum state.
+///
+/// SimulatorBackend is the interface each family implements: FullState (dense
+/// statevector on CPU or GPU), SparseState (hash-map amplitudes for circuits with
+/// few non-zero terms) and TensorNetwork (MPS and general contraction). Supporting
+/// machinery — SIMD dispatch, gate fusion, Kraus application, memory budgeting —
+/// sits alongside them.
+
+/// @defgroup noise Noise and device models
+/// @brief Describes hardware imperfection and synthesises the channels for it.
+///
+/// DeviceModel is the hardware characterisation (T1/T2, per-gate duration and
+/// error, readout confusion, coupling map). NoiseModel is the registry of Kraus
+/// channels a noisy run applies; load_device() converts a characterisation into
+/// channels keyed by the device's native basis gates.
+
+/// @defgroup core Core types and diagnostics
+/// @brief Vocabulary types shared by every layer.
+///
+/// The four index aliases (QubitIndex, ClassicalBitIndex, ClassicalRegisterIndex,
+/// StateIndex) are centrally defined so a qubit number can never be confused with
+/// a state-space subscript. The exception hierarchy, logging and timing helpers
+/// round the group out.
+
+/// @example run_qasm.cpp
+/// End-to-end command-line driver: parse a .qasm file, transpile it, run it for a
+/// requested shot count and print the measurement counts. The shortest complete
+/// path through the Batch API.
+
+/// @example noise_demo.cpp
+/// Device-noise run: load a hardware characterisation, execute the same circuit
+/// with and without noise, and compare the resulting distributions.

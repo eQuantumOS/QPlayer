@@ -3,7 +3,7 @@
 stdlib unittest (Python-only, not a ctest target). Skips entirely when
 the optional qiskit dependency is absent.
 
-    python -m unittest tests.python.test_qiskit_converter -v
+    python -m unittest tests.scenario.python.test_qiskit_converter -v
 """
 import math
 import os

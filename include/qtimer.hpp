@@ -1,12 +1,15 @@
-// qtimer.hpp — Lightweight monotonic stopwatch for timing measurements in
-// examples / benchmarks. Header-only utility (like types.hpp / error.hpp): no
-// cpp counterpart. start()/end() bracket a single region; lapStart()/lapStop()
-// accumulate several regions into one total, finalised by lapFinish().
-//
-// CLOCK_MONOTONIC is used because it is immune to wall-clock adjustments (NTP,
-// manual changes), so it measures true elapsed time. show() writes program
-// output to stdout — it is not a diagnostic logger, so it is outside the
-// qplayer::log policy (which governs std::cerr / std::clog).
+/// @file qtimer.hpp
+/// @brief Lightweight monotonic stopwatch for examples and benchmarks.
+/// @ingroup core
+///
+/// Header-only utility (like types.hpp / error.hpp): no .cpp counterpart.
+/// start()/end() bracket a single region; lapStart()/lapStop() accumulate
+/// several regions into one total, finalised by lapFinish().
+///
+/// CLOCK_MONOTONIC is used because it is immune to wall-clock adjustments (NTP,
+/// manual changes), so it measures true elapsed time. show() writes program
+/// output to stdout — it is not a diagnostic logger, so it is outside the
+/// qplayer::log policy (which governs std::cerr / std::clog).
 
 #pragma once
 
@@ -16,22 +19,24 @@
 
 namespace qplayer {
 
+/// Monotonic stopwatch. Bracket a region with start()/end(), or accumulate
+/// several with lapStart()/lapStop() and finalise via lapFinish().
 class QTimer {
 public:
     QTimer() { reset(); }
 
-    // Begin a single timed region.
+    /// Begin a single timed region.
     void start() { clock_gettime(CLOCK_MONOTONIC, &start_); }
 
-    // End the region opened by start(): elapsed total = end - start.
+    /// End the region opened by start(): elapsed total = end - start.
     void end() {
         clock_gettime(CLOCK_MONOTONIC, &end_);
         elapsed_ns_ = diff_ns(start_, end_);
         calculateTime();
     }
 
-    // Zero the accumulated total. Call before the first lapStart() when reusing
-    // a timer for a fresh accumulating session.
+    /// Zero the accumulated total. Call before the first lapStart() when reusing
+    /// a timer for a fresh accumulating session.
     void reset() {
         elapsed_ns_  = 0.0;
         elapsed_us_  = 0.0;
@@ -40,8 +45,8 @@ public:
         time_str_[0] = '\0';
     }
 
-    // Accumulating laps: each lapStart()/lapStop() pair adds its region to the
-    // running total; lapFinish() stops the final region and formats the total.
+    /// Accumulating laps: each lapStart()/lapStop() pair adds its region to the
+    /// running total; lapFinish() stops the final region and formats the total.
     void lapStart() { clock_gettime(CLOCK_MONOTONIC, &start_); }
     void lapStop() {
         clock_gettime(CLOCK_MONOTONIC, &end_);
@@ -52,8 +57,8 @@ public:
         calculateTime();
     }
 
-    // Derive the sec/ms/us scales and the compact display string from the
-    // nanosecond total. hh:mm:ss for >= 1 s, else the largest unit that is >= 1.
+    /// Derive the sec/ms/us scales and the compact display string from the
+    /// nanosecond total. hh:mm:ss for >= 1 s, else the largest unit that is >= 1.
     void calculateTime() {
         elapsed_us_  = elapsed_ns_ / 1.0e3;
         elapsed_ms_  = elapsed_ns_ / 1.0e6;
@@ -74,11 +79,11 @@ public:
         }
     }
 
-    // Print the formatted elapsed time to stdout.
+    /// Print the formatted elapsed time to stdout.
     void show() const { std::printf("%s\n", time_str_); }
 
-    // Print a printf-style label followed by the elapsed time. The format
-    // attribute lets the compiler type-check the variadic arguments.
+    /// Print a printf-style label followed by the elapsed time. The format
+    /// attribute lets the compiler type-check the variadic arguments.
     __attribute__((format(printf, 2, 3)))
     void show(const char* fmt, ...) const {
         char    log[512];
@@ -89,7 +94,7 @@ public:
         std::printf("%s %s\n", log, time_str_);
     }
 
-    // Accessors (valid after end() / lapFinish()).
+    /// Accessors (valid after end() / lapFinish()).
     const char* getTime()       const { return time_str_; }
     double      getElapsedSec()  const { return elapsed_sec_; }
     double      getElapsedMSec() const { return elapsed_ms_; }
@@ -97,8 +102,8 @@ public:
     double      getElapsedNSec() const { return elapsed_ns_; }
 
 private:
-    // Nanoseconds between two monotonic samples (a -> b). Computed in double so
-    // a negative tv_nsec delta is correctly offset by the tv_sec delta.
+    /// Nanoseconds between two monotonic samples (a -> b). Computed in double so
+    /// a negative tv_nsec delta is correctly offset by the tv_sec delta.
     static double diff_ns(const timespec& a, const timespec& b) {
         return static_cast<double>(b.tv_sec - a.tv_sec) * 1.0e9 +
                static_cast<double>(b.tv_nsec - a.tv_nsec);

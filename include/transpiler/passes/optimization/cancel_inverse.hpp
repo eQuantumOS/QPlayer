@@ -1,6 +1,9 @@
-// cancel_inverse.hpp — CancelInversePass placeholder.
-// Pairs adjacent inverse gates (H-H, X-X, CX-CX, etc.) and removes them.
-// One of the Level-1 passes registered by transpile().
+/// @file cancel_inverse.hpp
+/// @brief Cancels adjacent inverse gate pairs.
+/// @ingroup transpiler
+///
+/// Pairs adjacent inverse gates (H-H, X-X, CX-CX, etc.) and removes them.
+/// One of the Level-1 F-OPT passes registered by transpile().
 
 #pragma once
 
@@ -10,6 +13,8 @@ namespace qplayer {
 
 class Circuit;
 
+/// Removes adjacent self-inverse pairs such as H-H, X-X and CX-CX; one of the Level-1 passes.
+/// @ingroup transpiler
 class CancelInversePass : public IPass {
 public:
     CancelInversePass() = default;

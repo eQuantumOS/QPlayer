@@ -5,7 +5,7 @@ Qiskit-compatible primitives over the existing Batch API. Estimator computes
 
 Uses the stdlib `unittest` framework (pytest is not a build/test dependency):
 
-    python -m unittest tests.python.test_primitives -v
+    python -m unittest tests.scenario.python.test_primitives -v
     python tests/scenario/python/test_primitives.py
 """
 

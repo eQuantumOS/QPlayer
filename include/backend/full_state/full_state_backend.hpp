@@ -1,8 +1,12 @@
-// full_state_backend.hpp — FullState backend declarations (CPU + GPU)
-// Two concrete classes share this header so the
-// factory can return either one without dragging CUDA headers into Public API
-// consumers. Implementation files live under src/backend/full_state/.
-// apply_fused_program() added for runtime Gate Fusion seam.
+/// @file full_state_backend.hpp
+/// @brief FullState CPU and GPU backend declarations.
+/// @ingroup backend
+///
+/// FullState backend declarations (CPU + GPU)
+/// Two concrete classes share this header so the
+/// factory can return either one without dragging CUDA headers into Public API
+/// consumers. Implementation files live under src/backend/full_state/.
+/// apply_fused_program() added for runtime Gate Fusion seam.
 
 #pragma once
 
@@ -16,13 +20,19 @@
 
 namespace qplayer {
 
-// CPU-resident SoA state buffer shared between the backend and any live Result
-// (mirrors GpuStateBuffers in full_state_gpu.cpp). Owns the aligned
-// re/im arrays via AlignedDeleter unique_ptrs so lifetime is ref-counted.
-// Non-copyable: each array is managed by exactly one owner chain.
+/// Owns the 64-byte-aligned SoA real and imaginary amplitude arrays.
+/// @ingroup backend
+///
+/// CPU-resident SoA state buffer shared between the backend and any live Result
+/// (mirrors GpuStateBuffers in full_state_gpu.cpp). Owns the aligned
+/// re/im arrays via AlignedDeleter unique_ptrs so lifetime is ref-counted.
+/// Non-copyable: each array is managed by exactly one owner chain.
 struct CpuStateBuffers {
-    // Forward-declare so the unique_ptr type is complete below. AlignedDeleter
-    // is defined as a public member of FullStateCpuBackend in this header.
+    /// Frees aligned_alloc storage so the buffers can live in a unique_ptr.
+    /// @ingroup backend
+    ///
+    /// Forward-declare so the unique_ptr type is complete below. AlignedDeleter
+    /// is defined as a public member of FullStateCpuBackend in this header.
     struct AlignedDeleter {
         void operator()(double* p) const noexcept;
     };
@@ -35,9 +45,12 @@ struct CpuStateBuffers {
     CpuStateBuffers& operator=(const CpuStateBuffers&) = delete;
 };
 
-// FullState CPU. SoA state vector (re / im double arrays).
-// SIMD runtime dispatcher picks AVX2 vs AVX-512 once at process start
-// Cache blocking on 1Q + 2Q gates.
+/// Dense statevector backend on CPU with SIMD kernels, OpenMP parallelism and runtime gate fusion.
+/// @ingroup backend
+///
+/// FullState CPU. SoA state vector (re / im double arrays).
+/// SIMD runtime dispatcher picks AVX2 vs AVX-512 once at process start
+/// Cache blocking on 1Q + 2Q gates.
 class FullStateCpuBackend : public SimulatorBackend {
 public:
     FullStateCpuBackend();
@@ -59,6 +72,12 @@ public:
     // Scans re_/im_ in index order; returns empty vector before init_state().
     std::vector<std::pair<StateIndex, std::complex<double>>>
             nonzero_amplitudes() const override;
+    // Single amplitude and RDM —
+    // simulator_backend.hpp for the shared contract.
+    std::complex<double> amplitude(StateIndex basis) const override;
+    std::vector<std::complex<double>>
+            reduced_density_matrix(std::vector<QubitIndex> qubits) const override;
+
 
     // Active qubit count (0 before init_state). Used by dump_statevector()
     // to format the bitstring width without densifying.
@@ -86,10 +105,22 @@ public:
     // set_cache_blocking(true) or env QPLAYER_CACHE_BLOCKING=1.
     void set_cache_blocking(bool enable) override;
 
-    // AlignedDeleter: std::free wrapper for 64-byte-aligned double arrays.
-    // Re-exposed here as a public typedef alias pointing to CpuStateBuffers'
-    // inner struct so existing .cpp call sites (alloc_aligned return type) still
-    // compile unmodified (— new/delete direct use forbidden).
+    // Per-site noise interventions and draw ledger for the trajectory path.
+    void set_noise_interventions(const std::vector<std::uint32_t>& sites,
+                                 bool ledger) override;
+
+    // Current cache-blocking state. Exists because the blocked and unblocked
+    // kernels are numerically identical, so the default-OFF invariant
+    // is not observable through results alone — a test must read the flag
+    // directly to assert it (testing gap #4).
+    bool cache_blocking_enabled() const { return cache_blocking_enabled_; }
+
+    /// Public alias for the aligned-array deleter used by this backend's buffers.
+    ///
+    /// std::free wrapper for 64-byte-aligned double arrays. Re-exposed here as a
+    /// public typedef alias pointing to CpuStateBuffers' inner struct so existing
+    /// cpp call sites (alloc_aligned return type) still compile unmodified
+    /// (— new/delete direct use forbidden).
     using AlignedDeleter = CpuStateBuffers::AlignedDeleter;
 
     // NaN/Inf + norm validation helper.
@@ -123,15 +154,28 @@ private:
 
     QubitIndex    num_qubits_   = 0;
     StateIndex    dim_          = 0;   // 2^num_qubits_; 0 before init_state()
-    std::uint64_t master_seed_  = 0;   // PRNG master seed; 0 = use random_device
+    // Set-ness is tracked separately from the value: 0 is a valid master seed
+    // Using "master_seed_ != 0" as the unset sentinel made
+    // set_seed(0) fall back to random_device while current_seed() still
+    // reported 0 — a reproducibility hole that lied about itself.
+    std::uint64_t master_seed_  = 0;   // PRNG master seed (any value, 0 included)
+    bool          has_seed_     = false;  // true once set_seed() has been called
+    std::vector<std::uint32_t> noise_sites_;          // sorted
+    bool                       noise_ledger_ = false;
 
     // Runtime gate fusion config (set_fusion). Default matches the
     // QRegister::run() defaults (enable_fusion=true, fusion_max_width=4).
     bool          fusion_enabled_   = true;
     std::uint32_t fusion_max_width_ = 4;
 
+    // Per-gate NaN/norm validation, opt-in via env QPLAYER_VERIFY_STATE=1
+    // execute() always validates once at the end; the per-gate mode
+    // costs an extra O(2^n) reduction per gate and exists for bisecting which
+    // gate diverged. Read at construction like QPLAYER_CACHE_BLOCKING.
+    bool          verify_state_per_gate_ = false;
+
     // L2-tiled cache blocking. Default OFF since Phase 7-D
-    // — measured net-negative on modern server CPUs. Opt in via
+    // — measured net-negative on modern server CPUs. Opt
     // set_cache_blocking(true) or env QPLAYER_CACHE_BLOCKING=1.
     // Only affects 1Q/2Q gate kernels.
     bool cache_blocking_enabled_ = false;
@@ -154,10 +198,13 @@ private:
     void apply_reset_rng(QubitIndex qubit, std::mt19937_64& rng);
 };
 
-// FullState GPU. CUDA-backed twin of the CPU class. GPU-resident state vector
-// + cuBLAS GEMV + CUDA Streams. Constructor is
-// noexcept fall-through-friendly: when CUDA is missing the factory builds a
-// FullStateCpuBackend instead.
+/// Dense statevector backend keeping the state GPU-resident; batch execute() only.
+/// @ingroup backend
+///
+/// FullState GPU. CUDA-backed twin of the CPU class. GPU-resident state vector
+/// + cuBLAS GEMV + CUDA Streams. Constructor is
+/// noexcept fall-through-friendly: when CUDA is missing the factory builds a
+/// FullStateCpuBackend instead.
 class FullStateGpuBackend : public SimulatorBackend {
 public:
     FullStateGpuBackend();
@@ -179,6 +226,12 @@ public:
     // Delegates to get_statevector() (GPU is dense, <=30 qubits, so D2H is fine).
     std::vector<std::pair<StateIndex, std::complex<double>>>
             nonzero_amplitudes() const override;
+    // Single amplitude and RDM —
+    // simulator_backend.hpp for the shared contract.
+    std::complex<double> amplitude(StateIndex basis) const override;
+    std::vector<std::complex<double>>
+            reduced_density_matrix(std::vector<QubitIndex> qubits) const override;
+
 
     // Active qubit count (0 before init_state). Used by dump_statevector()
     // to format the bitstring width without densifying.
@@ -195,8 +248,38 @@ public:
     // Seed the internal PRNG for reproducible measurement sampling.
     void set_seed(std::uint64_t seed) override;
 
+    // Runtime Gate Fusion on the GPU fast path (superseding
+    // 's "unsupported" state). Widths are clamped to kMaxGpuFusionWidth;
+    // the noisy trajectory path stays unfused.
+    void set_fusion(bool enable, std::uint32_t max_width) override;
+
+    // Widest fused window the GPU kernel accepts. A thread holds 2^k amplitudes
+    // in registers, so at k=5 (64 doubles) they spill to local memory and
+    // occupancy collapses: measured q26_ising 32.2 ms at width 4 against 56.2 ms
+    // at width 5, and every benchmark circuit was slower at 5.
+    // The CPU cap (kMaxFusionWidth = 8) is a different contract — its scratch
+    // lives on the stack, where 2^8 amplitudes cost nothing.
+    static constexpr std::uint32_t kMaxGpuFusionWidth = 4;
+
 private:
-    // Op-variant dispatcher mirroring the CPU backend. Wired into
+    // Warn about an over-cap fusion width at most once per backend instance:
+    // set_fusion() runs on every run() call, so an unguarded warning would
+    // flood the log for a single mis-set knob.
+    bool fusion_width_warned_ = false;
+
+    // Apply one fused program element sequence on the device. Dense
+    // windows go to the fused GEMV kernel, passed-through GateOps to apply_gate.
+    void apply_fused_program_gpu(const std::vector<detail::FusedOp>& prog);
+
+    // Scratch device buffers holding every window's qubit list and matrix for
+    // one program, grown on demand and reused across run() calls. One buffer for
+    // the whole program, not one per window: a per-window upload would need a
+    // stream synchronise each time and serialise the pipeline.
+    unsigned int* d_fused_qubits_        = nullptr;
+    double*       d_fused_matrix_        = nullptr;
+    std::size_t   fused_matrix_capacity_ = 0;   // in doubles
+
+    // Op-variant dispatcher mirroring the CPU backend. Wired
     // the GPU execute() pipeline at +; registers the routing skeleton
     // so the IdleOp branch has a home before Phase 8 activates Kraus channels.
     void apply_op(const Op& op);
@@ -223,8 +306,15 @@ private:
     std::shared_ptr<void> state_owner_;
 
     // PRNG master seed for reproducible sampling. 0 means random.
-    // Mirrors the CPU backend's master_seed_ so set_seed() works uniformly.
+    // Mirrors the CPU backend's master_seed_ / has_seed_ so set_seed() works
+    // uniformly (— 0 is a valid seed, set-ness is a separate flag).
     std::uint64_t master_seed_ = 0;
+    bool          has_seed_    = false;
+
+    // Runtime gate fusion config. Defaults match the
+    // QRegister::run() defaults; max_width is clamped to kMaxGpuFusionWidth.
+    bool          fusion_enabled_   = true;
+    std::uint32_t fusion_max_width_ = 4;
 
     // CUDA stream handle stored as unsigned long long to match the extern "C"
     // launcher signatures (which use unsigned long long to avoid cuda_runtime.h

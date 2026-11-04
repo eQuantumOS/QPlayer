@@ -1,7 +1,11 @@
-// cpu_dispatcher.hpp — CPUID runtime SIMD tier detection.
-// Detects AVX-512F support at runtime so a single binary serves both AVX2-only
-// and AVX-512 capable hosts without compile-time branching (performance-rules
-// coding-rules).
+/// @file cpu_dispatcher.hpp
+/// @brief CPUID runtime SIMD tier detection backing the single-binary policy.
+/// @ingroup backend
+///
+/// CPUID runtime SIMD tier detection.
+/// Detects AVX-512F support at runtime so a single binary serves both AVX2-only
+/// and AVX-512 capable hosts without compile-time branching (performance-rules
+/// coding-rules).
 
 #pragma once
 
@@ -9,9 +13,12 @@
 
 namespace qplayer::detail {
 
-// Two-tier model: AVX2 is the x86-64 baseline.
-// Scalar fallback is intentionally absent — the project targets AVX2-capable
-// hosts only.
+/// SIMD instruction tier selected at runtime for kernel dispatch.
+/// @ingroup backend
+///
+/// Two-tier model: AVX2 is the x86-64 baseline.
+/// Scalar fallback is intentionally absent — the project targets AVX2-capable
+/// hosts only (coding-rules CLAUDE.md).
 enum class SimdTier {
     AVX2,   // 256-bit AVX2 + FMA3 path
     AVX512, // 512-bit AVX-512F path

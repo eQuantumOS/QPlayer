@@ -1,30 +1,32 @@
-// diagonal_phase_pass.cpp — DiagonalPhasePass (Phase 4).
-// Collapses runs of same-qubit diagonal gates into a single gate by accumulating
-// their phases. Diagonal gates are of the form diag(1, e^{iφ}) on the |1> basis:
-//   Z:    φ = π
-//   S:    φ = π/2
-//   Sdg:  φ = -π/2
-//   T:    φ = π/4
-//   Tdg:  φ = -π/4
-//   RZ(θ): φ = θ  (note: RZ(θ) = diag(e^{-iθ/2}, e^{iθ/2}); relative phase = θ)
-//   U1(λ): φ = λ  (U1(λ) = diag(1, e^{iλ}))
-//
-// For RZ: the global phase e^{-iθ/2} is ignored; only the relative phase θ is
-// accumulated. This is consistent with the "global phase ignored" convention
-// throughout the passes.
-//
-// Net-phase → gate mapping (mod 2π):
-//   0                 → identity (op removed)
-//   π/4  (45°)        → T
-//  -π/4 (-45°)        → Tdg
-//   π/2  (90°)        → S
-//  -π/2 (-90°)        → Sdg
-//   π   (180°)        → Z
-//   other             → RZ(net_phase)
-//
-// Tolerance for equality checks: 1e-10 radians.
-// Level 2/3 only — not auto-registered at Level 0/1.
-//
+/// @file diagonal_phase_pass.cpp
+/// @brief DiagonalPhasePass (Phase 4).
+///
+/// Collapses runs of same-qubit diagonal gates into a single gate by accumulating
+/// their phases. Diagonal gates are of the form diag(1, e^{iφ}) on the |1> basis:
+/// Z:    φ = π
+/// S:    φ = π/2
+/// Sdg:  φ = -π/2
+/// T:    φ = π/4
+/// Tdg:  φ = -π/4
+/// RZ(θ): φ = θ  (note: RZ(θ) = diag(e^{-iθ/2}, e^{iθ/2}); relative phase = θ)
+/// U1(λ): φ = λ  (U1(λ) = diag(1, e^{iλ}))
+///
+/// For RZ: the global phase e^{-iθ/2} is ignored; only the relative phase θ is
+/// accumulated. This is consistent with the "global phase ignored" convention
+/// throughout the F-OPT passes.
+///
+/// Net-phase → gate mapping (mod 2π):
+/// 0                 → identity (op removed)
+/// π/4  (45°)        → T
+/// -π/4 (-45°)        → Tdg
+/// π/2  (90°)        → S
+/// -π/2 (-90°)        → Sdg
+/// π   (180°)        → Z
+/// other             → RZ(net_phase)
+///
+/// Tolerance for equality checks: 1e-10 radians.
+/// Level 2/3 only — not auto-registered at Level 0/1.
+///
 
 #include "transpiler/passes/optimization/diagonal_phase_pass.hpp"
 

@@ -1,13 +1,15 @@
-// qubit_reorder.cu — GPU coalesced-access qubit reorder.
-// Compiled only when QPLAYER_BUILD_GPU=ON. Permutes the SoA state vector so a
-// target qubit lands in a low-stride bit position before gate application,
-// guaranteeing coalesced device memory access. The external qubit-index scheme
-// is unchanged (the permutation is tracked logically) — transparency.
-//
-// Convention matches the CPU reference qplayer::detail::reorder_qubits
-// (qubit_reorder.cpp): new_index bit k = old_index bit perm[k]. The scatter is
-// out-of-place (reorder scratch) so the bijection writes each output
-// slot exactly once with no race.
+/// @file qubit_reorder.cu
+/// @brief GPU coalesced-access qubit reorder.
+///
+/// Compiled only when QPLAYER_BUILD_GPU=ON. Permutes the SoA state vector so a
+/// target qubit lands in a low-stride bit position before gate application,
+/// guaranteeing coalesced device memory access. The external qubit-index scheme
+/// is unchanged (the permutation is tracked logically) — transparency.
+///
+/// Convention matches the CPU reference qplayer::detail::reorder_qubits
+/// (qubit_reorder.cpp): new_index bit k = old_index bit perm[k]. The scatter is
+/// out-of-place (reorder scratch) so the bijection writes each output
+/// slot exactly once with no race.
 
 #include <cuda_runtime.h>
 

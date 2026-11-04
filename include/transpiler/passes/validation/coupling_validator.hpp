@@ -1,7 +1,11 @@
-// coupling_validator.hpp — coupling-map validator pass
-// Throws qplayer::ConnectivityError when a
-// 2Q gate operand pair is absent from the device coupling map. Skipped when
-// no DeviceModel is bound to the transpile() call.
+/// @file coupling_validator.hpp
+/// @brief Rejects two-qubit gates whose operand pair is absent from the device coupling map.
+/// @ingroup transpiler
+///
+/// coupling-map validator pass
+/// Throws qplayer::ConnectivityError when a
+/// 2Q gate operand pair is absent from the device coupling map. Skipped when
+/// no DeviceModel is bound to the transpile() call.
 
 #pragma once
 
@@ -12,6 +16,8 @@ namespace qplayer {
 
 class Circuit;
 
+/// Throws ConnectivityError on a 2Q gate that violates the bound DeviceModel's coupling map; a no-op when no device is bound.
+/// @ingroup transpiler
 class CouplingValidatorPass : public IPass {
 public:
     explicit CouplingValidatorPass(const DeviceModel& device);

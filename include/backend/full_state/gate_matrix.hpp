@@ -1,9 +1,13 @@
-// gate_matrix.hpp — 2x2 complex gate matrix derivation shared by FullState CPU
-// and SparseState backends. Extracted from full_state_cpu.cpp so the
-// sparse-state apply_gate() can reuse the same table without code duplication.
-// Header-only (inline + constexpr): no target_sources registration required.
-// All symbols in qplayer::detail to keep them off the public API surface
-// (— internal helpers use detail:: namespace).
+/// @file gate_matrix.hpp
+/// @brief Shared 2x2 gate matrix derivation for the FullState CPU and SparseState backends.
+/// @ingroup backend
+///
+/// 2x2 complex gate matrix derivation shared by FullState CPU
+/// and SparseState backends. Extracted from full_state_cpu.cpp so the
+/// sparse-state apply_gate() can reuse the same table without code duplication.
+/// Header-only (inline + constexpr): no target_sources registration required.
+/// All symbols in qplayer::detail to keep them off the public API surface
+/// (— internal helpers use detail:: namespace).
 
 #pragma once
 
@@ -77,9 +81,12 @@ inline std::array<double, 32> fsim_matrix_data(double theta, double phi) {
     }};
 }
 
-// 2x2 complex matrix stored as four pairs of real/imaginary components.
-// Row-major layout: U = [[u00, u01], [u10, u11]] where U[i][j] = uIJr + i*uIJi.
-// Real and imaginary parts are separated for FMA-friendly computation.
+/// Row-major 2x2 complex matrix in split real/imaginary form.
+/// @ingroup backend
+///
+/// 2x2 complex matrix stored as four pairs of real/imaginary components.
+/// Row-major layout: U = [[u00, u01], [u10, u11]] where U[i][j] = uIJr + i*uIJi.
+/// Real and imaginary parts are separated for FMA-friendly computation.
 struct Mat2x2 {
     double u00r, u00i;  // U[0][0]
     double u01r, u01i;  // U[0][1]

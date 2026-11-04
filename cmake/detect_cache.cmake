@@ -3,13 +3,14 @@
 #   - QPLAYER_CACHE_BLOCK_SIZE: number of complex<double> pairs that fit in L2
 #       Each element is 16 bytes (re + im); we leave 50 % headroom for control
 #       state and OpenMP per-thread scratch.
-#   - QPLAYER_L3_THRESHOLD_QUBITS: smallest qubit count where the FullState
-#       vector exceeds L3 capacity; FullState CPU switches to non-temporal
-# stores above this threshold.
+#   (L3 size is probed and reported via message(STATUS ...) for diagnostics only;
+#    it is NOT injected as a compile definition. The former
+#    QPLAYER_L3_THRESHOLD_QUBITS existed solely for non-temporal stores, which
+# dropped -- no code ever read it. See.)
 #
-# These are exposed as target compile definitions on qplayer_core so kernels
-# can pick them up at compile time. The script is Linux-only; on
-# any other host it falls back to conservative defaults and warns once.
+# This is exposed as a target compile definition on qplayer_core so the kernels
+# can pick it up at compile time. The script is Linux-only; on
+# any other host it falls back to a conservative default and warns once.
 
 function(_qplayer_read_sysfs_size FILE OUT)
     set(${OUT} 0 PARENT_SCOPE)
@@ -36,8 +37,7 @@ function(qplayer_detect_cache TARGET)
     if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
         message(STATUS "[qplayer] Non-Linux host detected; using conservative cache defaults")
         target_compile_definitions(${TARGET} PRIVATE
-            QPLAYER_CACHE_BLOCK_SIZE=4096
-            QPLAYER_L3_THRESHOLD_QUBITS=24)
+            QPLAYER_CACHE_BLOCK_SIZE=4096)
         return()
     endif()
 
@@ -93,9 +93,10 @@ function(qplayer_detect_cache TARGET)
 
     message(STATUS "[qplayer] Detected L2=${L2_SIZE}B L3=${L3_SIZE}B "
                    "-> CACHE_BLOCK_SIZE=${CACHE_BLOCK_SIZE} "
-                   "L3_THRESHOLD_QUBITS=${THRESHOLD}")
+                   "(L3 crossover at ~${THRESHOLD} qubits, diagnostic only)")
 
+    # Only CACHE_BLOCK_SIZE is injected -- the cache-blocked 1Q/2Q kernels consume it
+    # (opt-). THRESHOLD stays local to the status message.
     target_compile_definitions(${TARGET} PRIVATE
-        QPLAYER_CACHE_BLOCK_SIZE=${CACHE_BLOCK_SIZE}
-        QPLAYER_L3_THRESHOLD_QUBITS=${THRESHOLD})
+        QPLAYER_CACHE_BLOCK_SIZE=${CACHE_BLOCK_SIZE})
 endfunction()

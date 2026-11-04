@@ -1,8 +1,12 @@
-// sparse_state_backend.hpp — SparseState backend declaration
-// unordered_map<StateIndex, complex<double>> storage.
-// No noise, no GPU, no Gate Fusion. Interactive supported.
-// Default truncation threshold: kSparseDefaultThreshold.
-// : gate application, measurement collapse, execute(), set_seed().
+/// @file sparse_state_backend.hpp
+/// @brief SparseState backend declaration.
+/// @ingroup backend
+///
+/// SparseState backend declaration
+/// unordered_map<StateIndex, complex<double>> storage.
+/// No noise, no GPU, no Gate Fusion. Interactive supported.
+/// Default truncation threshold: kSparseDefaultThreshold.
+/// : gate application, measurement collapse, execute(), set_seed().
 
 #pragma once
 
@@ -31,7 +35,7 @@ constexpr double kSparseDefaultThreshold = kNonzeroAmplitudeThreshold;
 // n=129 would need a shift of 128 = undefined behaviour on __uint128_t. So 128
 // is the largest safe qubit count; init_state()/prepare() reject anything above.
 // This is independent of memory feasibility and of the get_statevector()
-// densify cap MAX_STATEVECTOR_QUBITS=25.
+// densify cap MAX_DENSE_EXPORT_QUBITS=25.
 constexpr QubitIndex kMaxSparseQubits = 128;
 
 // Runtime memory guard cadence. apply_gate() re-checks the live
@@ -44,6 +48,8 @@ constexpr std::uint64_t kMemCheckGateInterval = 256;
 // StateIndexHash moved to partitioned_store.hpp (Phase 7-H) so both the
 // shard maps and any standalone map share one definition.
 
+/// Hash-map amplitude backend for circuits with few non-zero amplitudes; supports Interactive, excludes noise, GPU and fusion.
+/// @ingroup backend
 class SparseStateBackend : public SimulatorBackend {
 public:
     SparseStateBackend();
@@ -61,17 +67,28 @@ public:
     void   apply_reset  (QubitIndex qubit)      override;
 
     // get_statevector() densifies the sparse map into an AoS vector.
-    // Only allowed when num_qubits <= MAX_STATEVECTOR_QUBITS.
+    // Only allowed when num_qubits <= MAX_DENSE_EXPORT_QUBITS.
     // get_statevector_raw() always throws SimulatorError — SparseState has no
     // SoA buffer.
     StateVector  get_statevector()                              override;
     RawStateView get_statevector_raw()                          override;
+
+    // expectation_value() walks the stored non-zero entries only — O(nnz), no
+    // MAX_DENSE_EXPORT_QUBITS cap, so it works at every qubit count up to 128
+    // (policy table). Semantics match the
+    // FullState backend: empty string = all-Z, Qiskit qubit order.
     double       expectation_value(std::string_view pauli)      override;
 
     // Enumerate nonzero-amplitude states without densifying.
     // Returns sorted_entries() directly — no densify, works up to 128 qubits.
     std::vector<std::pair<StateIndex, std::complex<double>>>
             nonzero_amplitudes() const override;
+    // Single amplitude and RDM —
+    // simulator_backend.hpp for the shared contract.
+    std::complex<double> amplitude(StateIndex basis) const override;
+    std::vector<std::complex<double>>
+            reduced_density_matrix(std::vector<QubitIndex> qubits) const override;
+
 
     // Active qubit count (0 before init_state). Used by dump_statevector()
     // to format the bitstring width without densifying.
@@ -107,19 +124,24 @@ private:
     QubitIndex num_qubits_ = 0;
 
     // Master PRNG seed for reproducible sampling. 0 = random device.
+    // Set-ness is tracked separately from the value: 0 is a valid master seed
+    // Using "master_seed_ != 0" as the unset sentinel made
+    // set_seed(0) fall back to random_device while current_seed() still
+    // reported 0 — a reproducibility hole that lied about itself.
     std::uint64_t master_seed_ = 0;
+    bool          has_seed_    = false;
 
     // Truncation threshold parsed once from QPLAYER_SPARSE_THRESHOLD env.
     // Defaults to kSparseDefaultThreshold when env is absent, non-numeric, or
     // negative.
     double threshold_ = kSparseDefaultThreshold;
 
-    // pre-flight feasibility check toggle. Default OFF; set from
+    // pre-flight feasibility check toggle. Default OFF; set
     // QPLAYER_SPARSE_FEASIBILITY at construction and by set_feasibility_check().
     // When false, prepare()/execute() skip the predicted-count rejection.
     bool feasibility_check_enabled_ = false;
 
-    // Runtime memory guard state. budget_bytes_ is captured from
+    // Runtime memory guard state. budget_bytes_ is captured
     // detail::available_memory_bytes() at init_state() time (the single chokepoint
     // covering batch, per-shot, and Interactive paths). gate_counter_ paces the
     // periodic check in apply_gate(); both reset per fresh state. budget_bytes_
@@ -130,7 +152,7 @@ private:
     // Diagnostics for the baseline measurement. When
     // QPLAYER_SPARSE_DIAG is set, execute() tracks the peak non-zero amplitude
     // count over the evolution and emits one log::info line at completion. This
-    // is the only way to observe S beyond MAX_STATEVECTOR_QUBITS, since
+    // is the only way to observe S beyond MAX_DENSE_EXPORT_QUBITS, since
     // get_statevector() densifies and cannot run past 25 qubits. Off by default:
     // diag_enabled_ gates the per-op note_peak() so there is no cost when unset.
     bool        diag_enabled_ = false;
@@ -140,7 +162,7 @@ private:
     // are enabled. The logical S (non-zero count). With the persistent
     // in-place store there is no per-gate rebuild/swap, so transient RSS tracks
     // peak_nonzero_ * per-entry bytes closely (the /0923 4× swap
-    // transient is gone; kSparseEntryBytes re-measured in).
+    // transient is gone; kSparseEntryBytes re-measured).
     void note_peak();
 
     // Prunes |amp| < threshold_ from amplitudes_ after a gate update.

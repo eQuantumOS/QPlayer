@@ -9,7 +9,7 @@ Phase 8+.
 Uses the stdlib `unittest` framework (pytest is not a build/test dependency).
 After installing the package (`pip install .` from the extracted source), run:
 
-    python -m unittest tests.python.test_phase7_python_bindings -v
+    python -m unittest tests.scenario.python.test_phase7_python_bindings -v
 
 or simply `python tests/scenario/python/test_phase7_python_bindings.py`.
 """
@@ -128,14 +128,16 @@ class TestExceptions(unittest.TestCase):
         with self.assertRaises(qplayer.SimulatorError):
             qr.get_statevector_raw()
 
-    def test_not_implemented_error_sparse_expectation(self):
+    def test_sparse_expectation_value(self):
         qr = qplayer.QRegister(qplayer.SimType.SparseState)
         circ = qplayer.Circuit(2, 2)
         circ.h(0).cx(0, 1)
         qr.run(circ, 1)
-        # expectation_value deferred on SparseState (Phase 7 T7.x scope note).
-        with self.assertRaises(qplayer.NotImplementedError):
-            qr.expectation_value("ZZ")
+        # SparseState computes <psi|P|psi> from stored non-zero entries
+        # Bell pair: <ZZ> = <XX> = +1, <ZI> = 0.
+        self.assertAlmostEqual(qr.expectation_value("ZZ"), 1.0, places=10)
+        self.assertAlmostEqual(qr.expectation_value("XX"), 1.0, places=10)
+        self.assertAlmostEqual(qr.expectation_value("ZI"), 0.0, places=10)
 
     def test_exception_hierarchy_parent_catch(self):
         # Every leaf is catchable as the QPlayerError base.

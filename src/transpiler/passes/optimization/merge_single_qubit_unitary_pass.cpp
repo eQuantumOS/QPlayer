@@ -1,35 +1,37 @@
-// merge_single_qubit_unitary_pass.cpp — Full-unitary 1Q merge pass.
-// Merges runs of consecutive same-qubit 1-qubit gates (including rotation gates
-// RX/RY/RZ/U1/U2/U3 and all Clifford+T types) into a single U3(theta,phi,lambda).
-//
-// Algorithm per qubit:
-//   1. Scan ops in order; accumulate a "run" of 1Q gates in a per-qubit window.
-//   2. A run ends at a boundary: 2Q+ gate, Measure, Barrier, If, Idle, Opaque,
-//      Reset.
-//   3. When a run ends with length >= 2, compose the 2x2 complex unitary matrices
-//      (right-to-left factor order: M = M_last * ... * M_first — each gate
-//      applied to a ket on the right), then decompose M into U3(theta, phi,
-//      lambda) via standard ZYZ / atan2 formula, discarding the global phase.
-//      The original run ops are replaced with a single U3 GateOp.
-//   4. Runs of length 1 are not modified.
-//
-// U3 decomposition (standard, global phase ignored — safe per):
-//   U3(theta, phi, lambda) =
-//     [[cos(theta/2),            -e^{i*lambda}*sin(theta/2)],
-//      [e^{i*phi}*sin(theta/2),   e^{i*(phi+lambda)}*cos(theta/2)]]
-//
-//   Given unitary M = e^{i*gamma} * U3(theta, phi, lambda) we recover:
-//     theta = 2 * atan2(|M[1][0]|, |M[0][0]|)    (from the magnitude ratio)
-//     phi   = atan2(Im M[1][0], Re M[1][0]) - atan2(Im M[1][1]*conj(M[0][0]), Re M[1][1]*conj(M[0][0]))
-//             simplified via the U3 column phase structure:
-//     gamma = atan2(Im M[0][0], Re M[0][0])       (global phase of [0][0])
-//     phi   = atan2(Im M[1][0], Re M[1][0]) - gamma
-//     lambda= atan2(-Im M[0][1], -Re M[0][1]) - gamma
-//
-//   Identity check: |M - I| < 1e-12 (Frobenius) -> emit nothing (drop the run).
-//   Tolerance for sin(theta/2) near zero or one avoids gimbal-lock in phi/lambda.
-//
-// extension,.
+/// @file merge_single_qubit_unitary_pass.cpp
+/// @brief Full-unitary 1Q merge pass.
+///
+/// Merges runs of consecutive same-qubit 1-qubit gates (including rotation gates
+/// RX/RY/RZ/U1/U2/U3 and all Clifford+T types) into a single U3(theta,phi,lambda).
+///
+/// Algorithm per qubit:
+/// 1. Scan ops in order; accumulate a "run" of 1Q gates in a per-qubit window.
+/// 2. A run ends at a boundary: 2Q+ gate, Measure, Barrier, If, Idle, Opaque,
+/// Reset.
+/// 3. When a run ends with length >= 2, compose the 2x2 complex unitary matrices
+/// (right-to-left factor order: M = M_last * ... * M_first — each gate
+/// applied to a ket on the right), then decompose M into U3(theta, phi,
+/// lambda) via standard ZYZ / atan2 formula, discarding the global phase.
+/// The original run ops are replaced with a single U3 GateOp.
+/// 4. Runs of length 1 are not modified.
+///
+/// U3 decomposition (standard, global phase ignored — safe):
+/// U3(theta, phi, lambda) =
+/// [[cos(theta/2),            -e^{i*lambda}*sin(theta/2)],
+/// [e^{i*phi}*sin(theta/2),   e^{i*(phi+lambda)}*cos(theta/2)]]
+///
+/// Given unitary M = e^{i*gamma} * U3(theta, phi, lambda) we recover:
+/// theta = 2 * atan2(|M[1][0]|, |M[0][0]|)    (from the magnitude ratio)
+/// phi   = atan2(Im M[1][0], Re M[1][0]) - atan2(Im M[1][1]*conj(M[0][0]), Re M[1][1]*conj(M[0][0]))
+/// simplified via the U3 column phase structure:
+/// gamma = atan2(Im M[0][0], Re M[0][0])       (global phase of [0][0])
+/// phi   = atan2(Im M[1][0], Re M[1][0]) - gamma
+/// lambda= atan2(-Im M[0][1], -Re M[0][1]) - gamma
+///
+/// Identity check: |M - I| < 1e-12 (Frobenius) -> emit nothing (drop the run).
+/// Tolerance for sin(theta/2) near zero or one avoids gimbal-lock in phi/lambda.
+///
+/// extension,.
 
 #include "transpiler/passes/optimization/merge_single_qubit_unitary_pass.hpp"
 
