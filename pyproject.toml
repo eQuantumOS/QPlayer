@@ -11,14 +11,14 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "qplayer"
-version = "6.0.0"
-description = "QPlayer (Lynx-v6.0.0 — noise trajectory canonical op order + reset noise, canonical-gauge MPS splits, TN noise-path speedups, trajectory diagnostics and explicit idle-channel APIs) — high-performance quantum circuit emulator"
+version = "6.0.1"
+description = "QPlayer (Lynx-v6.0.1) — high-performance quantum circuit emulator"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "GPL-3.0-or-later OR Commercial" }
 authors = [
     { name = "Kisung Jin", email = "ksjin@etri.re.kr" },
-    { name = "Guyil Cha", email = "gicha@etri.re.kr" },
+    { name = "Gyuil Cha", email = "gicha@etri.re.kr" },
 ]
 keywords = ["quantum", "simulator", "qasm", "tensor-network"]
 classifiers = [

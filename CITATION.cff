@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+message: "If you use QPlayer, please cite it using the metadata below."
+type: software
+title: "QPlayer: a high-performance quantum circuit emulator"
+abstract: >-
+  QPlayer is a C++17 quantum circuit emulator with Python bindings. It accepts
+  OpenQASM 2.0, a C++ API and a Python API, lowers them to a common circuit IR,
+  and executes on FullState (CPU/GPU), SparseState and TensorNetwork (MPS)
+  backends, with noise models, device models, interactive execution and
+  coupling-map compilation.
+authors:
+  - family-names: Jin
+    given-names: Kisung
+    email: ksjin@etri.re.kr
+    orcid: "https://orcid.org/0000-0002-1997-3019"
+    affiliation: Electronics and Telecommunications Research Institute (ETRI)
+  - family-names: Cha
+    given-names: Gyuil
+    email: gicha@etri.re.kr
+    orcid: "https://orcid.org/0009-0000-6168-8177"
+    affiliation: Electronics and Telecommunications Research Institute (ETRI)
+version: 6.0.1
+date-released: 2026-11-04
+license: GPL-3.0-only
+license-url: "https://github.com/eQuantumOS/QPlayer/blob/master/LICENSE"
+repository-code: "https://github.com/eQuantumOS/QPlayer"
+keywords:
+  - quantum computing
+  - quantum circuit simulator
+  - OpenQASM
+  - tensor network
+  - matrix product state
+  - noise model

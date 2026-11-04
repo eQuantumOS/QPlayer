@@ -7,7 +7,7 @@ QPlayer accepts three input paths (OpenQASM v2 text, C++ native API, Python nati
 - **License**: Dual License — GPL v3 (open source) + Commercial License (commercial users, `gicha@etri.re.kr`). See [LICENSE](LICENSE).
 - **Language**: C++17 (core), Python 3.10+ (bindings).
 - **Build**: CMake ≥ 3.20 (no external package manager required).
-- **Status**: `Lynx-v6.0.0` — OpenQASM v2 parser, optimizer, FullState CPU/GPU + SparseState + TensorNetwork (MPS) backends, Python bindings, noise model + DeviceModel, Interactive mode, and coupling-map compilation are all in place.
+- **Status**: `Lynx-v6.0.1` — OpenQASM v2 parser, optimizer, FullState CPU/GPU + SparseState + TensorNetwork (MPS) backends, Python bindings, noise model + DeviceModel, Interactive mode, and coupling-map compilation are all in place.
 - **Documentation**: User-facing documents (this README, [INSTALL.md](INSTALL.md), [NOTICE](NOTICE), Doxygen output) are in English.
 
 ---
@@ -120,7 +120,7 @@ QPlayer/
 
 ## Development Status
 
-`Lynx-v6.0.0` is the current release. On top of the Caracal foundation (noise model + DeviceModel, Interactive mode, coupling-map compilation), it adds:
+`Lynx-v6.0.1` is the current release (`v6.0.0` plus documentation, comment and packaging cleanup; no functional change). On top of the Caracal foundation (noise model + DeviceModel, Interactive mode, coupling-map compilation), it adds:
 
 - **TensorNetwork backend** — an MPS representation with SVD truncation, interaction-topology analysis that lays sites along the circuit's chain, gate fusion, contraction-order planning, and single-amplitude / reduced-density-matrix queries that work past the dense export limit.
 - **TensorNetwork noise and dynamic circuits** — MPO and Monte Carlo trajectory noise, mid-circuit measurement, reset, and classical conditionals.
@@ -131,7 +131,7 @@ QPlayer/
 
 ## Contributing
 
-This is a single-author research project — external contributions are not accepted at this stage. For licensing or commercial inquiries, contact `gicha@etri.re.kr`.
+This is a research project of ETRI — external contributions are not accepted at this stage. For licensing or commercial inquiries, contact `gicha@etri.re.kr`.
 
 ---
 

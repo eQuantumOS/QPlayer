@@ -7,8 +7,8 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(qplayer
-    VERSION 6.0.0
-    DESCRIPTION "QPlayer (Lynx series, Lynx-v6.0.0 — noise trajectory canonical op order + reset noise, canonical-gauge MPS splits, TN noise-path speedups, trajectory diagnostics and explicit idle-channel APIs) — high-performance quantum circuit emulator"
+    VERSION 6.0.1
+    DESCRIPTION "QPlayer (Lynx series, Lynx-v6.0.1) — high-performance quantum circuit emulator"
     LANGUAGES CXX)
 
 # ── 1. Platform and compiler guards ───────────────────────────────

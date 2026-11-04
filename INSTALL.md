@@ -63,15 +63,13 @@ nvcc --version      # expect 12.0 or newer (only for the GPU build)
 
 ## 3. Configure and build (C++)
 
-This guide assumes you downloaded the release source tarball
-`QPlayer-<codename>-<x.y.z>.tar.gz` from the GitHub Releases page (e.g.
-`QPlayer-Lynx-6.0.0.tar.gz`). A `-clean.tar.gz` variant — identical code with
-internal design-reference comments removed — is also attached and builds the same
-way. Extract it and build from the extracted directory:
+This guide assumes you cloned the repository or downloaded the source archive
+of a release from the GitHub Releases page (e.g. tag `v6.0.1-Lynx`). Build from
+the top-level source directory:
 
 ```bash
-tar -xzf QPlayer-Lynx-6.0.0.tar.gz
-cd QPlayer-Lynx-6.0.0          # extracted directory matches the tarball name
+git clone --branch v6.0.1-Lynx https://github.com/eQuantumOS/QPlayer.git
+cd QPlayer
 
 # Default: CPU-only, Release build, in-house tests enabled
 cmake -B build -DCMAKE_BUILD_TYPE=Release

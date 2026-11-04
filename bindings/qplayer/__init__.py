@@ -1,6 +1,6 @@
 """QPlayer Python package — re-exports the pybind11 native module.
 
-Lynx-v6.0.0 binding surface:
+Lynx-v6.0.1 binding surface:
 
 - Batch API over FullState CPU/GPU, SparseState and TensorNetwork (MPS),
   plus the Interactive facade, NoiseModel and DeviceModel.
